@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TransactionType } from '@prisma/client';
+import { Transaction, TransactionType } from '@prisma/client';
 import {
   TransactionResponse,
   TransactionListMeta,
@@ -7,32 +7,26 @@ import {
   UpdateTransactionInput,
   ListTransactionsQuery,
   BulkDeleteTransactionsInput,
+  isUserManagedTransactionType,
+  formatIsoDate,
   parseIsoDate,
 } from '@fintrack/shared';
-import {
-  TransactionsRepository,
-  TransactionWithRelations,
-} from './transactions.repository';
-import { AccountsRepository } from '../accounts/accounts.repository';
+import { TransactionsRepository, TransactionWithRelations } from './transactions.repository';
+import { AccountAccessService } from '../accounts/account-access.service';
 import { CategoriesRepository } from '../categories/categories.repository';
 import { TagsRepository } from '../tags/tags.repository';
 import { BalanceService } from '../accounts/balance.service';
 import { BalanceGuardService } from '../accounts/balance-guard.service';
+import { balanceDeltas } from '../accounts/ledger-effect';
+import { BudgetsService, BudgetAlert } from '../budgets/budgets.service';
+import { PrismaService } from '../../infra/prisma/prisma.service';
+import { ClockService } from '../../infra/clock/clock.service';
 import {
-  NotFoundDomainException,
   InvalidCategoryTypeException,
   InvalidTransactionTypeException,
+  ManagedTransactionException,
+  NotFoundDomainException,
 } from '../../common/exceptions/domain.exception';
-
-import { BudgetsService } from '../budgets/budgets.service';
-import { ClockService } from '../../infra/clock/clock.service';
-
-export interface BudgetAlert {
-  categoryId: string;
-  percent: number;
-  limit: string;
-  spent: string;
-}
 
 export interface CreateTransactionResult {
   transaction: TransactionResponse;
@@ -45,13 +39,14 @@ export interface CreateTransactionResult {
 export class TransactionsService {
   constructor(
     private readonly repository: TransactionsRepository,
-    private readonly accountsRepository: AccountsRepository,
+    private readonly accountAccess: AccountAccessService,
     private readonly categoriesRepository: CategoriesRepository,
     private readonly tagsRepository: TagsRepository,
     private readonly balanceService: BalanceService,
-    private readonly balanceGuardService: BalanceGuardService,
+    private readonly balanceGuard: BalanceGuardService,
     private readonly budgetsService: BudgetsService,
     private readonly clock: ClockService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async list(
@@ -63,15 +58,13 @@ export class TransactionsService {
       this.repository.calculateSums(userId, query),
     ]);
 
-    const totalPages = Math.ceil(total / query.limit) || 1;
-
     return {
       data: transactions.map((t) => this.mapToResponse(t)),
       meta: {
         page: query.page,
         limit: query.limit,
         total,
-        totalPages,
+        totalPages: Math.ceil(total / query.limit) || 1,
         sums,
       },
     };
@@ -79,72 +72,43 @@ export class TransactionsService {
 
   async getById(userId: string, id: string): Promise<TransactionResponse> {
     const transaction = await this.repository.findById(userId, id);
-    if (!transaction) {
-      throw new NotFoundDomainException('Tranzaksiya topilmadi');
-    }
+    if (!transaction) throw new NotFoundDomainException('Tranzaksiya topilmadi');
     return this.mapToResponse(transaction);
   }
 
   async create(userId: string, dto: CreateTransactionInput): Promise<CreateTransactionResult> {
-    if (dto.type !== 'INCOME' && dto.type !== 'EXPENSE') {
-      throw new InvalidTransactionTypeException();
-    }
+    if (!isUserManagedTransactionType(dto.type)) throw new InvalidTransactionTypeException();
 
     await this.clock.assertNotFuture(userId, dto.date);
-    const txDate = parseIsoDate(dto.date);
+    await this.accountAccess.assertWritable(userId, dto.accountId);
+    await this.assertCategory(userId, dto.categoryId, dto.type);
+    await this.assertTags(userId, dto.tagIds);
 
-    const account = await this.accountsRepository.findById(userId, dto.accountId);
-    if (!account) {
-      throw new NotFoundDomainException('Hisob topilmadi');
-    }
-
-    const category = await this.categoriesRepository.findById(userId, dto.categoryId);
-    if (!category) {
-      throw new NotFoundDomainException('Kategoriya topilmadi');
-    }
-    if (category.type !== dto.type) {
-      throw new InvalidCategoryTypeException();
-    }
-
-    if (dto.tagIds && dto.tagIds.length > 0) {
-      for (const tagId of dto.tagIds) {
-        const tag = await this.tagsRepository.findById(userId, tagId);
-        if (!tag) {
-          throw new NotFoundDomainException('Teg topilmadi');
-        }
-      }
-    }
-
+    const type = dto.type as TransactionType;
     const amount = BigInt(dto.amount);
+    const date = parseIsoDate(dto.date);
 
-    if (dto.type === 'EXPENSE') {
-      await this.balanceGuardService.assertSufficient(userId, dto.accountId, amount);
-    }
-
-    const created = await this.repository.create(
-      userId,
-      {
-        type: dto.type as TransactionType,
-        accountId: dto.accountId,
-        amount,
-        categoryId: dto.categoryId,
-        date: txDate,
-        note: dto.note,
-      },
-      dto.tagIds,
-    );
+    const created = await this.prisma.$transaction(async (db) => {
+      if (type === 'EXPENSE') {
+        await this.balanceGuard.assertCanDebit(db, userId, dto.accountId, amount);
+      }
+      return this.repository.create(
+        db,
+        userId,
+        { type, accountId: dto.accountId, amount, categoryId: dto.categoryId, date, note: dto.note },
+        [...new Set(dto.tagIds ?? [])],
+      );
+    });
 
     await this.balanceService.invalidate(userId);
 
-    const [accountBalance, totalBalance] = await Promise.all([
+    const [accountBalance, totalBalance, budgetAlert] = await Promise.all([
       this.balanceService.getBalance(userId, dto.accountId),
       this.balanceService.getTotalBalance(userId),
+      type === 'EXPENSE'
+        ? this.budgetsService.checkAndNotify(userId, dto.categoryId, date)
+        : Promise.resolve(null),
     ]);
-
-    let budgetAlert: BudgetAlert | null = null;
-    if (dto.type === 'EXPENSE' && dto.categoryId) {
-      budgetAlert = await this.budgetsService.checkAndNotify(userId, dto.categoryId, txDate);
-    }
 
     return {
       transaction: this.mapToResponse(created),
@@ -154,127 +118,133 @@ export class TransactionsService {
     };
   }
 
-  async update(
-    userId: string,
-    id: string,
-    dto: UpdateTransactionInput,
-  ): Promise<TransactionResponse> {
+  async update(userId: string, id: string, dto: UpdateTransactionInput): Promise<TransactionResponse> {
     const existing = await this.repository.findById(userId, id);
-    if (!existing) {
-      throw new NotFoundDomainException('Tranzaksiya topilmadi');
-    }
+    if (!existing) throw new NotFoundDomainException('Tranzaksiya topilmadi');
+    this.assertUserManaged(existing);
 
-    let txDate: Date | undefined;
-    if (dto.date) {
-      await this.clock.assertNotFuture(userId, dto.date);
-      txDate = parseIsoDate(dto.date);
-    }
-
-    const targetAccountId = dto.accountId ?? existing.accountId;
+    if (dto.date) await this.clock.assertNotFuture(userId, dto.date);
     if (dto.accountId && dto.accountId !== existing.accountId) {
-      const account = await this.accountsRepository.findById(userId, dto.accountId);
-      if (!account) {
-        throw new NotFoundDomainException('Hisob topilmadi');
-      }
+      await this.accountAccess.assertWritable(userId, dto.accountId);
     }
-
-    if (dto.categoryId !== undefined) {
-      if (dto.categoryId !== null) {
-        const category = await this.categoriesRepository.findById(userId, dto.categoryId);
-        if (!category) {
-          throw new NotFoundDomainException('Kategoriya topilmadi');
-        }
-        if (category.type !== existing.type) {
-          throw new InvalidCategoryTypeException();
-        }
-      }
+    if (dto.categoryId !== undefined && dto.categoryId !== null) {
+      await this.assertCategory(userId, dto.categoryId, existing.type);
     }
+    await this.assertTags(userId, dto.tagIds);
 
-    if (dto.tagIds && dto.tagIds.length > 0) {
-      for (const tagId of dto.tagIds) {
-        const tag = await this.tagsRepository.findById(userId, tagId);
-        if (!tag) {
-          throw new NotFoundDomainException('Teg topilmadi');
-        }
-      }
-    }
+    const accountId = dto.accountId ?? existing.accountId;
+    const amount = dto.amount ? BigInt(dto.amount) : existing.amount;
+    const date = dto.date ? parseIsoDate(dto.date) : undefined;
 
-    const targetAmount = dto.amount ? BigInt(dto.amount) : existing.amount;
-
-    if (existing.type === 'EXPENSE') {
-      const additionalAmount = targetAmount - existing.amount;
-      if (additionalAmount > 0n || targetAccountId !== existing.accountId) {
-        await this.balanceGuardService.assertSufficient(
-          userId,
-          targetAccountId,
-          targetAccountId === existing.accountId ? additionalAmount : targetAmount,
-        );
-      }
-    }
-
-    const updated = await this.repository.update(
-      userId,
-      id,
-      {
-        accountId: dto.accountId,
-        amount: dto.amount ? BigInt(dto.amount) : undefined,
-        categoryId: dto.categoryId,
-        date: txDate,
-        note: dto.note,
-      },
-      dto.tagIds,
+    const deltas = balanceDeltas(
+      [{ accountId: existing.accountId, type: existing.type, amount: existing.amount }],
+      [{ accountId, type: existing.type, amount }],
     );
 
-    await this.balanceService.invalidate(userId);
+    const updated = await this.prisma.$transaction(async (db) => {
+      await this.balanceGuard.assertDeltas(db, userId, deltas);
+      return this.repository.update(
+        db,
+        userId,
+        id,
+        { accountId: dto.accountId, amount: dto.amount ? amount : undefined, categoryId: dto.categoryId, date, note: dto.note },
+        dto.tagIds ? [...new Set(dto.tagIds)] : undefined,
+      );
+    });
 
+    await this.balanceService.invalidate(userId);
+    await this.notifyBudget(userId, updated);
     return this.mapToResponse(updated);
   }
 
   async delete(userId: string, id: string): Promise<void> {
     const existing = await this.repository.findById(userId, id);
-    if (!existing) {
-      throw new NotFoundDomainException('Tranzaksiya topilmadi');
-    }
+    if (!existing) throw new NotFoundDomainException('Tranzaksiya topilmadi');
+    this.assertUserManaged(existing);
 
-    await this.repository.softDelete(userId, existing);
-    await this.balanceService.invalidate(userId);
+    await this.removeRows(userId, [existing]);
   }
 
   async bulkDelete(userId: string, dto: BulkDeleteTransactionsInput): Promise<void> {
-    await this.repository.bulkSoftDelete(userId, dto.ids);
-    await this.balanceService.invalidate(userId);
+    const rows = await this.repository.findLiveByIds(userId, [...new Set(dto.ids)]);
+    const managed = rows.filter((row) => !isUserManagedTransactionType(row.type));
+    if (managed.length > 0) {
+      throw new ManagedTransactionException({ transactionIds: managed.map((row) => row.id) });
+    }
+    if (rows.length === 0) return;
+
+    await this.removeRows(userId, rows);
   }
 
   async restore(userId: string, id: string): Promise<TransactionResponse> {
     const deleted = await this.repository.findDeletedById(userId, id);
-    if (!deleted) {
-      throw new NotFoundDomainException('O‘chirilgan tranzaksiya topilmadi');
-    }
+    if (!deleted) throw new NotFoundDomainException('O‘chirilgan tranzaksiya topilmadi');
+    this.assertUserManaged(deleted);
 
-    await this.repository.restore(userId, deleted);
+    const deltas = balanceDeltas([], [deleted]);
+    const restored = await this.prisma.$transaction(async (db) => {
+      await this.balanceGuard.assertDeltas(db, userId, deltas);
+      await this.repository.restore(db, userId, id);
+      return this.repository.findById(userId, id, db);
+    });
+    if (!restored) throw new NotFoundDomainException('Tranzaksiya topilmadi');
+
     await this.balanceService.invalidate(userId);
-
-    const restored = await this.repository.findById(userId, id);
-    if (!restored) {
-      throw new NotFoundDomainException('Tranzaksiya topilmadi');
-    }
+    await this.notifyBudget(userId, restored);
     return this.mapToResponse(restored);
   }
 
-  private mapToResponse(tx: TransactionWithRelations): TransactionResponse {
-    const dateStr = tx.date instanceof Date ? tx.date.toISOString().split('T')[0] : String(tx.date);
+  private async removeRows(userId: string, rows: Transaction[]): Promise<void> {
+    const deltas = balanceDeltas(rows, []);
+    await this.prisma.$transaction(async (db) => {
+      await this.balanceGuard.assertDeltas(db, userId, deltas);
+      await this.repository.softDelete(
+        db,
+        userId,
+        rows.map((row) => row.id),
+      );
+    });
+    await this.balanceService.invalidate(userId);
+  }
 
+  private assertUserManaged(row: Pick<Transaction, 'id' | 'type' | 'transferGroupId' | 'debtId'>): void {
+    if (!isUserManagedTransactionType(row.type)) {
+      throw new ManagedTransactionException({
+        transactionId: row.id,
+        transferGroupId: row.transferGroupId,
+        debtId: row.debtId,
+      });
+    }
+  }
+
+  private async assertCategory(userId: string, categoryId: string, type: TransactionType): Promise<void> {
+    const category = await this.categoriesRepository.findById(userId, categoryId);
+    if (!category) throw new NotFoundDomainException('Kategoriya topilmadi');
+    if (category.type !== type) throw new InvalidCategoryTypeException();
+  }
+
+  private async assertTags(userId: string, tagIds?: string[]): Promise<void> {
+    if (!tagIds || tagIds.length === 0) return;
+    const unique = [...new Set(tagIds)];
+    if ((await this.tagsRepository.countOwned(userId, unique)) !== unique.length) {
+      throw new NotFoundDomainException('Teg topilmadi');
+    }
+  }
+
+  private async notifyBudget(userId: string, tx: TransactionWithRelations): Promise<void> {
+    if (tx.type === 'EXPENSE' && tx.categoryId) {
+      await this.budgetsService.checkAndNotify(userId, tx.categoryId, tx.date);
+    }
+  }
+
+  private mapToResponse(tx: TransactionWithRelations): TransactionResponse {
     return {
       id: tx.id,
       type: tx.type as TransactionResponse['type'],
       amount: tx.amount.toString(),
-      date: dateStr,
+      date: formatIsoDate(tx.date),
       note: tx.note,
-      account: {
-        id: tx.account.id,
-        name: tx.account.name,
-        icon: tx.account.icon,
-      },
+      account: { id: tx.account.id, name: tx.account.name, icon: tx.account.icon },
       category: tx.category
         ? {
             id: tx.category.id,
@@ -283,11 +253,7 @@ export class TransactionsService {
             color: tx.category.color,
           }
         : null,
-      tags: tx.tags.map((item) => ({
-        id: item.tag.id,
-        name: item.tag.name,
-        color: item.tag.color,
-      })),
+      tags: tx.tags.map((item) => ({ id: item.tag.id, name: item.tag.name, color: item.tag.color })),
       debtId: tx.debtId,
       transferGroupId: tx.transferGroupId,
       createdAt: tx.createdAt.toISOString(),

@@ -14,6 +14,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { DebtsService } from './debts.service';
+import { DebtPaymentsService } from './debt-payments.service';
 import {
   CreateDebtDto,
   UpdateDebtDto,
@@ -26,7 +27,10 @@ import {
 @ApiBearerAuth()
 @Controller({ path: 'debts', version: '1' })
 export class DebtsController {
-  constructor(private readonly service: DebtsService) {}
+  constructor(
+    private readonly service: DebtsService,
+    private readonly payments: DebtPaymentsService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Qarzlar ro‘yxatini olish (filtrlar, sahifalash va summary bilan)' })
@@ -82,7 +86,7 @@ export class DebtsController {
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.listPayments(userId, id);
+    return this.payments.listPayments(userId, id);
   }
 
   @Post(':id/payments')
@@ -93,7 +97,7 @@ export class DebtsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateDebtPaymentDto,
   ) {
-    return this.service.createPayment(userId, id, dto);
+    return this.payments.createPayment(userId, id, dto);
   }
 
   @Post(':id/settle')
@@ -104,6 +108,16 @@ export class DebtsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SettleDebtDto,
   ) {
-    return this.service.settle(userId, id, dto);
+    return this.payments.settle(userId, id, dto);
+  }
+
+  @Delete(':id/payments/:paymentId')
+  @ApiOperation({ summary: 'Qarz to‘lovini bekor qilish (ledger yozuvi ham qaytariladi)' })
+  async deletePayment(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('paymentId', ParseUUIDPipe) paymentId: string,
+  ) {
+    return this.payments.deletePayment(userId, id, paymentId);
   }
 }

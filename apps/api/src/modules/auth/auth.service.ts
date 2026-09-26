@@ -14,7 +14,11 @@ import {
   SessionResponse,
 } from '@fintrack/shared';
 import { AuthRepository } from './auth.repository';
+import { durationToMs } from '../../common/utils/duration';
 import { ConflictDomainException, NotFoundDomainException } from '../../common/exceptions/domain.exception';
+
+/** Window in which a just-rotated refresh token is treated as a concurrent refresh, not theft. */
+const REFRESH_GRACE_MS = 30_000;
 
 interface TokenMeta {
   userAgent?: string;
@@ -120,13 +124,25 @@ export class AuthService {
       });
     }
 
-    // Reuse detection: If token was already revoked, revoke whole family
     if (tokenRecord.revokedAt !== null) {
-      this.logger.warn(`Security alert: Token reuse detected for family ${tokenRecord.familyId}, user ${tokenRecord.userId}`);
+      // Two tabs refreshing at once present the same token milliseconds apart. That is not
+      // theft: the loser just retries with the cookie the winner already received.
+      const sinceRevocation = Date.now() - tokenRecord.revokedAt.getTime();
+      if (tokenRecord.replacedByHash && sinceRevocation < REFRESH_GRACE_MS) {
+        throw this.refreshRaceError();
+      }
+      this.logger.warn(`Security alert: refresh token reuse for family ${tokenRecord.familyId}`);
       await this.repository.revokeTokenFamily(tokenRecord.familyId);
       throw new UnauthorizedException({
         code: 'TOKEN_REUSE_DETECTED',
         message: 'Xavfsizlik buzilishi aniqlandi. Barcha sessiyalar bekor qilindi. Qaytadan kiring',
+      });
+    }
+
+    if (tokenRecord.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedException({
+        code: 'UNAUTHENTICATED',
+        message: 'Sessiya muddati tugagan. Qaytadan kiring',
       });
     }
 
@@ -138,11 +154,14 @@ export class AuthService {
       });
     }
 
-    // Rotate token within the same family
+    // Rotate within the same family; only one concurrent rotation of this token may win.
     const newTokens = await this.generateTokens(user, tokenRecord.familyId, meta);
     const newHash = this.hashToken(newTokens.refreshToken);
 
-    await this.repository.revokeRefreshToken(tokenRecord.id, newHash);
+    if (!(await this.repository.revokeRefreshToken(tokenRecord.id, newHash))) {
+      await this.repository.deleteRefreshTokenByHash(newHash);
+      throw this.refreshRaceError();
+    }
 
     return {
       user: this.toUserResponse(user),
@@ -239,7 +258,7 @@ export class AuthService {
 
     // Refresh token is stored hashed in the RefreshToken table
     const tokenHash = this.hashToken(refreshToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + durationToMs(refreshTtl));
 
     await this.repository.createRefreshToken({
       userId: user.id,
@@ -251,6 +270,13 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken };
+  }
+
+  private refreshRaceError(): UnauthorizedException {
+    return new UnauthorizedException({
+      code: 'REFRESH_RACE',
+      message: 'Sessiya boshqa oynada yangilandi. So‘rovni qayta yuboring',
+    });
   }
 
   private hashToken(token: string): string {

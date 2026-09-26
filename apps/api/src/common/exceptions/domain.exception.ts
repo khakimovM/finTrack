@@ -86,3 +86,25 @@ export class FutureDateException extends DomainException {
 }
 
 
+/** Transfer and loan rows are edited through /transfers and /debts, never /transactions. */
+export class ManagedTransactionException extends DomainException {
+  constructor(details?: Record<string, unknown>) {
+    super(
+      'Bu yozuv o‘tkazma yoki qarzga tegishli. Uni o‘sha bo‘lim orqali o‘zgartiring',
+      'MANAGED_TRANSACTION',
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      details,
+    );
+  }
+}
+
+export class AccountArchivedException extends DomainException {
+  constructor(details?: Record<string, unknown>) {
+    super(
+      'Arxivlangan hisobga yozuv qo‘shib bo‘lmaydi',
+      'ACCOUNT_ARCHIVED',
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      details,
+    );
+  }
+}

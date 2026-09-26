@@ -66,7 +66,7 @@ export class NotificationsRepository {
     if (!existing) return null;
 
     return this.prisma.notification.update({
-      where: { id },
+      where: { id, userId },
       data: { readAt: new Date() },
     });
   }
@@ -84,7 +84,7 @@ export class NotificationsRepository {
     if (!existing) return false;
 
     await this.prisma.notification.delete({
-      where: { id },
+      where: { id, userId },
     });
     return true;
   }

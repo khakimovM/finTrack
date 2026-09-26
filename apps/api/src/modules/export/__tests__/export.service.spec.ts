@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ExportService } from '../export.service';
+import { ExportService, EXPORT_MAX_ROWS, neutralizeFormula } from '../export.service';
 import { TransactionsRepository } from '../../transactions/transactions.repository';
 import { parseIsoDate } from '@fintrack/shared';
 
@@ -52,6 +52,7 @@ describe('ExportService', () => {
   beforeEach(async () => {
     const mockRepo = {
       findForExport: jest.fn().mockResolvedValue(mockTransactions),
+      countForExport: jest.fn().mockResolvedValue(mockTransactions.length),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -95,6 +96,20 @@ describe('ExportService', () => {
       expect(repository.findForExport).toHaveBeenCalledWith(mockUserId, {});
       expect(Buffer.isBuffer(buffer)).toBe(true);
       expect(buffer.length).toBeGreaterThan(100);
+    });
+  });
+
+  describe('hardening', () => {
+    it('neutralises spreadsheet formulas in user text', () => {
+      expect(neutralizeFormula('=HYPERLINK("http://x")')).toBe(`'=HYPERLINK("http://x")`);
+      expect(neutralizeFormula('+998901234567')).toBe("'+998901234567");
+      expect(neutralizeFormula('Oziq-ovqat')).toBe('Oziq-ovqat');
+    });
+
+    it('refuses exports above the row cap with EXPORT_TOO_LARGE', async () => {
+      repository.countForExport.mockResolvedValueOnce(EXPORT_MAX_ROWS + 1);
+      await expect(service.generateCsv(mockUserId, {})).rejects.toMatchObject({ code: 'EXPORT_TOO_LARGE' });
+      expect(repository.findForExport).not.toHaveBeenCalled();
     });
   });
 });

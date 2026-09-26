@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { UserCacheService } from '../../../infra/redis/user-cache.service';
 import { CategoriesService } from '../categories.service';
 import { CategoriesRepository, CategoryWithChildren } from '../categories.repository';
 import {
@@ -18,6 +19,9 @@ describe('CategoriesService', () => {
     update: jest.Mock;
     delete: jest.Mock;
     reorder: jest.Mock;
+    findDeletedByNameAndParent: jest.Mock;
+    restore: jest.Mock;
+    hasChildren: jest.Mock;
   };
 
   const mockCategory: CategoryWithChildren = {
@@ -41,6 +45,9 @@ describe('CategoriesService', () => {
       findAll: jest.fn(),
       findById: jest.fn(),
       findByNameAndParent: jest.fn(),
+      findDeletedByNameAndParent: jest.fn().mockResolvedValue(null),
+      restore: jest.fn(),
+      hasChildren: jest.fn().mockResolvedValue(false),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -51,6 +58,7 @@ describe('CategoriesService', () => {
       providers: [
         CategoriesService,
         { provide: CategoriesRepository, useValue: repository },
+        { provide: UserCacheService, useValue: { invalidate: jest.fn() } },
       ],
     }).compile();
 
@@ -188,6 +196,44 @@ describe('CategoriesService', () => {
       await service.delete('user-1', 'cat-1');
 
       expect(repository.delete).toHaveBeenCalledWith('user-1', 'cat-1', ['child-1']);
+    });
+  });
+
+  describe('create (soft-deleted twin)', () => {
+    it('restores a previously deleted category instead of hitting the unique key', async () => {
+      repository.findByNameAndParent.mockResolvedValue(null);
+      repository.findDeletedByNameAndParent.mockResolvedValue({ id: 'old-cat' });
+      repository.restore.mockResolvedValue({
+        id: 'old-cat',
+        name: 'Taksi',
+        type: 'EXPENSE',
+        icon: '🚕',
+        color: '#111111',
+        parentId: null,
+        isSystem: false,
+        sortOrder: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const res = await service.create('user-1', { name: 'Taksi', type: 'EXPENSE', icon: '🚕', color: '#111111' });
+
+      expect(repository.restore).toHaveBeenCalledWith('user-1', 'old-cat', { icon: '🚕', color: '#111111' });
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(res.id).toBe('old-cat');
+    });
+  });
+
+  describe('update (depth)', () => {
+    it('refuses to move a category that has subcategories under another parent', async () => {
+      repository.findById
+        .mockResolvedValueOnce({ id: 'c1', type: 'EXPENSE', parentId: null, name: 'Transport', children: [{ id: 'c2' }] })
+        .mockResolvedValueOnce({ id: 'p1', type: 'EXPENSE', parentId: null, name: 'Uy', children: [] });
+
+      await expect(service.update('user-1', 'c1', { parentId: 'p1' })).rejects.toMatchObject({
+        code: 'INVALID_CATEGORY_DEPTH',
+      });
+      expect(repository.update).not.toHaveBeenCalled();
     });
   });
 });

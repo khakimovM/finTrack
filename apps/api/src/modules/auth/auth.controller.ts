@@ -10,9 +10,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { ConfigService } from '@nestjs/config';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from './auth.service';
+import { AuthCookiesService } from './auth-cookies.service';
 import {
   RegisterDto,
   LoginDto,
@@ -28,10 +28,11 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly configService: ConfigService,
+    private readonly cookies: AuthCookiesService,
   ) {}
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new user' })
@@ -45,7 +46,7 @@ export class AuthController {
     const meta = this.extractRequestMeta(req);
     const result = await this.authService.register(dto, meta);
 
-    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    this.cookies.set(res, result.accessToken, result.refreshToken);
 
     return { user: result.user };
   }
@@ -65,12 +66,13 @@ export class AuthController {
     const meta = this.extractRequestMeta(req);
     const result = await this.authService.login(dto, meta);
 
-    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    this.cookies.set(res, result.accessToken, result.refreshToken);
 
     return { user: result.user };
   }
 
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate refresh token' })
@@ -86,10 +88,10 @@ export class AuthController {
 
     try {
       const result = await this.authService.refresh(rawRefreshToken, meta);
-      this.setAuthCookies(res, result.accessToken, result.refreshToken);
+      this.cookies.set(res, result.accessToken, result.refreshToken);
       return { user: result.user };
     } catch (err) {
-      this.clearAuthCookies(res);
+      this.cookies.clear(res);
       throw err;
     }
   }
@@ -104,7 +106,7 @@ export class AuthController {
   ) {
     const cookies = (req as unknown as { cookies?: Record<string, string> }).cookies;
     await this.authService.logout(cookies?.refreshToken);
-    this.clearAuthCookies(res);
+    this.cookies.clear(res);
 
     return { message: 'Tizimdan muvaffaqiyatli chiqildi' };
   }
@@ -118,7 +120,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
     await this.authService.logoutAll(userId);
-    this.clearAuthCookies(res);
+    this.cookies.clear(res);
 
     return { message: 'Barcha sessiyalardan chiqildi' };
   }
@@ -164,36 +166,5 @@ export class AuthController {
       userAgent: req.headers['user-agent'] as string | undefined,
       ipAddress: req.ip,
     };
-  }
-
-  private setAuthCookies(res: FastifyReply, accessToken: string, refreshToken: string) {
-    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
-    const cookieDomain = this.configService.get<string>('COOKIE_DOMAIN', 'localhost');
-
-    res.setCookie('accessToken', accessToken, {
-      path: '/',
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      maxAge: 15 * 60, // 15 minutes
-      domain: cookieDomain === 'localhost' ? undefined : cookieDomain,
-    });
-
-    res.setCookie('refreshToken', refreshToken, {
-      path: '/',
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      domain: cookieDomain === 'localhost' ? undefined : cookieDomain,
-    });
-  }
-
-  private clearAuthCookies(res: FastifyReply) {
-    const cookieDomain = this.configService.get<string>('COOKIE_DOMAIN', 'localhost');
-    const domain = cookieDomain === 'localhost' ? undefined : cookieDomain;
-
-    res.clearCookie('accessToken', { path: '/', domain });
-    res.clearCookie('refreshToken', { path: '/', domain });
   }
 }

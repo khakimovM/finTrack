@@ -29,6 +29,23 @@ const processQueue = (error: unknown) => {
   failedQueue = [];
 };
 
+function errorCode(error: unknown): string | undefined {
+  if (!axios.isAxiosError(error)) return undefined;
+  return (error.response?.data as { error?: { code?: string } } | undefined)?.error?.code;
+}
+
+/**
+ * Another tab may rotate the refresh token a moment before this one (REFRESH_RACE). Its new
+ * cookie is already shared with us, so the original request can simply be retried.
+ */
+async function refreshSession(): Promise<void> {
+  try {
+    await api.post('/auth/refresh');
+  } catch (err) {
+    if (errorCode(err) !== 'REFRESH_RACE') throw err;
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -58,7 +75,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await api.post('/auth/refresh');
+        await refreshSession();
         processQueue(null);
         return api(originalRequest);
       } catch (refreshError) {

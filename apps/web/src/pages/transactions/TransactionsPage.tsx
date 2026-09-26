@@ -12,7 +12,7 @@ import {
   FileSpreadsheet,
   ChevronDown,
 } from 'lucide-react';
-import { formatMoney, ListTransactionsQuery, TransactionType } from '@fintrack/shared';
+import { formatMoney, ListTransactionsQuery, TransactionType, isUserManagedTransactionType } from '@fintrack/shared';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -103,10 +103,11 @@ export function TransactionsPage() {
   };
 
   const handleToggleAll = () => {
-    if (transactions.every((t) => selectedIds.has(t.id))) {
+    const deletable = transactions.filter((t) => isUserManagedTransactionType(t.type));
+    if (deletable.every((t) => selectedIds.has(t.id))) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(transactions.map((t) => t.id)));
+      setSelectedIds(new Set(deletable.map((t) => t.id)));
     }
   };
 

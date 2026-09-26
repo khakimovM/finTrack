@@ -1,163 +1,140 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ClockService } from '../../../infra/clock/clock.service';
-import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
+import { Transaction } from '@prisma/client';
 import { TransfersService } from '../transfers.service';
 import { TransfersRepository } from '../transfers.repository';
-import { AccountsRepository } from '../../accounts/accounts.repository';
+import { AccountAccessService } from '../../accounts/account-access.service';
 import { BalanceService } from '../../accounts/balance.service';
 import { BalanceGuardService } from '../../accounts/balance-guard.service';
+import { ClockService } from '../../../infra/clock/clock.service';
+import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
+import { prismaStub } from '../../../infra/prisma/__tests__/prisma.stub';
 import {
-  NotFoundDomainException,
-  SameAccountTransferException,
   FutureDateException,
   InsufficientBalanceException,
+  NotFoundDomainException,
+  SameAccountTransferException,
 } from '../../../common/exceptions/domain.exception';
 
+const USER = 'user-1';
+const FROM = '11111111-1111-1111-1111-111111111111';
+const TO = '22222222-2222-2222-2222-222222222222';
+
+function leg(overrides: Partial<Transaction>): Transaction {
+  return {
+    id: 'leg',
+    userId: USER,
+    accountId: FROM,
+    type: 'TRANSFER_OUT',
+    amount: 5_000_000n,
+    amountBase: null,
+    categoryId: null,
+    debtId: null,
+    transferGroupId: 'tg_1',
+    recurringRuleId: null,
+    date: new Date('2026-09-01T00:00:00Z'),
+    note: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    ...overrides,
+  };
+}
+
+function setup() {
+  const repository = { createTransfer: jest.fn(), findLiveLegs: jest.fn(), softDeleteGroup: jest.fn() };
+  const accountAccess = { assertWritable: jest.fn().mockResolvedValue(undefined) };
+  const balanceService = {
+    invalidate: jest.fn(),
+    getAccountBalances: jest.fn().mockResolvedValue({
+      balances: new Map([
+        [FROM, 7_550_000n],
+        [TO, 11_350_000n],
+      ]),
+      total: 18_900_000n,
+    }),
+  };
+  const guard = { assertCanDebit: jest.fn(), assertDeltas: jest.fn() };
+  const prisma = prismaStub();
+  const service = new TransfersService(
+    repository as unknown as TransfersRepository,
+    accountAccess as unknown as AccountAccessService,
+    balanceService as unknown as BalanceService,
+    guard as unknown as BalanceGuardService,
+    clockStub() as unknown as ClockService,
+    prisma,
+  );
+  return { service, repository, accountAccess, balanceService, guard, prisma };
+}
+
+const dto = { fromAccountId: FROM, toAccountId: TO, amount: '5000000', date: '2026-09-01' };
+
 describe('TransfersService', () => {
-  let service: TransfersService;
-  let repository: {
-    createTransfer: jest.Mock;
-    deleteTransfer: jest.Mock;
-  };
-  let accountsRepository: { findById: jest.Mock };
-  let balanceService: {
-    getBalance: jest.Mock;
-    getTotalBalance: jest.Mock;
-    invalidate: jest.Mock;
-  };
-  let balanceGuardService: { assertSufficient: jest.Mock };
+  it('writes both legs in one transaction after debit-checking the source', async () => {
+    const t = setup();
+    t.repository.createTransfer.mockResolvedValue({
+      transferGroupId: 'tg_1',
+      outTx: leg({ id: 'out' }),
+      inTx: leg({ id: 'in', type: 'TRANSFER_IN', accountId: TO }),
+    });
 
-  beforeEach(async () => {
-    repository = {
-      createTransfer: jest.fn(),
-      deleteTransfer: jest.fn(),
-    };
-    accountsRepository = { findById: jest.fn() };
-    balanceService = {
-      getBalance: jest.fn(),
-      getTotalBalance: jest.fn(),
-      invalidate: jest.fn(),
-    };
-    balanceGuardService = { assertSufficient: jest.fn() };
+    const res = await t.service.create(USER, dto);
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        TransfersService,
-        { provide: TransfersRepository, useValue: repository },
-        { provide: AccountsRepository, useValue: accountsRepository },
-        { provide: BalanceService, useValue: balanceService },
-        { provide: BalanceGuardService, useValue: balanceGuardService },
-        { provide: ClockService, useValue: clockStub() },
-      ],
-    }).compile();
-
-    service = module.get<TransfersService>(TransfersService);
+    expect(t.prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(t.guard.assertCanDebit).toHaveBeenCalledWith(t.prisma.tx, USER, FROM, 5_000_000n);
+    expect(t.repository.createTransfer).toHaveBeenCalledWith(
+      t.prisma.tx,
+      USER,
+      expect.objectContaining({ fromAccountId: FROM, toAccountId: TO, amount: 5_000_000n }),
+    );
+    expect(res.balances).toEqual({ [FROM]: '7550000', [TO]: '11350000', total: '18900000' });
+    expect(res.out.type).toBe('TRANSFER_OUT');
+    expect(res.in.type).toBe('TRANSFER_IN');
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('rejects a transfer to the same account', async () => {
+    const t = setup();
+    await expect(t.service.create(USER, { ...dto, toAccountId: FROM })).rejects.toBeInstanceOf(
+      SameAccountTransferException,
+    );
   });
 
-  describe('create', () => {
-    const validDto = {
-      fromAccountId: 'acc-1',
-      toAccountId: 'acc-2',
-      amount: '500000',
-      date: '2026-08-15',
-      note: 'O‘tkazma',
-    };
-
-    it('creates transfer with two ledger rows and does not alter total balance', async () => {
-      accountsRepository.findById.mockImplementation((userId, id) => {
-        if (id === 'acc-1') return Promise.resolve({ id: 'acc-1', name: 'Humo' });
-        if (id === 'acc-2') return Promise.resolve({ id: 'acc-2', name: 'Uzcard' });
-        return Promise.resolve(null);
-      });
-
-      balanceGuardService.assertSufficient.mockResolvedValue(undefined);
-
-      repository.createTransfer.mockResolvedValue({
-        transferGroupId: 'tg_123',
-        outTx: { id: 'tx-out', type: 'TRANSFER_OUT', accountId: 'acc-1', amount: 500000n },
-        inTx: { id: 'tx-in', type: 'TRANSFER_IN', accountId: 'acc-2', amount: 500000n },
-      });
-
-      balanceService.getBalance.mockImplementation((userId, accId) => {
-        if (accId === 'acc-1') return Promise.resolve(500000n);
-        if (accId === 'acc-2') return Promise.resolve(1500000n);
-        return Promise.resolve(0n);
-      });
-      balanceService.getTotalBalance.mockResolvedValue(2000000n);
-
-      const res = await service.create('user-1', validDto);
-
-      expect(res.transferGroupId).toBe('tg_123');
-      expect(res.out.type).toBe('TRANSFER_OUT');
-      expect(res.in.type).toBe('TRANSFER_IN');
-      expect(res.balances['acc-1']).toBe('500000');
-      expect(res.balances['acc-2']).toBe('1500000');
-      expect(res.balances.total).toBe('2000000');
-
-      expect(balanceGuardService.assertSufficient).toHaveBeenCalledWith('user-1', 'acc-1', 500000n);
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
-    });
-
-    it('throws 422 SAME_ACCOUNT_TRANSFER when fromAccountId === toAccountId', async () => {
-      await expect(
-        service.create('user-1', {
-          ...validDto,
-          toAccountId: 'acc-1',
-        }),
-      ).rejects.toThrow(SameAccountTransferException);
-    });
-
-    it('throws 422 FUTURE_DATE when date is in the future', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 5);
-      const futureDateStr = futureDate.toISOString().split('T')[0];
-
-      await expect(
-        service.create('user-1', {
-          ...validDto,
-          date: futureDateStr,
-        }),
-      ).rejects.toThrow(FutureDateException);
-    });
-
-    it('throws 404 when either account does not exist or not owned', async () => {
-      accountsRepository.findById.mockImplementation((userId, id) => {
-        if (id === 'acc-1') return Promise.resolve({ id: 'acc-1' });
-        return Promise.resolve(null);
-      });
-
-      await expect(service.create('user-1', validDto)).rejects.toThrow(NotFoundDomainException);
-    });
-
-    it('throws 422 INSUFFICIENT_BALANCE when source balance is insufficient in strictMode', async () => {
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-1' });
-      balanceGuardService.assertSufficient.mockRejectedValue(
-        new InsufficientBalanceException('Balansingiz yetarli emas'),
-      );
-
-      await expect(service.create('user-1', validDto)).rejects.toThrow(InsufficientBalanceException);
-      expect(repository.createTransfer).not.toHaveBeenCalled();
-    });
+  it('rejects a future date', async () => {
+    const t = setup();
+    await expect(t.service.create(USER, { ...dto, date: '2999-01-01' })).rejects.toBeInstanceOf(
+      FutureDateException,
+    );
   });
 
-  describe('delete', () => {
-    it('deletes transfer and invalidates cache', async () => {
-      repository.deleteTransfer.mockResolvedValue(2);
+  it('writes nothing when strict mode refuses the debit', async () => {
+    const t = setup();
+    t.guard.assertCanDebit.mockRejectedValue(new InsufficientBalanceException());
+    await expect(t.service.create(USER, dto)).rejects.toBeInstanceOf(InsufficientBalanceException);
+    expect(t.repository.createTransfer).not.toHaveBeenCalled();
+  });
 
-      await service.delete('user-1', 'tg_123');
+  it('deleting reverses both legs and debit-checks the destination', async () => {
+    const t = setup();
+    t.repository.findLiveLegs.mockResolvedValue([
+      leg({ id: 'out' }),
+      leg({ id: 'in', type: 'TRANSFER_IN', accountId: TO }),
+    ]);
 
-      expect(repository.deleteTransfer).toHaveBeenCalledWith('user-1', 'tg_123');
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
-    });
+    await t.service.delete(USER, 'tg_1');
 
-    it('throws 404 when transfer group ID is not found', async () => {
-      repository.deleteTransfer.mockResolvedValue(0);
+    expect(t.guard.assertDeltas).toHaveBeenCalledWith(
+      t.prisma.tx,
+      USER,
+      new Map([
+        [FROM, 5_000_000n],
+        [TO, -5_000_000n],
+      ]),
+    );
+    expect(t.repository.softDeleteGroup).toHaveBeenCalledWith(t.prisma.tx, USER, 'tg_1');
+    expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER);
+  });
 
-      await expect(service.delete('user-1', 'tg_unknown')).rejects.toThrow(NotFoundDomainException);
-    });
+  it('returns 404 for an unknown or foreign transfer group', async () => {
+    const t = setup();
+    t.repository.findLiveLegs.mockResolvedValue([]);
+    await expect(t.service.delete(USER, 'tg_x')).rejects.toBeInstanceOf(NotFoundDomainException);
   });
 });

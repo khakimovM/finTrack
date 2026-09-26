@@ -71,14 +71,20 @@ export class AuthRepository {
     });
   }
 
-  async revokeRefreshToken(id: string, replacedByHash?: string): Promise<RefreshToken> {
-    return this.prisma.refreshToken.update({
-      where: { id },
-      data: {
-        revokedAt: new Date(),
-        replacedByHash,
-      },
+  /**
+   * Compare-and-set revocation: only one of several concurrent refreshes of the same token can
+   * win. Returns false when another request already rotated it.
+   */
+  async revokeRefreshToken(id: string, replacedByHash?: string): Promise<boolean> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { id, revokedAt: null },
+      data: { revokedAt: new Date(), replacedByHash },
     });
+    return result.count === 1;
+  }
+
+  async deleteRefreshTokenByHash(tokenHash: string): Promise<void> {
+    await this.prisma.refreshToken.deleteMany({ where: { tokenHash } });
   }
 
   async revokeTokenFamily(familyId: string): Promise<Prisma.BatchPayload> {

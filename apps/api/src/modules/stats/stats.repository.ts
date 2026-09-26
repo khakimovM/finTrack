@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { SIGNED_AMOUNT_SQL } from '../../infra/prisma/ledger-sql';
 
 export interface TimeseriesRow {
   bucket: string;
@@ -58,6 +58,13 @@ export interface CompareCategoryRow {
 export class StatsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findCategories(userId: string) {
+    return this.prisma.category.findMany({
+      where: { userId, deletedAt: null },
+      select: { id: true, name: true, icon: true, color: true, parentId: true },
+    });
+  }
+
   async getTimeseriesRows(
     userId: string,
     fromDate: Date,
@@ -66,10 +73,11 @@ export class StatsRepository {
   ): Promise<TimeseriesRow[]> {
     return this.prisma.$queryRaw<TimeseriesRow[]>`
       SELECT
-        to_char(date_trunc(${Prisma.raw(`'${groupBy}'`)}, t.date::timestamp), 'YYYY-MM-DD') AS bucket,
+        to_char(date_trunc(${groupBy}::text, t.date::timestamp), 'YYYY-MM-DD') AS bucket,
         COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'INCOME'), 0) AS income,
         COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'EXPENSE'), 0) AS expense
       FROM transactions t
+      JOIN accounts acc ON acc.id = t.account_id AND acc.deleted_at IS NULL
       WHERE t.user_id = ${userId}
         AND t.deleted_at IS NULL
         AND t.date >= ${fromDate}
@@ -96,6 +104,7 @@ export class StatsRepository {
         COALESCE(SUM(t.amount), 0) AS amount,
         COUNT(t.id)::int AS count
       FROM transactions t
+      JOIN accounts acc ON acc.id = t.account_id AND acc.deleted_at IS NULL
       LEFT JOIN categories c ON c.id = t.category_id
       WHERE t.user_id = ${userId}
         AND t.deleted_at IS NULL
@@ -141,14 +150,9 @@ export class StatsRepository {
       SELECT
         (SELECT COALESCE(SUM(a.opening_balance), 0) FROM accounts a WHERE a.user_id = ${userId} AND a.deleted_at IS NULL)
         +
-        COALESCE(SUM(
-          CASE
-            WHEN t.type IN ('INCOME', 'TRANSFER_IN', 'LOAN_TAKEN', 'LOAN_REPAY_IN') THEN t.amount
-            WHEN t.type IN ('EXPENSE', 'TRANSFER_OUT', 'LOAN_GIVEN', 'LOAN_REPAY_OUT') THEN -t.amount
-            ELSE 0
-          END
-        ), 0) AS "startingBalance"
+        COALESCE(SUM(${SIGNED_AMOUNT_SQL}), 0) AS "startingBalance"
       FROM transactions t
+      JOIN accounts acc ON acc.id = t.account_id AND acc.deleted_at IS NULL
       WHERE t.user_id = ${userId}
         AND t.deleted_at IS NULL
         AND t.date < ${fromDate};
@@ -165,14 +169,9 @@ export class StatsRepository {
     return this.prisma.$queryRaw<BalanceTrendRow[]>`
       SELECT
         to_char(t.date, 'YYYY-MM-DD') AS date,
-        COALESCE(SUM(
-          CASE
-            WHEN t.type IN ('INCOME', 'TRANSFER_IN', 'LOAN_TAKEN', 'LOAN_REPAY_IN') THEN t.amount
-            WHEN t.type IN ('EXPENSE', 'TRANSFER_OUT', 'LOAN_GIVEN', 'LOAN_REPAY_OUT') THEN -t.amount
-            ELSE 0
-          END
-        ), 0) AS change
+        COALESCE(SUM(${SIGNED_AMOUNT_SQL}), 0) AS change
       FROM transactions t
+      JOIN accounts acc ON acc.id = t.account_id AND acc.deleted_at IS NULL
       WHERE t.user_id = ${userId}
         AND t.deleted_at IS NULL
         AND t.date >= ${fromDate}
@@ -193,6 +192,7 @@ export class StatsRepository {
         COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'EXPENSE'), 0) AS expense,
         COUNT(t.id) FILTER (WHERE t.type IN ('INCOME', 'EXPENSE'))::int AS "transactionCount"
       FROM transactions t
+      JOIN accounts acc ON acc.id = t.account_id AND acc.deleted_at IS NULL
       WHERE t.user_id = ${userId}
         AND t.deleted_at IS NULL
         AND t.date >= ${fromDate}
@@ -213,6 +213,7 @@ export class StatsRepository {
         COALESCE(c.name, 'Boshqa') AS name,
         SUM(t.amount) AS amount
       FROM transactions t
+      JOIN accounts acc ON acc.id = t.account_id AND acc.deleted_at IS NULL
       LEFT JOIN categories c ON c.id = t.category_id
       WHERE t.user_id = ${userId}
         AND t.deleted_at IS NULL
@@ -239,6 +240,7 @@ export class StatsRepository {
         c.icon AS icon,
         SUM(t.amount) AS amount
       FROM transactions t
+      JOIN accounts acc ON acc.id = t.account_id AND acc.deleted_at IS NULL
       LEFT JOIN categories c ON c.id = t.category_id
       WHERE t.user_id = ${userId}
         AND t.deleted_at IS NULL

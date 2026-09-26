@@ -66,6 +66,33 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async incr(key: string): Promise<number | null> {
+    if (!this.client) return null;
+    try {
+      return await this.client.incr(key);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Redis INCR error for key ${key}: ${message}`);
+      return null;
+    }
+  }
+
+  /** Atomically increments a counter and sets its TTL on first use (rate limits, quotas). */
+  async incrWithTtl(key: string, ttlSeconds: number): Promise<number | null> {
+    if (!this.client) return null;
+    try {
+      const [[, count]] = (await this.client.multi().incr(key).expire(key, ttlSeconds, 'NX').exec()) as [
+        [Error | null, number],
+        [Error | null, number],
+      ];
+      return count;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Redis INCR/EXPIRE error for key ${key}: ${message}`);
+      return null;
+    }
+  }
+
   async del(key: string): Promise<number> {
     if (!this.client) return 0;
     try {

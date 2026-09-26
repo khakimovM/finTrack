@@ -23,6 +23,18 @@ const ERROR_MESSAGES: Record<string, string> = {
   FUTURE_DATE: 'Tranzaksiya sanasi kelajakda bo‘lishi mumkin emas',
   SYSTEM_CATEGORY: 'Tizim kategoriyasini o‘chirib bo‘lmaydi',
   RATE_LIMITED: 'So‘rovlar chegarasidan oshib ketdi, biroz kuting',
+  MANAGED_TRANSACTION: 'Bu yozuv o‘tkazma yoki qarzga tegishli — uni o‘sha bo‘limdan o‘zgartiring',
+  ACCOUNT_HAS_HISTORY: 'Hisobda tranzaksiyalar bor. O‘chirish o‘rniga arxivlang',
+  ACCOUNT_ARCHIVED: 'Arxivlangan hisobga yozuv qo‘shib bo‘lmaydi',
+  LAST_ACCOUNT: 'Kamida bitta faol hisob qolishi kerak',
+  BUDGET_EXISTS: 'Bu oy uchun ushbu kategoriyada byudjet allaqachon bor',
+  INVALID_CATEGORY_DEPTH: 'Kategoriyalar faqat ikki darajali bo‘lishi mumkin',
+  INVALID_TRANSACTION_TYPE: 'Bu turdagi yozuvni bu yerda yaratib bo‘lmaydi',
+  EXPORT_TOO_LARGE: 'Eksport juda katta. Sana oralig‘ini qisqartiring',
+  CONCURRENT_UPDATE: 'Maʼlumot bir vaqtda o‘zgartirildi. Qayta urinib ko‘ring',
+  CONFLICT: 'Bunday yozuv allaqachon mavjud',
+  CSRF_REJECTED: 'So‘rov rad etildi. Sahifani yangilang',
+  SERVICE_UNAVAILABLE: 'Xizmat vaqtincha ishlamayapti. Birozdan so‘ng urinib ko‘ring',
   INTERNAL_ERROR: 'Serverda ichki xatolik yuz berdi',
 };
 

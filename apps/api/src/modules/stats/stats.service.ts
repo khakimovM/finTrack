@@ -20,8 +20,8 @@ import {
   generateDateBuckets,
   calculatePreviousPeriod,
 } from '@fintrack/shared';
-import { PrismaService } from '../../infra/prisma/prisma.service';
-import { RedisService } from '../../infra/redis/redis.service';
+import { UserCacheService } from '../../infra/redis/user-cache.service';
+import { ClockService } from '../../infra/clock/clock.service';
 import { BalanceService } from '../accounts/balance.service';
 import { DebtsRepository } from '../debts/debts.repository';
 import { StatsRepository } from './stats.repository';
@@ -37,33 +37,23 @@ export class StatsService {
 
   constructor(
     private readonly repository: StatsRepository,
-    private readonly prisma: PrismaService,
-    private readonly redisService: RedisService,
+    private readonly cache: UserCacheService,
+    private readonly clock: ClockService,
     private readonly balanceService: BalanceService,
     private readonly debtsRepository: DebtsRepository,
   ) {}
 
-  private async cached<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
-    const cachedData = await this.redisService.get(key);
-    if (cachedData) {
-      try {
-        return JSON.parse(cachedData) as T;
-      } catch {
-        // Corrupted cache - refetch
-      }
-    }
-    const data = await fetcher();
-    await this.redisService.set(key, JSON.stringify(data), this.CACHE_TTL_SECONDS);
-    return data;
+  /** Cached per user; any ledger write bumps the user's cache generation (UserCacheService). */
+  private cached<T>(userId: string, name: string, fetcher: () => Promise<T>): Promise<T> {
+    return this.cache.remember(userId, `stats:${name}`, this.CACHE_TTL_SECONDS, fetcher);
   }
 
   async getSummary(userId: string, query: StatsSummaryQuery): Promise<StatsSummaryResponse> {
-    const now = new Date();
-    const from = query.from ?? formatIsoDate(startOfMonth(now));
-    const to = query.to ?? formatIsoDate(endOfMonth(now));
-    const cacheKey = `stats:${userId}:summary:${from}:${to}`;
+    const today = parseIsoDate(await this.clock.todayFor(userId));
+    const from = query.from ?? formatIsoDate(startOfMonth(today));
+    const to = query.to ?? formatIsoDate(endOfMonth(today));
 
-    return this.cached(cacheKey, async () => {
+    return this.cached(userId, `summary:${from}:${to}`, async () => {
       const fromDate = parseIsoDate(from);
       const toDate = parseIsoDate(to);
       const prev = calculatePreviousPeriod(from, to);
@@ -82,7 +72,7 @@ export class StatsService {
         this.repository.getPeriodTotals(userId, fromDate, toDate),
         this.repository.getPeriodTotals(userId, prevFromDate, prevToDate),
         this.getByAccount(userId, { from, to }),
-        this.debtsRepository.calculateSummary(userId),
+        this.debtsRepository.summary(userId, today),
         this.repository.getTopExpenseCategory(userId, fromDate, toDate),
       ]);
 
@@ -140,9 +130,7 @@ export class StatsService {
     query: StatsTimeseriesQuery,
   ): Promise<StatsTimeseriesResponse> {
     const groupBy = query.groupBy || 'day';
-    const cacheKey = `stats:${userId}:timeseries:${groupBy}:${query.from}:${query.to}`;
-
-    return this.cached(cacheKey, async () => {
+    return this.cached(userId, `timeseries:${groupBy}:${query.from}:${query.to}`, async () => {
       const fromDate = parseIsoDate(query.from);
       const toDate = parseIsoDate(query.to);
 
@@ -180,18 +168,13 @@ export class StatsService {
     query: StatsByCategoryQuery,
   ): Promise<StatsByCategoryResponse> {
     const type = query.type || 'EXPENSE';
-    const cacheKey = `stats:${userId}:category:${type}:${query.from}:${query.to}`;
-
-    return this.cached(cacheKey, async () => {
+    return this.cached(userId, `category:${type}:${query.from}:${query.to}`, async () => {
       const fromDate = parseIsoDate(query.from);
       const toDate = parseIsoDate(query.to);
 
       const [rows, allCategories] = await Promise.all([
         this.repository.getCategoryStatRows(userId, fromDate, toDate, type),
-        this.prisma.category.findMany({
-          where: { userId, deletedAt: null },
-          select: { id: true, name: true, icon: true, color: true, parentId: true },
-        }),
+        this.repository.findCategories(userId),
       ]);
 
       return groupCategoriesWithRollup(rows, allCategories);
@@ -199,9 +182,7 @@ export class StatsService {
   }
 
   async getByAccount(userId: string, query: StatsByAccountQuery): Promise<StatsByAccountResponse> {
-    const cacheKey = `stats:${userId}:account:${query.from}:${query.to}`;
-
-    return this.cached(cacheKey, async () => {
+    return this.cached(userId, `account:${query.from}:${query.to}`, async () => {
       const fromDate = parseIsoDate(query.from);
       const toDate = parseIsoDate(query.to);
 
@@ -236,9 +217,7 @@ export class StatsService {
     userId: string,
     query: StatsBalanceTrendQuery,
   ): Promise<StatsBalanceTrendResponse> {
-    const cacheKey = `stats:${userId}:balance-trend:${query.from}:${query.to}`;
-
-    return this.cached(cacheKey, async () => {
+    return this.cached(userId, `balance-trend:${query.from}:${query.to}`, async () => {
       const fromDate = parseIsoDate(query.from);
       const toDate = parseIsoDate(query.to);
 
@@ -274,52 +253,28 @@ export class StatsService {
   }
 
   async getDebts(userId: string): Promise<StatsDebtsResponse> {
-    const cacheKey = `stats:${userId}:debts`;
-
-    return this.cached(cacheKey, async () => {
-      const [summary, debts] = await Promise.all([
-        this.debtsRepository.calculateSummary(userId),
-        this.prisma.debt.findMany({
-          where: { userId, deletedAt: null },
-          include: { payments: true },
-        }),
+    const today = parseIsoDate(await this.clock.todayFor(userId));
+    return this.cached(userId, `debts:${formatIsoDate(today)}`, async () => {
+      const [summary, counts] = await Promise.all([
+        this.debtsRepository.summary(userId, today),
+        this.debtsRepository.countByStatus(userId),
       ]);
-
-      const now = new Date();
-      let activeCount = 0;
-      let partiallyPaidCount = 0;
-      let paidCount = 0;
-      let overdueAmount = 0n;
-
-      for (const d of debts) {
-        if (d.status === 'ACTIVE') activeCount++;
-        else if (d.status === 'PARTIALLY_PAID') partiallyPaidCount++;
-        else if (d.status === 'PAID') paidCount++;
-
-        const paid = d.payments.reduce((acc, p) => acc + p.amount, 0n);
-        const remaining = d.amount - paid;
-        if (d.status !== 'PAID' && d.dueDate && d.dueDate < now && remaining > 0n) {
-          overdueAmount += remaining;
-        }
-      }
-
       return {
         owedToMe: summary.owedToMe.toString(),
         iOwe: summary.iOwe.toString(),
         net: summary.net.toString(),
-        activeCount,
+        activeCount: counts.ACTIVE,
         overdueCount: summary.overdueCount,
-        overdueAmount: overdueAmount.toString(),
-        partiallyPaidCount,
-        paidCount,
+        overdueAmount: summary.overdueAmount.toString(),
+        partiallyPaidCount: counts.PARTIALLY_PAID,
+        paidCount: counts.PAID,
       };
     });
   }
 
   async getCompare(userId: string, query: StatsCompareQuery): Promise<StatsCompareResponse> {
-    const cacheKey = `stats:${userId}:compare:${query.currentFrom}:${query.currentTo}:${query.previousFrom}:${query.previousTo}`;
-
-    return this.cached(cacheKey, async () => {
+    const key = `compare:${query.currentFrom}:${query.currentTo}:${query.previousFrom}:${query.previousTo}`;
+    return this.cached(userId, key, async () => {
       const currFrom = parseIsoDate(query.currentFrom);
       const currTo = parseIsoDate(query.currentTo);
       const prevFrom = parseIsoDate(query.previousFrom);

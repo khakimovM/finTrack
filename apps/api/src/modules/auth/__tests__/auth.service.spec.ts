@@ -32,6 +32,7 @@ describe('AuthService', () => {
     createRefreshToken: jest.fn(),
     findRefreshTokenByHash: jest.fn(),
     revokeRefreshToken: jest.fn(),
+    deleteRefreshTokenByHash: jest.fn(),
     revokeTokenFamily: jest.fn(),
     revokeAllUserTokens: jest.fn(),
     getActiveSessions: jest.fn(),
@@ -165,6 +166,54 @@ describe('AuthService', () => {
       expect(mockRepository.revokeTokenFamily).toHaveBeenCalledWith('fam-1');
     });
 
+    it('treats a token rotated seconds ago as a concurrent refresh, not theft', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user-123', familyId: 'fam-1' });
+      mockRepository.findRefreshTokenByHash.mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-123',
+        familyId: 'fam-1',
+        revokedAt: new Date(Date.now() - 2_000),
+        replacedByHash: 'next-hash',
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+
+      await expect(service.refresh('old-raw-token', {})).rejects.toMatchObject({
+        response: { code: 'REFRESH_RACE' },
+      });
+      expect(mockRepository.revokeTokenFamily).not.toHaveBeenCalled();
+    });
+
+    it('drops its freshly minted token when another request won the rotation', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user-123', familyId: 'fam-1' });
+      mockRepository.findRefreshTokenByHash.mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-123',
+        familyId: 'fam-1',
+        revokedAt: null,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      mockRepository.findUserById.mockResolvedValue(mockUser);
+      mockRepository.createRefreshToken.mockResolvedValue({});
+      mockRepository.revokeRefreshToken.mockResolvedValue(false);
+
+      await expect(service.refresh('raw', {})).rejects.toMatchObject({ response: { code: 'REFRESH_RACE' } });
+      expect(mockRepository.deleteRefreshTokenByHash).toHaveBeenCalledWith(expect.any(String));
+    });
+
+    it('rejects an expired refresh token', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user-123', familyId: 'fam-1' });
+      mockRepository.findRefreshTokenByHash.mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-123',
+        familyId: 'fam-1',
+        revokedAt: null,
+        expiresAt: new Date(Date.now() - 1),
+      });
+
+      await expect(service.refresh('raw', {})).rejects.toThrow(UnauthorizedException);
+      expect(mockRepository.createRefreshToken).not.toHaveBeenCalled();
+    });
+
     it('should rotate token successfully within the same family', async () => {
       mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user-123', familyId: 'fam-1' });
       mockRepository.findRefreshTokenByHash.mockResolvedValue({
@@ -172,9 +221,11 @@ describe('AuthService', () => {
         userId: 'user-123',
         familyId: 'fam-1',
         revokedAt: null,
+        expiresAt: new Date(Date.now() + 60_000),
       });
       mockRepository.findUserById.mockResolvedValue(mockUser);
       mockRepository.createRefreshToken.mockResolvedValue({});
+      mockRepository.revokeRefreshToken.mockResolvedValue(true);
 
       const result = await service.refresh('valid-raw-token', {});
 

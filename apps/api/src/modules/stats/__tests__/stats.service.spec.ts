@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StatsService } from '../stats.service';
 import { StatsRepository } from '../stats.repository';
-import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { RedisService } from '../../../infra/redis/redis.service';
+import { UserCacheService } from '../../../infra/redis/user-cache.service';
+import { ClockService } from '../../../infra/clock/clock.service';
+import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
 import { BalanceService } from '../../accounts/balance.service';
 import { DebtsRepository } from '../../debts/debts.repository';
 
@@ -11,8 +13,7 @@ describe('StatsService', () => {
   let repository: jest.Mocked<StatsRepository>;
   let balanceService: jest.Mocked<BalanceService>;
   let debtsRepository: jest.Mocked<DebtsRepository>;
-  let redisService: jest.Mocked<RedisService>;
-  let prisma: jest.Mocked<PrismaService>;
+  let redisService: { get: jest.Mock; set: jest.Mock; incr: jest.Mock };
 
   const userId = 'user-test-123';
 
@@ -26,22 +27,13 @@ describe('StatsService', () => {
       getPeriodTotals: jest.fn(),
       getTopExpenseCategory: jest.fn(),
       getCategoryExpensesForPeriod: jest.fn(),
-    };
-
-    const mockPrisma = {
-      category: {
-        findMany: jest.fn(),
-      },
-      debt: {
-        findMany: jest.fn(),
-      },
+      findCategories: jest.fn(),
     };
 
     const mockRedis = {
       get: jest.fn().mockResolvedValue(null),
       set: jest.fn().mockResolvedValue('OK'),
-      del: jest.fn().mockResolvedValue(1),
-      delPattern: jest.fn().mockResolvedValue(undefined),
+      incr: jest.fn().mockResolvedValue(1),
     };
 
     const mockBalanceService = {
@@ -54,20 +46,23 @@ describe('StatsService', () => {
     };
 
     const mockDebtsRepo = {
-      calculateSummary: jest.fn().mockResolvedValue({
+      summary: jest.fn().mockResolvedValue({
         owedToMe: 30000000n,
         iOwe: 20000000n,
         net: 10000000n,
         overdueCount: 1,
+        overdueAmount: 8000000n,
       }),
+      countByStatus: jest.fn().mockResolvedValue({ ACTIVE: 1, PARTIALLY_PAID: 1, PAID: 1 }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StatsService,
         { provide: StatsRepository, useValue: mockRepo },
-        { provide: PrismaService, useValue: mockPrisma },
         { provide: RedisService, useValue: mockRedis },
+        UserCacheService,
+        { provide: ClockService, useValue: clockStub() },
         { provide: BalanceService, useValue: mockBalanceService },
         { provide: DebtsRepository, useValue: mockDebtsRepo },
       ],
@@ -75,8 +70,7 @@ describe('StatsService', () => {
 
     service = module.get<StatsService>(StatsService);
     repository = module.get(StatsRepository);
-    prisma = module.get(PrismaService);
-    redisService = module.get(RedisService);
+    redisService = mockRedis;
     balanceService = module.get(BalanceService);
     debtsRepository = module.get(DebtsRepository);
   });
@@ -138,9 +132,9 @@ describe('StatsService', () => {
       });
       expect(result.previousPeriod.changePercent).toBe(9.92); // (437500000 - 398000000) / 398000000 = 9.92%
       expect(balanceService.getTotalBalance).toHaveBeenCalledWith(userId);
-      expect(debtsRepository.calculateSummary).toHaveBeenCalledWith(userId);
+      expect(debtsRepository.summary).toHaveBeenCalledWith(userId, expect.any(Date));
       expect(redisService.set).toHaveBeenCalledWith(
-        expect.stringContaining(`stats:${userId}:summary:2026-08-01:2026-08-31`),
+        `cache:${userId}:g0:stats:summary:2026-08-01:2026-08-31`,
         expect.any(String),
         300,
       );
@@ -242,7 +236,7 @@ describe('StatsService', () => {
         },
       ]);
 
-      (prisma.category.findMany as jest.Mock).mockResolvedValueOnce([
+      repository.findCategories.mockResolvedValueOnce([
         {
           id: 'parent-1',
           name: 'Oziq-ovqat',
@@ -322,31 +316,6 @@ describe('StatsService', () => {
 
   describe('getDebts', () => {
     it('calculates debt counts, overdue amount and net balance', async () => {
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      (prisma.debt.findMany as jest.Mock).mockResolvedValueOnce([
-        {
-          id: 'd1',
-          status: 'ACTIVE',
-          amount: 10000000n,
-          dueDate: yesterday,
-          payments: [{ amount: 2000000n }],
-        },
-        {
-          id: 'd2',
-          status: 'PARTIALLY_PAID',
-          amount: 5000000n,
-          dueDate: null,
-          payments: [{ amount: 2500000n }],
-        },
-        {
-          id: 'd3',
-          status: 'PAID',
-          amount: 8000000n,
-          dueDate: null,
-          payments: [{ amount: 8000000n }],
-        },
-      ]);
-
       const result = await service.getDebts(userId);
 
       expect(result.owedToMe).toBe('30000000');
@@ -355,7 +324,8 @@ describe('StatsService', () => {
       expect(result.activeCount).toBe(1);
       expect(result.partiallyPaidCount).toBe(1);
       expect(result.paidCount).toBe(1);
-      expect(result.overdueAmount).toBe('8000000'); // 10M - 2M paid = 8M overdue
+      expect(result.overdueAmount).toBe('8000000');
+      expect(result.overdueCount).toBe(1);
     });
   });
 
@@ -435,7 +405,9 @@ describe('StatsService', () => {
         previousPeriod: { income: '0', expense: '0', changePercent: 0 },
       };
 
-      redisService.get.mockResolvedValueOnce(JSON.stringify(cachedData));
+      redisService.get
+        .mockResolvedValueOnce(null) // cache generation
+        .mockResolvedValueOnce(JSON.stringify(cachedData));
 
       const result = await service.getSummary(userId, {
         from: '2026-08-01',

@@ -14,7 +14,12 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AccountsService } from './accounts.service';
-import { CreateAccountDto, UpdateAccountDto, ReorderAccountsDto } from './dto/account.dto';
+import {
+  CreateAccountDto,
+  UpdateAccountDto,
+  ReorderAccountsDto,
+  ListAccountsQueryDto,
+} from './dto/account.dto';
 
 @ApiTags('accounts')
 @ApiBearerAuth()
@@ -26,10 +31,9 @@ export class AccountsController {
   @ApiOperation({ summary: 'Hisoblar ro‘yxatini olish (balanslar bilan)' })
   async list(
     @CurrentUser('id') userId: string,
-    @Query('includeArchived') includeArchived?: string,
+    @Query() query: ListAccountsQueryDto,
   ) {
-    const isArchived = includeArchived === 'true';
-    return this.service.list(userId, isArchived);
+    return this.service.list(userId, query.includeArchived === 'true');
   }
 
   @Post()
@@ -82,7 +86,7 @@ export class AccountsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Hisobni o‘chirish (soft delete)' })
+  @ApiOperation({ summary: 'Tarixsiz hisobni o‘chirish (tarixi bor hisob arxivlanadi)' })
   async delete(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,

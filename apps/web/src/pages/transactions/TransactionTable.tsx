@@ -1,5 +1,9 @@
-import { Trash2 } from 'lucide-react';
-import { TransactionResponse, TransactionType } from '@fintrack/shared';
+import { Lock, Trash2 } from 'lucide-react';
+import {
+  TransactionResponse,
+  TransactionType,
+  isUserManagedTransactionType,
+} from '@fintrack/shared';
 import { Amount } from '../../components/ui/Amount';
 import { cn } from '../../lib/utils';
 
@@ -24,6 +28,20 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   ADJUSTMENT: 'Tuzatish',
 };
 
+/** Transfer and loan rows are managed from their own pages, so they are not deletable here. */
+function ManagedHint({ type }: { type: TransactionType }) {
+  const where = type.startsWith('TRANSFER') ? 'Hisoblar' : 'Qarzlar';
+  return (
+    <span
+      className="inline-flex p-1.5 text-muted-foreground/60"
+      title={`Bu yozuv ${where} bo‘limidan boshqariladi`}
+      aria-label={`${where} bo‘limidan boshqariladi`}
+    >
+      <Lock className="h-4 w-4" />
+    </span>
+  );
+}
+
 export function TransactionTable({
   transactions,
   selectedIds,
@@ -32,8 +50,8 @@ export function TransactionTable({
   onDelete,
   isDeleting,
 }: TransactionTableProps) {
-  const allSelected =
-    transactions.length > 0 && transactions.every((t) => selectedIds.has(t.id));
+  const selectable = transactions.filter((t) => isUserManagedTransactionType(t.type));
+  const allSelected = selectable.length > 0 && selectable.every((t) => selectedIds.has(t.id));
 
   return (
     <div>
@@ -73,6 +91,7 @@ export function TransactionTable({
                     <input
                       type="checkbox"
                       checked={isSelected}
+                      disabled={!isUserManagedTransactionType(tx.type)}
                       onChange={() => onToggleSelect(tx.id)}
                       className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                     />
@@ -105,14 +124,19 @@ export function TransactionTable({
                     <Amount value={tx.amount} type={tx.type} className="text-sm" />
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => onDelete(tx.id)}
-                      disabled={isDeleting}
-                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                      title="O‘chirish"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {isUserManagedTransactionType(tx.type) ? (
+                      <button
+                        onClick={() => onDelete(tx.id)}
+                        disabled={isDeleting}
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                        title="O‘chirish"
+                        aria-label="O‘chirish"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <ManagedHint type={tx.type} />
+                    )}
                   </td>
                 </tr>
               );
@@ -138,6 +162,7 @@ export function TransactionTable({
                   <input
                     type="checkbox"
                     checked={isSelected}
+                    disabled={!isUserManagedTransactionType(tx.type)}
                     onChange={() => onToggleSelect(tx.id)}
                     className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                   />
@@ -163,14 +188,19 @@ export function TransactionTable({
                   )}
                 </div>
 
-                <button
-                  onClick={() => onDelete(tx.id)}
-                  disabled={isDeleting}
-                  className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                  title="O‘chirish"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                {isUserManagedTransactionType(tx.type) ? (
+                  <button
+                    onClick={() => onDelete(tx.id)}
+                    disabled={isDeleting}
+                    className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                    title="O‘chirish"
+                    aria-label="O‘chirish"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <ManagedHint type={tx.type} />
+                )}
               </div>
 
               {tx.note && (
