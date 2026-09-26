@@ -1,28 +1,36 @@
 import { z } from 'zod';
-
-const ISO_MONTH_REGEX = /^\d{4}-\d{2}$/;
-const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+import { isValidIsoDate } from '../date';
+import { positiveTiyinSchema } from './common';
 
 export const BudgetMonthSchema = z
   .string()
-  .refine((val) => ISO_MONTH_REGEX.test(val) || ISO_DATE_REGEX.test(val), {
+  .refine((val) => (/^\d{4}-\d{2}$/.test(val) ? isValidIsoDate(`${val}-01`) : isValidIsoDate(val)), {
     message: 'Oy YYYY-MM yoki YYYY-MM-DD formatida bo‘lishi kerak',
   });
 
 export const BudgetStateSchema = z.enum(['OK', 'WARNING', 'EXCEEDED']);
 export type BudgetState = z.infer<typeof BudgetStateSchema>;
 
-export const CreateBudgetInputSchema = z.object({
-  categoryId: z.string().uuid('Yaroqsiz kategoriya ID si'),
-  month: BudgetMonthSchema,
-  limitAmount: z.string().regex(/^[1-9]\d*$/, 'Limit summasi 0 dan katta butun tiyin bo‘lishi kerak'),
-});
+export const CreateBudgetInputSchema = z
+  .object({
+    categoryId: z.string().uuid('Yaroqsiz kategoriya ID si'),
+    month: BudgetMonthSchema,
+    limitAmount: positiveTiyinSchema,
+  })
+  .strict();
 export type CreateBudgetInput = z.infer<typeof CreateBudgetInputSchema>;
 
-export const UpdateBudgetInputSchema = z.object({
-  limitAmount: z.string().regex(/^[1-9]\d*$/, 'Limit summasi 0 dan katta butun tiyin bo‘lishi kerak'),
-});
+export const UpdateBudgetInputSchema = z
+  .object({
+    limitAmount: positiveTiyinSchema,
+  })
+  .strict();
 export type UpdateBudgetInput = z.infer<typeof UpdateBudgetInputSchema>;
+
+export const ListBudgetsQuerySchema = z.object({
+  month: BudgetMonthSchema.optional(),
+});
+export type ListBudgetsQuery = z.infer<typeof ListBudgetsQuerySchema>;
 
 export const BudgetResponseSchema = z.object({
   id: z.string().uuid(),

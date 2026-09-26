@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   CreateTransferInput,
   CreateTransferInputSchema,
-  formatIsoDate,
+  todayLocalIso,
   formatMoney,
 } from '@fintrack/shared';
 import { Modal } from '../../../components/ui/Modal';
@@ -46,7 +46,7 @@ export function TransferModal({
       fromAccountId: '',
       toAccountId: '',
       amount: '',
-      date: formatIsoDate(new Date()),
+      date: todayLocalIso(),
       note: '',
     },
   });
@@ -60,7 +60,7 @@ export function TransferModal({
       const to = accounts.find((a) => a.id !== from)?.id ?? accounts[1].id;
       setValue('fromAccountId', from);
       setValue('toAccountId', to);
-      setValue('date', formatIsoDate(new Date()));
+      setValue('date', todayLocalIso());
     }
   }, [isOpen, defaultFromAccountId, accounts, setValue]);
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { AccountType, CategoryType, Prisma, RefreshToken, User } from '@prisma/client';
+import { Prisma, RefreshToken, User } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { DEFAULT_ACCOUNT, DEFAULT_CATEGORIES } from './user-defaults';
 
 @Injectable()
 export class AuthRepository {
@@ -39,37 +40,12 @@ export class AuthRepository {
         },
       });
 
-      // 2. Create 10 default system categories (8 expense, 2 income)
-      const defaultCategories: Prisma.CategoryCreateManyInput[] = [
-        { userId: user.id, name: 'Oziq-ovqat', type: CategoryType.EXPENSE, icon: '🍔', color: '#ef4444', isSystem: true, sortOrder: 1 },
-        { userId: user.id, name: 'Transport', type: CategoryType.EXPENSE, icon: '🚗', color: '#f97316', isSystem: true, sortOrder: 2 },
-        { userId: user.id, name: 'Uy-joy', type: CategoryType.EXPENSE, icon: '🏠', color: '#84cc16', isSystem: true, sortOrder: 3 },
-        { userId: user.id, name: 'Kommunal', type: CategoryType.EXPENSE, icon: '💡', color: '#eab308', isSystem: true, sortOrder: 4 },
-        { userId: user.id, name: 'Kiyim', type: CategoryType.EXPENSE, icon: '👕', color: '#06b6d4', isSystem: true, sortOrder: 5 },
-        { userId: user.id, name: 'Sog‘liq', type: CategoryType.EXPENSE, icon: '🏥', color: '#ec4899', isSystem: true, sortOrder: 6 },
-        { userId: user.id, name: 'Ko‘ngilochar', type: CategoryType.EXPENSE, icon: '🎬', color: '#8b5cf6', isSystem: true, sortOrder: 7 },
-        { userId: user.id, name: 'Taʼlim', type: CategoryType.EXPENSE, icon: '📚', color: '#3b82f6', isSystem: true, sortOrder: 8 },
-        { userId: user.id, name: 'Oylik', type: CategoryType.INCOME, icon: '💼', color: '#10b981', isSystem: true, sortOrder: 9 },
-        { userId: user.id, name: 'Qo‘shimcha daromad', type: CategoryType.INCOME, icon: '💵', color: '#14b8a6', isSystem: true, sortOrder: 10 },
-      ];
-
       await tx.category.createMany({
-        data: defaultCategories,
+        data: DEFAULT_CATEGORIES.map((c) => ({ ...c, userId: user.id, isSystem: true })),
       });
 
-      // 3. Create 1 default "Naqd pul" CASH account
       await tx.account.create({
-        data: {
-          userId: user.id,
-          name: 'Naqd pul',
-          type: AccountType.CASH,
-          currency: 'UZS',
-          isDefault: true,
-          icon: '💵',
-          color: '#10b981',
-          openingBalance: BigInt(0),
-          sortOrder: 1,
-        },
+        data: { ...DEFAULT_ACCOUNT, userId: user.id, isDefault: true, openingBalance: 0n },
       });
 
       return user;

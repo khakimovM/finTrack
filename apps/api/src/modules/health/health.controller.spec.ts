@@ -35,9 +35,17 @@ describe('HealthController', () => {
     expect(res).toEqual({ status: 'ok', db: 'ok', redis: 'ok' });
   });
 
-  it('should return degraded if db is down', async () => {
+  it('should fail with 503 SERVICE_UNAVAILABLE if db is down', async () => {
     mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('DB down'));
-    const res = await controller.ready();
-    expect(res).toEqual({ status: 'degraded', db: 'down', redis: 'ok' });
+    await expect(controller.ready()).rejects.toMatchObject({
+      status: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      details: { db: 'down', redis: 'ok' },
+    });
+  });
+
+  it('should fail with 503 if redis does not answer PONG', async () => {
+    mockRedis.ping.mockResolvedValueOnce('NOT_CONNECTED');
+    await expect(controller.ready()).rejects.toMatchObject({ status: 503, details: { redis: 'down' } });
   });
 });

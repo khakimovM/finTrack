@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useBudgetsStatus, useDeleteBudget } from '../../features/budgets/hooks/useBudgets';
-import { BudgetStatusItem, formatMoney, formatIsoDate } from '@fintrack/shared';
+import { BudgetStatusItem, formatMoney, formatIsoDate, todayLocalIso } from '@fintrack/shared';
 import { BudgetModal } from '../../features/budgets/components/BudgetModal';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -23,7 +23,7 @@ import { cn } from '../../lib/utils';
 
 export function BudgetsPage() {
   const [currentMonth, setCurrentMonth] = useState(() => {
-    return formatIsoDate(new Date()).slice(0, 7); // YYYY-MM
+    return todayLocalIso().slice(0, 7); // YYYY-MM
   });
 
   const [modalOpen, setModalOpen] = useState(false);

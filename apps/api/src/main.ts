@@ -10,6 +10,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { validateEnv } from './config/env.validation';
 
 declare global {
   interface BigInt {
@@ -23,30 +24,50 @@ BigInt.prototype.toJSON = function () {
 };
 
 async function bootstrap() {
-  const adapter = new FastifyAdapter({ logger: false });
-  // Note: Third-party typing mismatch between @nestjs/platform-fastify and @fastify/cookie / @fastify/helmet.
-  // FastifyAdapter register parameter expects its internal FastifyInstance without external plugin augmentations.
+  // The adapter is built before Nest's ConfigService exists; importing AppModule has
+  // already loaded .env, so validate here to read the proxy setting safely.
+  const env = validateEnv(process.env);
+
+  // Railway and Vercel terminate TLS and forward the client IP; without trustProxy every
+  // request looks like it comes from the proxy, which breaks throttling and session IPs.
+  const adapter = new FastifyAdapter({
+    logger: false,
+    trustProxy: env.TRUST_PROXY,
+    bodyLimit: 1024 * 1024,
+  });
+
+  // Third-party typing mismatch between @nestjs/platform-fastify and the fastify plugins:
+  // the adapter's register() expects its own FastifyInstance type without plugin augmentations.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await adapter.register(fastifyHelmet as any, {
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        // Swagger UI needs its own assets when it is enabled.
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: 'same-site' },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await adapter.register(fastifyCookie as any);
 
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    adapter,
-    { bufferLogs: true },
-  );
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
+    bufferLogs: true,
+  });
 
   const logger = app.get(Logger);
   app.useLogger(logger);
 
   const configService = app.get(ConfigService);
-  const clientUrl = configService.get<string>('CLIENT_URL', 'http://localhost:5173');
+  const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
   app.enableCors({
-    origin: [clientUrl],
+    origin: [configService.get<string>('CLIENT_URL', 'http://localhost:5173')],
     credentials: true,
   });
 
@@ -60,15 +81,18 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('FinTrack API')
-    .setDescription('FinTrack shaxsiy moliya platformasi API hujjati')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  const swaggerEnabled = configService.get<boolean>('SWAGGER_ENABLED') ?? !isProduction;
+  if (swaggerEnabled) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('FinTrack API')
+      .setDescription('FinTrack shaxsiy moliya platformasi API hujjati')
+      .setVersion('1.0')
+      .addCookieAuth('accessToken')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   app.enableShutdownHooks();
 
@@ -77,4 +101,8 @@ async function bootstrap() {
   logger.log(`Server listening at http://0.0.0.0:${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err: unknown) => {
+  // Logger may not be ready yet; fail loudly so the platform restarts the container.
+  console.error('Fatal bootstrap error', err);
+  process.exit(1);
+});

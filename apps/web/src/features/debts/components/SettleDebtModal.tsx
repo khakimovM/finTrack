@@ -5,7 +5,7 @@ import {
   SettleDebtInput,
   DebtResponse,
   formatMoney,
-  formatIsoDate,
+  todayLocalIso,
 } from '@fintrack/shared';
 import { useSettleDebt } from '../hooks/useDebts';
 import { useAccounts } from '../../accounts/hooks/useAccounts';
@@ -36,7 +36,7 @@ export function SettleDebtModal({ debt, isOpen, onClose }: SettleDebtModalProps)
     resolver: zodResolver(SettleDebtInputSchema),
     defaultValues: {
       accountId: accounts[0]?.id ?? '',
-      paidAt: formatIsoDate(new Date()),
+      paidAt: todayLocalIso(),
       note: 'Qarz to‘liq yopildi',
     },
   });

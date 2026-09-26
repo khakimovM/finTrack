@@ -7,6 +7,7 @@ import {
   UpdateTransactionInput,
   ListTransactionsQuery,
   BulkDeleteTransactionsInput,
+  parseIsoDate,
 } from '@fintrack/shared';
 import {
   TransactionsRepository,
@@ -21,10 +22,10 @@ import {
   NotFoundDomainException,
   InvalidCategoryTypeException,
   InvalidTransactionTypeException,
-  FutureDateException,
 } from '../../common/exceptions/domain.exception';
 
 import { BudgetsService } from '../budgets/budgets.service';
+import { ClockService } from '../../infra/clock/clock.service';
 
 export interface BudgetAlert {
   categoryId: string;
@@ -50,6 +51,7 @@ export class TransactionsService {
     private readonly balanceService: BalanceService,
     private readonly balanceGuardService: BalanceGuardService,
     private readonly budgetsService: BudgetsService,
+    private readonly clock: ClockService,
   ) {}
 
   async list(
@@ -88,12 +90,8 @@ export class TransactionsService {
       throw new InvalidTransactionTypeException();
     }
 
-    const txDate = new Date(dto.date);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    if (txDate > today) {
-      throw new FutureDateException();
-    }
+    await this.clock.assertNotFuture(userId, dto.date);
+    const txDate = parseIsoDate(dto.date);
 
     const account = await this.accountsRepository.findById(userId, dto.accountId);
     if (!account) {
@@ -168,12 +166,8 @@ export class TransactionsService {
 
     let txDate: Date | undefined;
     if (dto.date) {
-      txDate = new Date(dto.date);
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      if (txDate > today) {
-        throw new FutureDateException();
-      }
+      await this.clock.assertNotFuture(userId, dto.date);
+      txDate = parseIsoDate(dto.date);
     }
 
     const targetAccountId = dto.accountId ?? existing.accountId;

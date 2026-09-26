@@ -5,7 +5,7 @@ import {
   CreateDebtPaymentInput,
   DebtResponse,
   formatMoney,
-  formatIsoDate,
+  todayLocalIso,
 } from '@fintrack/shared';
 import { useCreateDebtPayment } from '../hooks/useDebts';
 import { useAccounts } from '../../accounts/hooks/useAccounts';
@@ -38,7 +38,7 @@ export function DebtPaymentModal({ debt, isOpen, onClose }: DebtPaymentModalProp
     defaultValues: {
       accountId: accounts[0]?.id ?? '',
       amount: '',
-      paidAt: formatIsoDate(new Date()),
+      paidAt: todayLocalIso(),
       note: '',
     },
   });

@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ClockService } from '../../../infra/clock/clock.service';
+import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
 import { TransfersService } from '../transfers.service';
 import { TransfersRepository } from '../transfers.repository';
 import { AccountsRepository } from '../../accounts/accounts.repository';
@@ -45,6 +47,7 @@ describe('TransfersService', () => {
         { provide: AccountsRepository, useValue: accountsRepository },
         { provide: BalanceService, useValue: balanceService },
         { provide: BalanceGuardService, useValue: balanceGuardService },
+        { provide: ClockService, useValue: clockStub() },
       ],
     }).compile();
 

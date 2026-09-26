@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   CreateTransactionInput,
   CreateTransactionInputSchema,
-  formatIsoDate,
+  todayLocalIso,
 } from '@fintrack/shared';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -66,7 +66,7 @@ export function TransactionModal({
       accountId: '',
       amount: '',
       categoryId: '',
-      date: formatIsoDate(new Date()),
+      date: todayLocalIso(),
       note: '',
     },
   });

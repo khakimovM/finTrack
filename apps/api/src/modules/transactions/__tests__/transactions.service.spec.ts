@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ClockService } from '../../../infra/clock/clock.service';
+import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
 import { TransactionsService } from '../transactions.service';
 import { TransactionsRepository, TransactionWithRelations } from '../transactions.repository';
 import { AccountsRepository } from '../../accounts/accounts.repository';
@@ -89,6 +91,7 @@ describe('TransactionsService', () => {
         { provide: TagsRepository, useValue: tagsRepository },
         { provide: BalanceService, useValue: balanceService },
         { provide: BalanceGuardService, useValue: balanceGuardService },
+        { provide: ClockService, useValue: clockStub() },
         {
           provide: BudgetsService,
           useValue: { checkAndNotify: jest.fn().mockResolvedValue(null) },

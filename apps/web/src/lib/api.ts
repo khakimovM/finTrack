@@ -1,11 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../stores/authStore';
+import { resetSessionCache } from './queryClient';
 
 export const api = axios.create({
   baseURL: '/api/v1',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
+    // Required by the API's CSRF guard on every state-changing request.
+    'X-Requested-With': 'XMLHttpRequest',
   },
 });
 
@@ -60,6 +63,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
+        resetSessionCache();
         useAuthStore.getState().setUser(null);
         if (
           !window.location.pathname.startsWith('/login') &&

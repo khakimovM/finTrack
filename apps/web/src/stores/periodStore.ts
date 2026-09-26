@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import {
+  diffInDays,
   formatIsoDate,
+  parseIsoDate,
+  todayLocalIso,
   startOfIsoWeek,
   startOfMonth,
   endOfMonth,
@@ -21,11 +24,12 @@ export interface PeriodState {
 }
 
 const computePresetDates = (preset: PeriodPreset): { from: string; to: string; groupBy: TimeseriesGroupBy } => {
-  const now = new Date();
+  // The user's calendar day, not the UTC day (they differ for 5 hours every night in Tashkent).
+  const todayStr = todayLocalIso();
+  const now = parseIsoDate(todayStr);
 
   switch (preset) {
     case 'today': {
-      const todayStr = formatIsoDate(now);
       return {
         from: todayStr,
         to: todayStr,
@@ -94,9 +98,7 @@ export const usePeriodStore = create<PeriodState>((set) => ({
 
   setCustomRange: (from: string, to: string) => {
     // Agar oraliq 180 kundan ko'p bo'lsa groupBy 'month' qilamiz
-    const fromTime = new Date(from).getTime();
-    const toTime = new Date(to).getTime();
-    const diffDays = Math.max(1, Math.round((toTime - fromTime) / (24 * 60 * 60 * 1000)));
+    const diffDays = Math.max(1, diffInDays(from, to));
     const groupBy: TimeseriesGroupBy = diffDays > 120 ? 'month' : diffDays > 31 ? 'week' : 'day';
 
     set({

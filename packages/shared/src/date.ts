@@ -194,3 +194,32 @@ export function calculatePreviousPeriod(
     to: formatIsoDate(prevTo),
   };
 }
+
+/**
+ * Calendar date (`YYYY-MM-DD`) of `now` as seen in an IANA time zone.
+ * Money is recorded against the user's local day, not the server's UTC day: at 02:00 in
+ * Tashkent (UTC+5) the UTC date is still "yesterday".
+ */
+export function todayInTimeZone(timeZone: string, now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const get = (type: 'year' | 'month' | 'day') => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** Calendar date of `now` in the runtime's local time zone (use in the browser). */
+export function todayLocalIso(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/** Whole days from `from` to `to` (both `YYYY-MM-DD`); negative when `to` is earlier. */
+export function diffInDays(from: string, to: string): number {
+  return Math.round((parseIsoDate(to).getTime() - parseIsoDate(from).getTime()) / 86_400_000);
+}

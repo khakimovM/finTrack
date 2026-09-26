@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TransferResponse, CreateTransferInput } from '@fintrack/shared';
+import { TransferResponse, CreateTransferInput, parseIsoDate } from '@fintrack/shared';
 import { TransfersRepository } from './transfers.repository';
 import { AccountsRepository } from '../accounts/accounts.repository';
 import { BalanceService } from '../accounts/balance.service';
@@ -7,8 +7,8 @@ import { BalanceGuardService } from '../accounts/balance-guard.service';
 import {
   NotFoundDomainException,
   SameAccountTransferException,
-  FutureDateException,
 } from '../../common/exceptions/domain.exception';
+import { ClockService } from '../../infra/clock/clock.service';
 
 @Injectable()
 export class TransfersService {
@@ -17,6 +17,7 @@ export class TransfersService {
     private readonly accountsRepository: AccountsRepository,
     private readonly balanceService: BalanceService,
     private readonly balanceGuardService: BalanceGuardService,
+    private readonly clock: ClockService,
   ) {}
 
   async create(userId: string, dto: CreateTransferInput): Promise<TransferResponse> {
@@ -24,12 +25,8 @@ export class TransfersService {
       throw new SameAccountTransferException();
     }
 
-    const txDate = new Date(dto.date);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    if (txDate > today) {
-      throw new FutureDateException();
-    }
+    await this.clock.assertNotFuture(userId, dto.date);
+    const txDate = parseIsoDate(dto.date);
 
     const [fromAccount, toAccount] = await Promise.all([
       this.accountsRepository.findById(userId, dto.fromAccountId),

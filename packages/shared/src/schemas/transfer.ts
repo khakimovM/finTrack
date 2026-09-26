@@ -1,12 +1,15 @@
 import { z } from 'zod';
+import { isoDateSchema, noteSchema, positiveTiyinSchema } from './common';
 
-export const CreateTransferInputSchema = z.object({
-  fromAccountId: z.string().uuid('Yaroqsiz jo‘natuvchi hisob ID si'),
-  toAccountId: z.string().uuid('Yaroqsiz qabul qiluvchi hisob ID si'),
-  amount: z.string().regex(/^[1-9]\d*$/, 'Summa 0 dan katta butun tiyin bo‘lishi kerak'),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Sana YYYY-MM-DD formatida bo‘lishi kerak'),
-  note: z.string().max(500, 'Izoh 500 belgidan oshmasligi kerak').optional().nullable(),
-});
+export const CreateTransferInputSchema = z
+  .object({
+    fromAccountId: z.string().uuid('Yaroqsiz jo‘natuvchi hisob ID si'),
+    toAccountId: z.string().uuid('Yaroqsiz qabul qiluvchi hisob ID si'),
+    amount: positiveTiyinSchema,
+    date: isoDateSchema,
+    note: noteSchema.optional().nullable(),
+  })
+  .strict();
 export type CreateTransferInput = z.infer<typeof CreateTransferInputSchema>;
 
 export const TransferResponseSchema = z.object({

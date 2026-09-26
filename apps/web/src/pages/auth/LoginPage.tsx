@@ -13,7 +13,7 @@ import { Button } from '../../components/ui/Button';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { setUser } = useAuthStore();
+  const signIn = useAuthStore((s) => s.signIn);
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -34,7 +34,7 @@ export function LoginPage() {
     setServerError(null);
     try {
       const res = await api.post<{ data: { user: UserResponse } }>('/auth/login', data);
-      setUser(res.data.data.user);
+      signIn(res.data.data.user);
       navigate('/app', { replace: true });
     } catch (err) {
       setServerError(apiErrorToMessage(err));

@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-fintrack}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fintrack_secure_pass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-fintrack}
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
@@ -33,16 +33,19 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: fintrack-api-prod
     restart: always
-    ports:
-      - "5000:5000"
+    # Reached only through the web container's /api proxy; not published on the host.
+    expose:
+      - "5000"
     environment:
       NODE_ENV: production
       PORT: 5000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-fintrack}:${POSTGRES_PASSWORD:-fintrack_secure_pass}@postgres:5432/${POSTGRES_DB:-fintrack}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fintrack}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-fintrack}?schema=public
       REDIS_URL: redis://redis:6379
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-fintrack_production_jwt_access_secret_min32chars}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-fintrack_production_jwt_refresh_secret_min32chars}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
       CLIENT_URL: ${CLIENT_URL:-http://localhost}
+      TRUST_PROXY: "1"
+      SWAGGER_ENABLED: "false"
     depends_on:
       postgres:
         condition: service_healthy

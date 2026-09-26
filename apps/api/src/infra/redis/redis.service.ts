@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { redisConnectionOptions } from './redis-connection';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -11,16 +12,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
-    this.client = new Redis(redisUrl, {
+    this.client = new Redis({
+      ...redisConnectionOptions(redisUrl),
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
-      retryStrategy(times) {
-        if (times > 3) {
-          return null;
-        }
-        return Math.min(times * 1000, 3000);
-      },
+      // Keep reconnecting forever: giving up would leave the cache permanently disabled
+      // after a short Redis restart on the hosting platform.
+      retryStrategy: (times) => Math.min(times * 500, 5000),
     });
 
     this.client.on('error', (err) => {

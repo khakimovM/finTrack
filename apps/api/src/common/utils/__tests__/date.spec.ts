@@ -10,6 +10,8 @@ import {
   startOfYear,
   generateDateBuckets,
   calculatePreviousPeriod,
+  todayInTimeZone,
+  diffInDays,
 } from '@fintrack/shared';
 
 describe('Date Utilities & Off-by-One Boundary Tests', () => {
@@ -160,5 +162,20 @@ describe('Date Utilities & Off-by-One Boundary Tests', () => {
         to: '2024-02-29',
       });
     });
+  });
+});
+
+describe('Time-zone aware "today"', () => {
+  it('returns the Tashkent calendar day even when UTC is still on the previous day', () => {
+    // 2026-09-26T21:30Z is 02:30 on the 27th in Tashkent (UTC+5).
+    const instant = new Date('2026-09-26T21:30:00.000Z');
+    expect(todayInTimeZone('Asia/Tashkent', instant)).toBe('2026-09-27');
+    expect(todayInTimeZone('UTC', instant)).toBe('2026-09-26');
+  });
+
+  it('diffInDays counts calendar days in both directions', () => {
+    expect(diffInDays('2026-02-27', '2026-03-01')).toBe(2);
+    expect(diffInDays('2026-03-01', '2026-02-27')).toBe(-2);
+    expect(diffInDays('2026-09-27', '2026-09-27')).toBe(0);
   });
 });

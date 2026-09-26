@@ -21,3 +21,4 @@ export * from './schemas/budget';
 export * from './schemas/notification';
 export * from './schemas/recurring';
 export * from './schemas/export';
+export * from './schemas/common';
