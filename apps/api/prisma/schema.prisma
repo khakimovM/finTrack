@@ -1,0 +1,391 @@
+// FinTrack — data model
+// Rules: money is BigInt in tiyin (1 UZS = 100 tiyin); calendar dates use @db.Date;
+// every user-owned model carries userId and an index starting with userId;
+// balances are NEVER stored — they are derived from the transaction ledger.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum TransactionType {
+  INCOME // +  counted in statistics
+  EXPENSE // -  counted in statistics
+  TRANSFER_IN // +  between own accounts
+  TRANSFER_OUT // -  between own accounts
+  LOAN_GIVEN // -  I lent money out
+  LOAN_TAKEN // +  I borrowed money
+  LOAN_REPAY_IN // +  a debtor repaid me
+  LOAN_REPAY_OUT // -  I repaid my debt
+  ADJUSTMENT // +/- manual correction
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum AccountType {
+  CASH
+  CARD
+  BANK
+  SAVINGS
+}
+
+enum DebtDirection {
+  I_LENT // they owe me
+  I_BORROWED // I owe them
+}
+
+enum DebtStatus {
+  ACTIVE
+  PARTIALLY_PAID
+  PAID
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum NotificationType {
+  BUDGET_WARNING // 80% of a budget used
+  BUDGET_EXCEEDED // over 100%
+  DEBT_DUE_SOON // due within 3 days
+  DEBT_OVERDUE
+  NEGATIVE_BALANCE
+  RECURRING_CREATED
+}
+
+// ============================================================
+// IDENTITY
+// ============================================================
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  name            String
+  avatarUrl       String?   @map("avatar_url")
+  baseCurrency    String    @default("UZS") @map("base_currency") @db.VarChar(3)
+  locale          String    @default("uz") @db.VarChar(5)
+  timezone        String    @default("Asia/Tashkent")
+  strictMode      Boolean   @default(false) @map("strict_mode")
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  refreshTokens  RefreshToken[]
+  accounts       Account[]
+  categories     Category[]
+  tags           Tag[]
+  transactions   Transaction[]
+  debts          Debt[]
+  budgets        Budget[]
+  recurringRules RecurringRule[]
+  notifications  Notification[]
+
+  @@index([email])
+  @@map("users")
+}
+
+/// Refresh tokens are stored hashed and rotated on every use.
+/// Reusing a rotated token revokes the whole family (see 60-security.md).
+model RefreshToken {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  tokenHash      String    @unique @map("token_hash")
+  familyId       String    @map("family_id")
+  userAgent      String?   @map("user_agent")
+  ipAddress      String?   @map("ip_address")
+  expiresAt      DateTime  @map("expires_at")
+  revokedAt      DateTime? @map("revoked_at")
+  replacedByHash String?   @map("replaced_by_hash")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+// ============================================================
+// ACCOUNTS
+// ============================================================
+
+model Account {
+  id             String      @id @default(uuid())
+  userId         String      @map("user_id")
+  name           String
+  type           AccountType
+  currency       String      @default("UZS") @db.VarChar(3)
+  /// Opening balance in tiyin. Current balance = opening + SUM(ledger); never stored.
+  openingBalance BigInt      @default(0) @map("opening_balance")
+  icon           String      @default("💳")
+  color          String      @default("#6366f1") @db.VarChar(9)
+  isDefault      Boolean     @default(false) @map("is_default")
+  sortOrder      Int         @default(0) @map("sort_order")
+  archivedAt     DateTime?   @map("archived_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  deletedAt      DateTime?   @map("deleted_at")
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+  recurringRules RecurringRule[]
+
+  @@unique([userId, name])
+  @@index([userId, deletedAt])
+  @@map("accounts")
+}
+
+// ============================================================
+// CATEGORIES & TAGS
+// ============================================================
+
+model Category {
+  id        String       @id @default(uuid())
+  userId    String       @map("user_id")
+  parentId  String?      @map("parent_id")
+  name      String
+  type      CategoryType
+  icon      String       @default("💰")
+  color     String       @default("#6366f1") @db.VarChar(9)
+  isSystem  Boolean      @default(false) @map("is_system")
+  sortOrder Int          @default(0) @map("sort_order")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  deletedAt DateTime?    @map("deleted_at")
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent         Category?       @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children       Category[]      @relation("CategoryTree")
+  transactions   Transaction[]
+  budgets        Budget[]
+  recurringRules RecurringRule[]
+
+  @@unique([userId, name, type, parentId])
+  @@index([userId, type, deletedAt])
+  @@map("categories")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  color     String   @default("#94a3b8") @db.VarChar(9)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions TransactionTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tags")
+}
+
+model TransactionTag {
+  transactionId String @map("transaction_id")
+  tagId         String @map("tag_id")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  tag         Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, tagId])
+  @@index([tagId])
+  @@map("transaction_tags")
+}
+
+// ============================================================
+// LEDGER — the single source of truth for balances
+// ============================================================
+
+model Transaction {
+  id         String          @id @default(uuid())
+  userId     String          @map("user_id")
+  accountId  String          @map("account_id")
+  type       TransactionType
+  /// Amount in tiyin, always positive. The sign comes from `type`.
+  amount     BigInt
+  /// Amount converted to the user's base currency at the transaction date (Phase 8).
+  amountBase BigInt?         @map("amount_base")
+  categoryId String?         @map("category_id")
+  debtId     String?         @map("debt_id")
+  /// Links the two rows of a single transfer.
+  transferGroupId String?    @map("transfer_group_id")
+  recurringRuleId String?    @map("recurring_rule_id")
+  date       DateTime        @db.Date
+  note       String?         @db.VarChar(500)
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  deletedAt  DateTime?       @map("deleted_at")
+
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       Account          @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  category      Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  debt          Debt?            @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  recurringRule RecurringRule?   @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
+  debtPayment   DebtPayment?
+  tags          TransactionTag[]
+
+  @@unique([recurringRuleId, date])
+  @@index([userId, date])
+  @@index([userId, type, date])
+  @@index([accountId, date])
+  @@index([categoryId])
+  @@index([transferGroupId])
+  @@map("transactions")
+}
+
+// ============================================================
+// DEBTS
+// ============================================================
+
+model Debt {
+  id          String        @id @default(uuid())
+  userId      String        @map("user_id")
+  direction   DebtDirection
+  personName  String        @map("person_name")
+  personPhone String?       @map("person_phone")
+  /// Principal in tiyin. remaining = amount - SUM(payments); never stored.
+  amount      BigInt
+  dueDate     DateTime?     @map("due_date") @db.Date
+  status      DebtStatus    @default(ACTIVE)
+  paidAt      DateTime?     @map("paid_at")
+  note        String?       @db.VarChar(500)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  payments     DebtPayment[]
+
+  @@index([userId, status, deletedAt])
+  @@index([userId, dueDate])
+  @@map("debts")
+}
+
+model DebtPayment {
+  id            String   @id @default(uuid())
+  debtId        String   @map("debt_id")
+  /// Every payment has exactly one ledger row; created in the same $transaction.
+  transactionId String   @unique @map("transaction_id")
+  amount        BigInt
+  paidAt        DateTime @map("paid_at") @db.Date
+  note          String?  @db.VarChar(500)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  debt        Debt        @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([debtId])
+  @@map("debt_payments")
+}
+
+// ============================================================
+// BUDGETS
+// ============================================================
+
+model Budget {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  categoryId   String    @map("category_id")
+  /// First day of the budgeted month, e.g. 2026-08-01.
+  month        DateTime  @db.Date
+  limitAmount  BigInt    @map("limit_amount")
+  /// Highest threshold already notified (0, 80 or 100) — keeps alerts idempotent.
+  notifiedAt   Int       @default(0) @map("notified_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, month])
+  @@index([userId, month])
+  @@map("budgets")
+}
+
+// ============================================================
+// RECURRING TRANSACTIONS
+// ============================================================
+
+model RecurringRule {
+  id         String              @id @default(uuid())
+  userId     String              @map("user_id")
+  accountId  String              @map("account_id")
+  categoryId String?             @map("category_id")
+  type       TransactionType
+  amount     BigInt
+  note       String?             @db.VarChar(500)
+  frequency  RecurrenceFrequency
+  /// Day of month (MONTHLY) or day of week (WEEKLY).
+  dayOfCycle Int?                @map("day_of_cycle")
+  startsAt   DateTime            @map("starts_at") @db.Date
+  endsAt     DateTime?           @map("ends_at") @db.Date
+  nextRunAt  DateTime            @map("next_run_at") @db.Date
+  isActive   Boolean             @default(true) @map("is_active")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+
+  @@index([userId, isActive])
+  @@index([nextRunAt, isActive])
+  @@map("recurring_rules")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  body      String           @db.VarChar(500)
+  /// Free-form payload: { budgetId, debtId, percent, ... }
+  meta      Json?
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+// ============================================================
+// EXCHANGE RATES (Phase 8 — multi-currency)
+// ============================================================
+
+model ExchangeRate {
+  id       String   @id @default(uuid())
+  base     String   @db.VarChar(3)
+  quote    String   @db.VarChar(3)
+  /// Rate scaled by 1e6 to stay integral: 1 USD = 12 650,25 UZS -> 12650250000
+  rate     BigInt
+  date     DateTime @db.Date
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([base, quote, date])
+  @@index([date])
+  @@map("exchange_rates")
+}

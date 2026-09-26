@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://fintrack:fintrack@localhost:5432/fintrack"
+      ],
+      "description": "Read-only SQL access to the local dev database. Use it to inspect real rows and verify aggregation results instead of guessing."
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "description": "Scoped filesystem access to this workspace."
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "description": "Up-to-date documentation for NestJS, Prisma, TanStack Query, Zod and Recharts. Consult it before relying on remembered API shapes."
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "description": "Drive a real browser to verify UI changes, take screenshots, and check responsive breakpoints."
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}" },
+      "description": "Issues and pull requests. Optional — remove this block if you are not using GitHub."
+    }
+  }
+}

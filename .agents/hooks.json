@@ -1,0 +1,23 @@
+{
+  "$comment": "Lifecycle hooks. Verify the event names against your installed Antigravity version (antigravity.google/docs) before relying on them; the schema is still moving.",
+  "hooks": [
+    {
+      "event": "beforeToolUse",
+      "matcher": { "tool": "run_command" },
+      "command": "node .agents/scripts/guard-destructive.js",
+      "description": "Blocks migrate reset, db push --force, DROP DATABASE, and rm -rf on tracked paths."
+    },
+    {
+      "event": "afterFileEdit",
+      "matcher": { "path": "apps/**/*.{ts,tsx}" },
+      "command": "pnpm exec prettier --write \"$FILE\"",
+      "description": "Formats edited source files."
+    },
+    {
+      "event": "afterFileEdit",
+      "matcher": { "path": "apps/api/prisma/schema.prisma" },
+      "command": "pnpm --filter api exec prisma validate",
+      "description": "Catches an invalid schema immediately after an edit."
+    }
+  ]
+}
