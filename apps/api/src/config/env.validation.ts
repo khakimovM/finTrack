@@ -21,7 +21,6 @@ export const envSchema = z.object({
   JWT_REFRESH_SECRET: secret('JWT_REFRESH_SECRET'),
   ACCESS_TOKEN_TTL: z.string().regex(/^\d+[smhd]$/, 'ACCESS_TOKEN_TTL must look like 15m').default('15m'),
   REFRESH_TOKEN_TTL: z.string().regex(/^\d+[smhd]$/, 'REFRESH_TOKEN_TTL must look like 7d').default('7d'),
-  BCRYPT_ROUNDS: z.coerce.number().int().min(10).default(12),
   CLIENT_URL: z.string().url().default('http://localhost:5173'),
   COOKIE_DOMAIN: z.string().optional(),
   THROTTLE_TTL: z.coerce.number().int().positive().default(60),
@@ -36,9 +35,50 @@ export const envSchema = z.object({
   /** Registers the repeatable jobs on boot; e2e tests turn it off. */
   SCHEDULER_ENABLED: booleanFlag.default('true'),
   APP_TIMEZONE: z.string().default('Asia/Tashkent'),
+
+  /** Public URL of the web app (Mini App + links sent by the bot). Defaults to CLIENT_URL. */
+  WEB_APP_URL: z.string().url().optional(),
+  /** Keys the one-time sign-in codes. Required in production; dev derives one from JWT_ACCESS_SECRET. */
+  OTP_SECRET: z.string().min(32, 'OTP_SECRET must be at least 32 characters').optional(),
+
+  /** Without a token the bot is disabled (local development without Telegram). */
+  TELEGRAM_BOT_TOKEN: z
+    .string()
+    .regex(/^\d+:[A-Za-z0-9_-]{30,}$/, 'TELEGRAM_BOT_TOKEN has the wrong format')
+    .optional(),
+  TELEGRAM_BOT_USERNAME: z
+    .string()
+    .regex(/^[A-Za-z0-9_]{5,32}$/, 'TELEGRAM_BOT_USERNAME without the @')
+    .optional(),
+  /** Set in production (HTTPS). When empty the bot uses long polling. */
+  TELEGRAM_WEBHOOK_URL: z.string().url().optional(),
+  /** Echoed by Telegram in X-Telegram-Bot-Api-Secret-Token; Telegram allows [A-Za-z0-9_-]{1,256}. */
+  TELEGRAM_WEBHOOK_SECRET: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{32,256}$/, 'TELEGRAM_WEBHOOK_SECRET: 32-256 chars of A-Z a-z 0-9 _ -')
+    .optional(),
+  /** Alternative Bot API server (local Bot API server or a test double). */
+  TELEGRAM_API_ROOT: z.string().url().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
+
+function crossFieldIssues(env: EnvConfig): string[] {
+  const issues: string[] = [];
+  if (env.NODE_ENV === 'production') {
+    if (!env.OTP_SECRET) issues.push('OTP_SECRET: required in production');
+    if (!env.TELEGRAM_BOT_TOKEN) issues.push('TELEGRAM_BOT_TOKEN: required in production');
+    if (!env.TELEGRAM_WEBHOOK_URL) issues.push('TELEGRAM_WEBHOOK_URL: required in production');
+  }
+  if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
+    issues.push('TELEGRAM_BOT_USERNAME: required together with TELEGRAM_BOT_TOKEN');
+  }
+  if (env.TELEGRAM_WEBHOOK_URL && !env.TELEGRAM_WEBHOOK_SECRET) {
+    issues.push('TELEGRAM_WEBHOOK_SECRET: required together with TELEGRAM_WEBHOOK_URL');
+  }
+  if (!isValidTimeZone(env.APP_TIMEZONE)) issues.push('APP_TIMEZONE: unknown IANA time zone');
+  return issues;
+}
 
 export function validateEnv(config: Record<string, unknown>): EnvConfig {
   // `KEY=` in a .env file means "unset", not "empty value": let defaults apply.
@@ -54,8 +94,9 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
     throw new Error(`Environment validation failed:\n${issues}`);
   }
 
-  if (!isValidTimeZone(result.data.APP_TIMEZONE)) {
-    throw new Error(`Environment validation failed:\n  - APP_TIMEZONE: unknown IANA time zone`);
+  const crossField = crossFieldIssues(result.data);
+  if (crossField.length > 0) {
+    throw new Error(`Environment validation failed:\n${crossField.map((i) => `  - ${i}`).join('\n')}`);
   }
 
   return result.data;

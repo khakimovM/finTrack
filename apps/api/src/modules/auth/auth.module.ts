@@ -4,11 +4,32 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthRepository } from './auth.repository';
 import { AuthCookiesService } from './auth-cookies.service';
+import { SessionStateService } from './session-state.service';
+import { TelegramLoginRepository } from './telegram-login.repository';
+import { TelegramLoginService } from './telegram-login.service';
+import { TelegramLoginBotService } from './telegram-login-bot.service';
+import { LoginCodeService } from './login-code.service';
 
 @Module({
   imports: [JwtModule.register({})],
   controllers: [AuthController],
-  providers: [AuthService, AuthRepository, AuthCookiesService],
-  exports: [AuthService, AuthRepository, AuthCookiesService],
+  providers: [
+    AuthService,
+    AuthRepository,
+    AuthCookiesService,
+    SessionStateService,
+    TelegramLoginRepository,
+    TelegramLoginService,
+    TelegramLoginBotService,
+    LoginCodeService,
+  ],
+  exports: [
+    AuthService,
+    AuthRepository,
+    AuthCookiesService,
+    SessionStateService,
+    TelegramLoginService,
+    TelegramLoginBotService,
+  ],
 })
 export class AuthModule {}

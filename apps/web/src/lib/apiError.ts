@@ -9,8 +9,11 @@ export interface ApiErrorPayload {
 const ERROR_MESSAGES: Record<string, string> = {
   VALIDATION_ERROR: "Kiritilgan ma'lumotlar noto'g'ri",
   UNAUTHENTICATED: 'Tizimga kirish talab qilinadi',
-  INVALID_CREDENTIALS: 'Email yoki parol noto‘g‘ri',
-  EMAIL_TAKEN: 'Bu email allaqachon ro‘yxatdan o‘tgan',
+  OTP_INVALID: 'Kod noto‘g‘ri',
+  OTP_EXPIRED: 'Kod muddati tugagan yoki u ishlatilgan. Qaytadan kiring',
+  OTP_ATTEMPTS_EXCEEDED: 'Urinishlar soni tugadi. Qaytadan kiring',
+  OTP_RESEND_LIMIT: 'Kod juda ko‘p marta so‘raldi. Qaytadan kiring',
+  TELEGRAM_UNAVAILABLE: 'Telegram orqali kirish vaqtincha ishlamayapti',
   TOKEN_REUSE_DETECTED: 'Xavfsizlik sababli sessiyangiz yakunlandi, qayta kiring',
   NOT_FOUND: 'Resurs topilmadi',
   CATEGORY_EXISTS: 'Bunday nomli kategoriya allaqachon mavjud',

@@ -9,6 +9,7 @@ import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { CacheModule } from './infra/redis/cache.module';
 import { ClockModule } from './infra/clock/clock.module';
+import { TelegramCoreModule } from './infra/telegram/telegram-core.module';
 import { redisConnectionOptions } from './infra/redis/redis-connection';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -24,6 +25,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { RecurringModule } from './modules/recurring/recurring.module';
 import { ExportModule } from './modules/export/export.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { UsersModule } from './modules/users/users.module';
+import { TelegramModule } from './modules/telegram/telegram.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { CsrfGuard } from './common/guards/csrf.guard';
 
@@ -81,6 +84,7 @@ const REDACTED_LOG_PATHS = [
     PrismaModule,
     CacheModule,
     ClockModule,
+    TelegramCoreModule,
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -101,6 +105,8 @@ const REDACTED_LOG_PATHS = [
     RecurringModule,
     ExportModule,
     JobsModule,
+    UsersModule,
+    TelegramModule,
   ],
 
   providers: [

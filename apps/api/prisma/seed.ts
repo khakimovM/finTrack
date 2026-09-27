@@ -1,10 +1,13 @@
 /* Demo data for local development: one user with ~3 months of realistic ledger history. */
 import { PrismaClient, Prisma, TransactionType } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
 import { DEFAULT_ACCOUNT, DEFAULT_CATEGORIES } from '../src/modules/auth/user-defaults';
 
-const DEMO_EMAIL = 'aziz@fintrack.uz';
-const DEMO_PASSWORD = 'Parol123!';
+/**
+ * Sign-in is Telegram-only, so the demo user is keyed by a fake Telegram id. To use it locally,
+ * set DEMO_TELEGRAM_ID to your own Telegram user id before seeding; then "Telegram orqali kirish"
+ * signs you straight into the demo data.
+ */
+const DEMO_TELEGRAM_ID = BigInt(process.env.DEMO_TELEGRAM_ID ?? '100000001');
 const SOM = 100n;
 
 const prisma = new PrismaClient();
@@ -31,19 +34,18 @@ async function main(): Promise<void> {
     throw new Error('Refusing to seed a production database (set SEED_ALLOW_PRODUCTION=true to override).');
   }
 
-  const existing = await prisma.user.findFirst({ where: { email: DEMO_EMAIL } });
+  const existing = await prisma.user.findFirst({ where: { telegramId: DEMO_TELEGRAM_ID } });
   if (existing) {
-    console.log(`Demo user ${DEMO_EMAIL} already exists — skipping.`);
+    console.log(`Demo user (telegram ${DEMO_TELEGRAM_ID}) already exists — skipping.`);
     return;
   }
 
   const rand = mulberry32(20260801);
-  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
   await prisma.$transaction(
     async (tx) => {
       const user = await tx.user.create({
-        data: { email: DEMO_EMAIL, name: 'Aziz Karimov', passwordHash },
+        data: { telegramId: DEMO_TELEGRAM_ID, name: 'Aziz Karimov', telegramUsername: 'demo_user' },
       });
 
       await tx.category.createMany({
@@ -148,7 +150,7 @@ async function main(): Promise<void> {
         });
       }
 
-      console.log(`Seeded ${DEMO_EMAIL} with ${rows.length + 2} transactions.`);
+      console.log(`Seeded demo user (telegram ${DEMO_TELEGRAM_ID}) with ${rows.length + 2} transactions.`);
     },
     { timeout: 60_000 },
   );

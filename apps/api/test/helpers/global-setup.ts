@@ -1,7 +1,8 @@
 import { execSync } from 'child_process';
 import { resolve } from 'path';
 import { PrismaClient } from '@prisma/client';
-import { resolveTestDatabaseUrl } from './test-env';
+import Redis from 'ioredis';
+import { resolveTestDatabaseUrl, resolveTestRedisUrl } from './test-env';
 
 /** Brings the throwaway `_test` database to the latest migration and empties it once per run. */
 export default async function globalSetup(): Promise<void> {
@@ -23,5 +24,17 @@ export default async function globalSetup(): Promise<void> {
     }
   } finally {
     await prisma.$disconnect();
+  }
+
+  // Rate-limit counters and caches from a previous run would leak into this one.
+  const redisUrl = resolveTestRedisUrl();
+  if (new URL(redisUrl).pathname === '/15') {
+    const redis = new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
+    try {
+      await redis.connect();
+      await redis.flushdb();
+    } finally {
+      redis.disconnect();
+    }
   }
 }

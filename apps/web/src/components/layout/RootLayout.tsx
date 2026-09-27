@@ -123,7 +123,9 @@ export function RootLayout() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-foreground">{user?.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {user?.telegramUsername ? `@${user.telegramUsername}` : (user?.email ?? '')}
+                </p>
               </div>
             </div>
           </div>

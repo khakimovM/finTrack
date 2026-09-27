@@ -2,25 +2,17 @@ import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
-import {
-  RegisterInput,
-  LoginInput,
-  ForgotPasswordInput,
-  ResetPasswordInput,
-  VerifyEmailInput,
-  UserResponse,
-  SessionResponse,
-} from '@fintrack/shared';
+import { UserResponse, SessionResponse } from '@fintrack/shared';
 import { AuthRepository } from './auth.repository';
+import { SessionStateService } from './session-state.service';
 import { durationToMs } from '../../common/utils/duration';
-import { ConflictDomainException, NotFoundDomainException } from '../../common/exceptions/domain.exception';
+import { NotFoundDomainException } from '../../common/exceptions/domain.exception';
 
 /** Window in which a just-rotated refresh token is treated as a concurrent refresh, not theft. */
 const REFRESH_GRACE_MS = 30_000;
 
-interface TokenMeta {
+export interface TokenMeta {
   userAgent?: string;
   ipAddress?: string;
 }
@@ -29,6 +21,16 @@ export interface AuthResult {
   user: UserResponse;
   accessToken: string;
   refreshToken: string;
+  /** Refresh-token family = one signed-in device. */
+  sessionId: string;
+  accessTokenExpiresIn: number;
+}
+
+/** Masks all but the operator code and the last four digits: +99890***4567. */
+export function maskPhone(phone: string | null): string | null {
+  if (!phone) return null;
+  if (phone.length <= 9) return phone;
+  return `${phone.slice(0, 6)}***${phone.slice(-4)}`;
 }
 
 @Injectable()
@@ -39,73 +41,22 @@ export class AuthService {
     private readonly repository: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly sessions: SessionStateService,
   ) {}
 
-  async register(input: RegisterInput, meta: TokenMeta): Promise<AuthResult> {
-    const existing = await this.repository.findUserByEmail(input.email);
-    if (existing) {
-      throw new ConflictDomainException('EMAIL_TAKEN', 'Ushbu email bilan foydalanuvchi allaqachon mavjud');
-    }
-
-    const bcryptRounds = this.configService.get<number>('BCRYPT_ROUNDS', 12);
-    const passwordHash = await bcrypt.hash(input.password, bcryptRounds);
-
-    const user = await this.repository.createUserWithDefaults({
-      name: input.name,
-      email: input.email,
-      passwordHash,
-    });
-
-    const familyId = crypto.randomUUID();
-    const tokens = await this.generateTokens(user, familyId, meta);
-
-    return {
-      user: this.toUserResponse(user),
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-    };
-  }
-
-  async login(input: LoginInput, meta: TokenMeta): Promise<AuthResult> {
-    const user = await this.repository.findUserByEmail(input.email);
-    if (!user) {
-      // Invariant: never reveal whether the email exists
-      throw new UnauthorizedException({
-        code: 'INVALID_CREDENTIALS',
-        message: 'Email yoki parol noto‘g‘ri',
-      });
-    }
-
-    const isMatch = await bcrypt.compare(input.password, user.passwordHash);
-    if (!isMatch) {
-      throw new UnauthorizedException({
-        code: 'INVALID_CREDENTIALS',
-        message: 'Email yoki parol noto‘g‘ri',
-      });
-    }
-
-    const familyId = crypto.randomUUID();
-    const tokens = await this.generateTokens(user, familyId, meta);
-
-    return {
-      user: this.toUserResponse(user),
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-    };
+  /** Starts a new session (device) for an already-verified user. */
+  async issueSession(user: User, meta: TokenMeta): Promise<AuthResult> {
+    return this.buildResult(user, crypto.randomUUID(), meta);
   }
 
   async refresh(rawRefreshToken: string | undefined, meta: TokenMeta): Promise<AuthResult> {
     if (!rawRefreshToken) {
-      throw new UnauthorizedException({
-        code: 'UNAUTHENTICATED',
-        message: 'Refresh token taqdim etilmadi',
-      });
+      throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Refresh token taqdim etilmadi' });
     }
 
-    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
     try {
       await this.jwtService.verifyAsync(rawRefreshToken, {
-        secret: refreshSecret,
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
     } catch {
       throw new UnauthorizedException({
@@ -114,14 +65,9 @@ export class AuthService {
       });
     }
 
-    const tokenHash = this.hashToken(rawRefreshToken);
-    const tokenRecord = await this.repository.findRefreshTokenByHash(tokenHash);
-
+    const tokenRecord = await this.repository.findRefreshTokenByHash(this.hashToken(rawRefreshToken));
     if (!tokenRecord) {
-      throw new UnauthorizedException({
-        code: 'UNAUTHENTICATED',
-        message: 'Refresh token topilmadi',
-      });
+      throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Refresh token topilmadi' });
     }
 
     if (tokenRecord.revokedAt !== null) {
@@ -133,6 +79,7 @@ export class AuthService {
       }
       this.logger.warn(`Security alert: refresh token reuse for family ${tokenRecord.familyId}`);
       await this.repository.revokeTokenFamily(tokenRecord.familyId);
+      await this.sessions.revokeSessions([tokenRecord.familyId]);
       throw new UnauthorizedException({
         code: 'TOKEN_REUSE_DETECTED',
         message: 'Xavfsizlik buzilishi aniqlandi. Barcha sessiyalar bekor qilindi. Qaytadan kiring',
@@ -140,136 +87,119 @@ export class AuthService {
     }
 
     if (tokenRecord.expiresAt.getTime() <= Date.now()) {
-      throw new UnauthorizedException({
-        code: 'UNAUTHENTICATED',
-        message: 'Sessiya muddati tugagan. Qaytadan kiring',
-      });
+      throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Sessiya muddati tugagan. Qaytadan kiring' });
     }
 
     const user = await this.repository.findUserById(tokenRecord.userId);
     if (!user) {
-      throw new UnauthorizedException({
-        code: 'UNAUTHENTICATED',
-        message: 'Foydalanuvchi topilmadi',
-      });
+      throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Foydalanuvchi topilmadi' });
     }
 
     // Rotate within the same family; only one concurrent rotation of this token may win.
-    const newTokens = await this.generateTokens(user, tokenRecord.familyId, meta);
-    const newHash = this.hashToken(newTokens.refreshToken);
-
+    const result = await this.buildResult(user, tokenRecord.familyId, meta);
+    const newHash = this.hashToken(result.refreshToken);
     if (!(await this.repository.revokeRefreshToken(tokenRecord.id, newHash))) {
       await this.repository.deleteRefreshTokenByHash(newHash);
       throw this.refreshRaceError();
     }
-
-    return {
-      user: this.toUserResponse(user),
-      accessToken: newTokens.accessToken,
-      refreshToken: newTokens.refreshToken,
-    };
+    return result;
   }
 
   async logout(rawRefreshToken: string | undefined): Promise<void> {
-    if (rawRefreshToken) {
-      const tokenHash = this.hashToken(rawRefreshToken);
-      const tokenRecord = await this.repository.findRefreshTokenByHash(tokenHash);
-      if (tokenRecord && !tokenRecord.revokedAt) {
-        await this.repository.revokeRefreshToken(tokenRecord.id);
-      }
+    if (!rawRefreshToken) return;
+    const tokenRecord = await this.repository.findRefreshTokenByHash(this.hashToken(rawRefreshToken));
+    if (tokenRecord && !tokenRecord.revokedAt) {
+      await this.repository.revokeTokenFamily(tokenRecord.familyId);
+      await this.sessions.revokeSessions([tokenRecord.familyId]);
     }
   }
 
   async logoutAll(userId: string): Promise<void> {
-    await this.repository.revokeAllUserTokens(userId);
+    const families = await this.repository.revokeAllUserTokens(userId);
+    await this.sessions.revokeSessions(families);
   }
 
   async getMe(userId: string): Promise<UserResponse> {
     const user = await this.repository.findUserById(userId);
-    if (!user) {
-      throw new NotFoundDomainException('Foydalanuvchi topilmadi');
-    }
+    if (!user) throw new NotFoundDomainException('Foydalanuvchi topilmadi');
     return this.toUserResponse(user);
   }
 
-  async getSessions(userId: string, currentRefreshToken?: string): Promise<SessionResponse[]> {
-    const sessions = await this.repository.getActiveSessions(userId);
-    const currentHash = currentRefreshToken ? this.hashToken(currentRefreshToken) : null;
+  /** One entry per signed-in device (refresh-token family). */
+  async getSessions(userId: string, currentSessionId?: string): Promise<SessionResponse[]> {
+    const tokens = await this.repository.getActiveTokens(userId);
+    const latestByFamily = new Map<string, (typeof tokens)[number]>();
+    for (const token of tokens) {
+      if (!latestByFamily.has(token.familyId)) latestByFamily.set(token.familyId, token);
+    }
+    const startedAt = await this.repository.familyStartedAt([...latestByFamily.keys()]);
 
-    return sessions.map((s) => ({
-      id: s.id,
-      userAgent: s.userAgent,
-      ipAddress: s.ipAddress,
-      createdAt: s.createdAt.toISOString(),
-      expiresAt: s.expiresAt.toISOString(),
-      isCurrent: currentHash ? s.tokenHash === currentHash : false,
+    return [...latestByFamily.values()].map((t) => ({
+      id: t.familyId,
+      userAgent: t.userAgent,
+      ipAddress: t.ipAddress,
+      createdAt: (startedAt.get(t.familyId) ?? t.createdAt).toISOString(),
+      lastUsedAt: t.createdAt.toISOString(),
+      expiresAt: t.expiresAt.toISOString(),
+      isCurrent: t.familyId === currentSessionId,
     }));
   }
 
   async revokeSession(userId: string, sessionId: string): Promise<void> {
-    await this.repository.revokeSession(userId, sessionId);
+    if ((await this.repository.revokeUserFamily(userId, sessionId)) === 0) {
+      throw new NotFoundDomainException('Sessiya topilmadi');
+    }
+    await this.sessions.revokeSessions([sessionId]);
   }
 
-  async forgotPassword(input: ForgotPasswordInput): Promise<{ message: string }> {
-    void input;
+  toUserResponse(user: User): UserResponse {
     return {
-      message: 'Agar ushbu email tizimda mavjud bo‘lsa, parolni tiklash havolasi yuborildi',
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      telegramUsername: user.telegramUsername,
+      telegramLinked: user.telegramId !== null,
+      phone: maskPhone(user.phone),
+      avatarUrl: user.avatarUrl,
+      baseCurrency: user.baseCurrency,
+      locale: user.locale,
+      timezone: user.timezone,
+      strictMode: user.strictMode,
+      notifyTelegram: user.notifyTelegram,
+      dailyDigest: user.dailyDigest,
+      createdAt: user.createdAt.toISOString(),
     };
   }
 
-  async resetPassword(input: ResetPasswordInput): Promise<{ message: string }> {
-    void input;
-    return {
-      message: 'Parol muvaffaqiyatli yangilandi',
-    };
-  }
-
-  async verifyEmail(input: VerifyEmailInput): Promise<{ message: string }> {
-    void input;
-    return {
-      message: 'Email muvaffaqiyatli tasdiqlandi',
-    };
-  }
-
-  private async generateTokens(
-    user: User,
-    familyId: string,
-    meta: TokenMeta,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    const accessSecret = this.configService.get<string>('JWT_ACCESS_SECRET');
-    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+  private async buildResult(user: User, familyId: string, meta: TokenMeta): Promise<AuthResult> {
     const accessTtl = this.configService.get<string>('ACCESS_TOKEN_TTL', '15m');
     const refreshTtl = this.configService.get<string>('REFRESH_TOKEN_TTL', '7d');
 
-    const payload = { sub: user.id, email: user.email };
-
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: accessSecret,
-      expiresIn: accessTtl,
-    });
-
-    const refreshToken = await this.jwtService.signAsync(
-      { sub: user.id, familyId },
-      {
-        secret: refreshSecret,
-        expiresIn: refreshTtl,
-      },
+    const accessToken = await this.jwtService.signAsync(
+      { sub: user.id, sid: familyId },
+      { secret: this.configService.get<string>('JWT_ACCESS_SECRET'), expiresIn: accessTtl },
     );
-
-    // Refresh token is stored hashed in the RefreshToken table
-    const tokenHash = this.hashToken(refreshToken);
-    const expiresAt = new Date(Date.now() + durationToMs(refreshTtl));
+    const refreshToken = await this.jwtService.signAsync(
+      { sub: user.id, familyId, jti: crypto.randomUUID() },
+      { secret: this.configService.get<string>('JWT_REFRESH_SECRET'), expiresIn: refreshTtl },
+    );
 
     await this.repository.createRefreshToken({
       userId: user.id,
-      tokenHash,
+      tokenHash: this.hashToken(refreshToken),
       familyId,
-      userAgent: meta.userAgent,
+      userAgent: meta.userAgent?.slice(0, 300),
       ipAddress: meta.ipAddress,
-      expiresAt,
+      expiresAt: new Date(Date.now() + durationToMs(refreshTtl)),
     });
 
-    return { accessToken, refreshToken };
+    return {
+      user: this.toUserResponse(user),
+      accessToken,
+      refreshToken,
+      sessionId: familyId,
+      accessTokenExpiresIn: Math.floor(durationToMs(accessTtl) / 1000),
+    };
   }
 
   private refreshRaceError(): UnauthorizedException {
@@ -281,18 +211,5 @@ export class AuthService {
 
   private hashToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
-  }
-
-  toUserResponse(user: User): UserResponse {
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      baseCurrency: user.baseCurrency,
-      locale: user.locale,
-      strictMode: user.strictMode,
-      avatarUrl: user.avatarUrl,
-      createdAt: user.createdAt.toISOString(),
-    };
   }
 }

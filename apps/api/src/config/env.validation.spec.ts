@@ -58,3 +58,40 @@ describe('env.validation edge cases', () => {
     expect(() => validateEnv({ ...base, APP_TIMEZONE: 'Mars/Olympus' })).toThrow(/APP_TIMEZONE/);
   });
 });
+
+describe('env.validation telegram rules', () => {
+  const base = {
+    DATABASE_URL: 'postgresql://fintrack:fintrack@localhost:5432/fintrack',
+    REDIS_URL: 'redis://localhost:6379',
+    JWT_ACCESS_SECRET: 'a_very_long_secret_that_is_at_least_32_characters_long',
+    JWT_REFRESH_SECRET: 'another_very_long_secret_that_is_at_least_32_chars',
+  };
+  const token = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsawQ';
+
+  it('lets development boot without Telegram', () => {
+    expect(validateEnv(base).TELEGRAM_BOT_TOKEN).toBeUndefined();
+  });
+
+  it('requires the bot, webhook and OTP secret in production', () => {
+    expect(() => validateEnv({ ...base, NODE_ENV: 'production' })).toThrow(
+      /OTP_SECRET[\s\S]*TELEGRAM_BOT_TOKEN[\s\S]*TELEGRAM_WEBHOOK_URL/,
+    );
+  });
+
+  it('requires a webhook secret whenever a webhook URL is set', () => {
+    expect(() =>
+      validateEnv({
+        ...base,
+        TELEGRAM_BOT_TOKEN: token,
+        TELEGRAM_BOT_USERNAME: 'fintrack_bot',
+        TELEGRAM_WEBHOOK_URL: 'https://api.example.uz/api/v1/telegram/webhook',
+      }),
+    ).toThrow(/TELEGRAM_WEBHOOK_SECRET/);
+  });
+
+  it('rejects a malformed bot token', () => {
+    expect(() => validateEnv({ ...base, TELEGRAM_BOT_TOKEN: 'nope', TELEGRAM_BOT_USERNAME: 'fintrack_bot' })).toThrow(
+      /TELEGRAM_BOT_TOKEN/,
+    );
+  });
+});

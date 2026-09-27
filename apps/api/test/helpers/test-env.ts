@@ -41,4 +41,10 @@ process.env.SCHEDULER_ENABLED = 'false';
 process.env.TRUST_PROXY = '1';
 process.env.JWT_ACCESS_SECRET ??= 'e2e_access_secret_that_is_long_enough_32';
 process.env.JWT_REFRESH_SECRET ??= 'e2e_refresh_secret_that_is_long_enough_32';
-process.env.BCRYPT_ROUNDS = '10';
+// A syntactically valid but fake bot: every Bot API call is answered by FakeTelegram.
+process.env.TELEGRAM_BOT_TOKEN = '123456789:AAFakeTokenForE2eTestsOnly_abcdefghijk';
+process.env.TELEGRAM_BOT_USERNAME = 'fintrack_test_bot';
+process.env.TELEGRAM_WEBHOOK_SECRET = 'e2e_webhook_secret_that_is_long_enough_32';
+delete process.env.TELEGRAM_WEBHOOK_URL;
+delete process.env.TELEGRAM_API_ROOT;
+process.env.OTP_SECRET = 'e2e_otp_secret_that_is_definitely_long_enough';

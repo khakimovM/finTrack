@@ -1,0 +1,80 @@
+import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { BotError, GrammyError } from 'grammy';
+import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
+import { AuthHandlers } from './handlers/auth.handlers';
+
+export const ALLOWED_UPDATES = ['message', 'callback_query'] as const;
+
+/**
+ * Wires handlers into the bot and chooses the transport: webhook when TELEGRAM_WEBHOOK_URL is
+ * set (production), long polling otherwise (local development), neither in tests (updates are
+ * injected through the webhook controller).
+ */
+@Injectable()
+export class TelegramLifecycleService implements OnApplicationBootstrap, OnApplicationShutdown {
+  private readonly logger = new Logger(TelegramLifecycleService.name);
+  private polling = false;
+
+  constructor(
+    private readonly telegram: TelegramBotService,
+    private readonly config: ConfigService,
+    private readonly authHandlers: AuthHandlers,
+  ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    const bot = this.telegram.bot;
+    if (!bot) {
+      this.logger.warn('TELEGRAM_BOT_TOKEN is not set: Telegram sign-in and the bot are disabled');
+      return;
+    }
+
+    this.authHandlers.register(bot);
+    bot.catch((err: BotError) => this.logError(err));
+
+    try {
+      await bot.init();
+    } catch (err: unknown) {
+      this.logger.error(`Telegram getMe failed, bot stays offline: ${this.describe(err)}`);
+      return;
+    }
+
+    const env = this.config.get<string>('NODE_ENV');
+    if (env === 'test') return;
+
+    const webhookUrl = this.config.get<string>('TELEGRAM_WEBHOOK_URL');
+    try {
+      await bot.api.setMyCommands([{ command: 'start', description: 'Boshlash / kirish' }]);
+      if (webhookUrl) {
+        await bot.api.setWebhook(webhookUrl, {
+          secret_token: this.config.get<string>('TELEGRAM_WEBHOOK_SECRET'),
+          allowed_updates: [...ALLOWED_UPDATES],
+          max_connections: 40,
+        });
+        this.logger.log(`Telegram webhook set to ${new URL(webhookUrl).origin}`);
+      } else {
+        await bot.api.deleteWebhook();
+        this.polling = true;
+        void bot
+          .start({ allowed_updates: [...ALLOWED_UPDATES], onStart: (me) => this.logger.log(`Polling as @${me.username}`) })
+          .catch((err: unknown) => this.logger.error(`Polling stopped: ${this.describe(err)}`));
+      }
+    } catch (err: unknown) {
+      this.logger.error(`Telegram transport setup failed: ${this.describe(err)}`);
+    }
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    if (this.polling) await this.telegram.bot?.stop();
+  }
+
+  logError(err: BotError): void {
+    // Never log the update itself: it contains the user's financial messages.
+    this.logger.error(`Telegram handler failed (update ${err.ctx.update.update_id}): ${this.describe(err.error)}`);
+  }
+
+  private describe(err: unknown): string {
+    if (err instanceof GrammyError) return `${err.method}: ${err.description}`;
+    return err instanceof Error ? err.message : String(err);
+  }
+}
