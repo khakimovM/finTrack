@@ -15,6 +15,13 @@ export interface ProfileChanges {
 export class UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Opted-in, reachable users for the evening digest. */
+  async findDigestRecipients(): Promise<User[]> {
+    return this.prisma.user.findMany({
+      where: { dailyDigest: true, telegramId: { not: null }, telegramBlockedAt: null, deletedAt: null },
+    });
+  }
+
   async updateProfile(userId: string, data: ProfileChanges): Promise<User> {
     return this.prisma.user.update({ where: { id: userId, deletedAt: null }, data });
   }

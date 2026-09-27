@@ -5,7 +5,11 @@ import { QUEUES } from '../../infra/queue/queues';
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: QUEUES.RECURRING }, { name: QUEUES.DEBT_REMINDERS }),
+    BullModule.registerQueue(
+      { name: QUEUES.RECURRING },
+      { name: QUEUES.DEBT_REMINDERS },
+      { name: QUEUES.DAILY_DIGEST },
+    ),
   ],
   providers: [SchedulerService],
 })

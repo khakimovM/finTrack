@@ -16,10 +16,11 @@ export const LOGIN_TEXT = {
   cancelled: '❌ Kirish so‘rovi rad etildi. Agar bu siz bo‘lmasangiz, hech narsa qilishingiz shart emas.',
   cancelButton: '❌ Bu men emasman',
   registered: '✅ Hisobingiz yaratildi! Endi saytga qaytib, quyidagi kodni kiriting.',
+  registeredPlain: '✅ Hisobingiz yaratildi! Endi xarajat va kirimlaringizni shu yerga yozishingiz mumkin.',
   linked: '✅ Telegram hisobingiz FinTrack profilingizga ulandi.',
   linkConflict: 'Bu Telegram hisobi boshqa FinTrack profiliga ulangan.',
   welcomeBack: (name: string) =>
-    `Xush kelibsiz, <b>${escapeHtml(name)}</b>! 👋\n\nSaytga kirish uchun saytdagi “Telegram orqali kirish” tugmasini bosing.`,
+    `Xush kelibsiz, <b>${escapeHtml(name)}</b>! 👋`,
   welcomeNew:
     'Assalomu alaykum! FinTrack — shaxsiy moliyangiz uchun yordamchi.\n\nBoshlash uchun raqamingizni ulashing 👇',
   code: (code: string, device: string, ip: string | null) =>

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Bot, Context } from 'grammy';
 import { TelegramFrom, TelegramLoginBotService } from '../../auth/telegram-login-bot.service';
 import { LOGIN_TEXT } from '../../auth/telegram-login.messages';
+import { MenuHandlers } from './menu.handlers';
 
 export function toFrom(ctx: Context): TelegramFrom | null {
   const from = ctx.from;
@@ -18,7 +19,10 @@ export function toFrom(ctx: Context): TelegramFrom | null {
 /** /start (with login_/link_ payloads), shared contacts and the "not me" button. */
 @Injectable()
 export class AuthHandlers {
-  constructor(private readonly loginBot: TelegramLoginBotService) {}
+  constructor(
+    private readonly loginBot: TelegramLoginBotService,
+    private readonly menu: MenuHandlers,
+  ) {}
 
   register(bot: Bot): void {
     // Finance data is never discussed in groups: the bot only talks in private chats.
@@ -31,18 +35,17 @@ export class AuthHandlers {
       if (payload && (await this.loginBot.handleStartPayload(payload, from))) return;
 
       const user = await this.loginBot.handlePlainStart(from);
-      if (user) {
-        await ctx.reply(LOGIN_TEXT.welcomeBack(user.name), { parse_mode: 'HTML' });
-      }
+      if (user) await this.menu.sendMenu(ctx, LOGIN_TEXT.welcomeBack(user.name));
     });
 
     pm.on('message:contact', async (ctx) => {
       const from = toFrom(ctx);
       if (!from) return;
-      await this.loginBot.handleContact(from, {
+      const user = await this.loginBot.handleContact(from, {
         userId: ctx.message.contact.user_id,
         phoneNumber: ctx.message.contact.phone_number,
       });
+      if (user) await this.menu.sendMenu(ctx);
     });
 
     bot.callbackQuery(/^login_cancel:([0-9a-f-]{36})$/, async (ctx) => {

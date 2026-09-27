@@ -5,6 +5,15 @@ export interface ApiCall {
   payload: Record<string, unknown>;
 }
 
+/** A message the bot sent or edited, with the callback data of its inline buttons. */
+export interface BotOutput {
+  method: string;
+  text: string;
+  buttons: string[];
+}
+
+const CHAT_METHODS = new Set(['sendMessage', 'editMessageText', 'editMessageReplyMarkup']);
+
 export interface FakeTgUser {
   id: number;
   first_name: string;
@@ -39,6 +48,40 @@ export class FakeTelegram {
   messagesTo(chatId: number): string[] {
     return this.calls
       .filter((c) => c.method === 'sendMessage' && Number(c.payload.chat_id) === chatId)
+      .map((c) => String(c.payload.text));
+  }
+
+  /** Everything the bot showed in this chat, oldest first: new messages and edits alike. */
+  outputs(chatId: number): BotOutput[] {
+    return this.calls
+      .filter((c) => CHAT_METHODS.has(c.method) && Number(c.payload.chat_id) === chatId)
+      .map((c) => {
+        const markup = c.payload.reply_markup as { inline_keyboard?: Array<Array<{ callback_data?: string }>> } | undefined;
+        const buttons = (markup?.inline_keyboard ?? []).flat().flatMap((b) => (b.callback_data ? [b.callback_data] : []));
+        return { method: c.method, text: typeof c.payload.text === 'string' ? c.payload.text : '', buttons };
+      });
+  }
+
+  last(chatId: number): BotOutput {
+    const all = this.outputs(chatId);
+    if (all.length === 0) throw new Error(`bot never wrote to ${chatId}`);
+    return all[all.length - 1];
+  }
+
+  /** The newest button whose callback data matches, e.g. /^d:[w-]{8}:save$/. */
+  button(chatId: number, pattern: RegExp): string {
+    const found = this.outputs(chatId)
+      .flatMap((o) => o.buttons)
+      .reverse()
+      .find((b) => pattern.test(b));
+    if (!found) throw new Error(`no button matching ${pattern} in chat ${chatId}`);
+    return found;
+  }
+
+  /** Texts of the pop-ups/toasts shown in answer to button taps. */
+  callbackAnswers(): string[] {
+    return this.calls
+      .filter((c) => c.method === 'answerCallbackQuery' && typeof c.payload.text === 'string')
       .map((c) => String(c.payload.text));
   }
 

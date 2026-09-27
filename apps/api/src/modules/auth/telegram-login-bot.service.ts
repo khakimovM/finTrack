@@ -103,11 +103,12 @@ export class TelegramLoginBotService {
    * A shared contact registers the sender. Only a contact about the sender themselves counts:
    * forwarding someone else's contact card must never create or unlock an account.
    */
-  async handleContact(from: TelegramFrom, contact: TelegramContact): Promise<void> {
+  /** Returns the (possibly new) user when the contact was accepted. */
+  async handleContact(from: TelegramFrom, contact: TelegramContact): Promise<User | null> {
     const telegramId = BigInt(from.id);
     if (contact.userId !== from.id) {
       await this.telegram.send(telegramId, LOGIN_TEXT.contactNotYours, { html: true, replyMarkup: CONTACT_KEYBOARD });
-      return;
+      return null;
     }
 
     let user = await this.authRepository.findUserByTelegramId(telegramId);
@@ -130,13 +131,14 @@ export class TelegramLoginBotService {
     }
 
     const pending = await this.repository.findAwaitingContact(telegramId);
-    await this.telegram.send(telegramId, LOGIN_TEXT.registered, {
+    await this.telegram.send(telegramId, pending ? LOGIN_TEXT.registered : LOGIN_TEXT.registeredPlain, {
       html: true,
       replyMarkup: { remove_keyboard: true },
     });
     if (pending) {
       await this.codes.issue(pending, telegramId, user.id);
     }
+    return user;
   }
 
   /** "Bu men emasman" under a code: kills the request so the code can no longer be redeemed. */

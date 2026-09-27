@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { BotError, GrammyError } from 'grammy';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { AuthHandlers } from './handlers/auth.handlers';
+import { MenuHandlers } from './handlers/menu.handlers';
+import { DebtHandlers } from './handlers/debt.handlers';
+import { EntryHandlers } from './handlers/entry.handlers';
 
 export const ALLOWED_UPDATES = ['message', 'callback_query'] as const;
 
@@ -20,6 +23,9 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     private readonly telegram: TelegramBotService,
     private readonly config: ConfigService,
     private readonly authHandlers: AuthHandlers,
+    private readonly menuHandlers: MenuHandlers,
+    private readonly debtHandlers: DebtHandlers,
+    private readonly entryHandlers: EntryHandlers,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -29,7 +35,12 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
       return;
     }
 
+    // Order matters: specific commands/buttons first, free-text entry parsing last.
     this.authHandlers.register(bot);
+    this.menuHandlers.register(bot);
+    this.debtHandlers.register(bot);
+    this.entryHandlers.register(bot);
+    this.entryHandlers.registerTextFallback(bot);
     bot.catch((err: BotError) => this.logError(err));
 
     try {
@@ -44,7 +55,11 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
 
     const webhookUrl = this.config.get<string>('TELEGRAM_WEBHOOK_URL');
     try {
-      await bot.api.setMyCommands([{ command: 'start', description: 'Boshlash / kirish' }]);
+      await bot.api.setMyCommands([
+        { command: 'start', description: 'Boshlash / kirish' },
+        { command: 'menu', description: 'Menyu' },
+        { command: 'balans', description: 'Balans' },
+      ]);
       if (webhookUrl) {
         await bot.api.setWebhook(webhookUrl, {
           secret_token: this.config.get<string>('TELEGRAM_WEBHOOK_SECRET'),

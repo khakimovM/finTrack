@@ -16,6 +16,7 @@ export class SchedulerService implements OnApplicationBootstrap {
     private readonly config: ConfigService,
     @InjectQueue(QUEUES.RECURRING) private readonly recurringQueue: Queue,
     @InjectQueue(QUEUES.DEBT_REMINDERS) private readonly remindersQueue: Queue,
+    @InjectQueue(QUEUES.DAILY_DIGEST) private readonly digestQueue: Queue,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -36,6 +37,11 @@ export class SchedulerService implements OnApplicationBootstrap {
         'debt-reminders-daily',
         { pattern: '0 9 * * *', tz },
         { name: JOBS.SEND_DEBT_REMINDERS, opts: DEFAULT_JOB_OPTIONS },
+      );
+      await this.digestQueue.upsertJobScheduler(
+        'daily-digest',
+        { pattern: '0 21 * * *', tz },
+        { name: JOBS.SEND_DAILY_DIGEST, opts: DEFAULT_JOB_OPTIONS },
       );
       this.logger.log(`Job schedulers registered (tz=${tz})`);
     } catch (err: unknown) {

@@ -44,6 +44,20 @@ export class NotificationsRepository {
     return [items, total, unreadCount];
   }
 
+  /** For the Telegram outbox job (system context: the id comes from our own queue). */
+  async findForDelivery(id: string) {
+    return this.prisma.notification.findUnique({
+      where: { id },
+      include: {
+        user: { select: { telegramId: true, notifyTelegram: true, telegramBlockedAt: true, deletedAt: true } },
+      },
+    });
+  }
+
+  async markTelegramSent(id: string): Promise<void> {
+    await this.prisma.notification.updateMany({ where: { id, telegramSentAt: null }, data: { telegramSentAt: new Date() } });
+  }
+
   async findById(userId: string, id: string): Promise<Notification | null> {
     return this.prisma.notification.findFirst({
       where: { id, userId },

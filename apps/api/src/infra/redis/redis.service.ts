@@ -66,6 +66,30 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** SET NX EX: true only for the first caller (idempotency guards for jobs). Fails closed. */
+  async setIfAbsent(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+    if (!this.client) return false;
+    try {
+      return (await this.client.set(key, value, 'EX', ttlSeconds, 'NX')) === 'OK';
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Redis SETNX error for key ${key}: ${message}`);
+      return false;
+    }
+  }
+
+  /** GETDEL: reads and removes in one step (one-shot conversation state). */
+  async take(key: string): Promise<string | null> {
+    if (!this.client) return null;
+    try {
+      return await this.client.getdel(key);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Redis GETDEL error for key ${key}: ${message}`);
+      return null;
+    }
+  }
+
   async incr(key: string): Promise<number | null> {
     if (!this.client) return null;
     try {
