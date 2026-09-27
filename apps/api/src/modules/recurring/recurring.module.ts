@@ -2,23 +2,25 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { RecurringController } from './recurring.controller';
 import { RecurringService } from './recurring.service';
+import { RecurringRunnerService } from './recurring-runner.service';
 import { RecurringRepository } from './recurring.repository';
-import { RecurringProcessor, RECURRING_QUEUE_NAME } from './recurring.processor';
+import { RecurringProcessor } from './recurring.processor';
 import { AccountsModule } from '../accounts/accounts.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { BudgetsModule } from '../budgets/budgets.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { QUEUES } from '../../infra/queue/queues';
 
 @Module({
   imports: [
-    BullModule.registerQueue({
-      name: RECURRING_QUEUE_NAME,
-    }),
+    BullModule.registerQueue({ name: QUEUES.RECURRING }),
     AccountsModule,
     CategoriesModule,
     BudgetsModule,
+    NotificationsModule,
   ],
   controllers: [RecurringController],
-  providers: [RecurringService, RecurringRepository, RecurringProcessor],
-  exports: [RecurringService, RecurringRepository],
+  providers: [RecurringService, RecurringRunnerService, RecurringRepository, RecurringProcessor],
+  exports: [RecurringService, RecurringRunnerService],
 })
 export class RecurringModule {}

@@ -46,7 +46,7 @@ export class TransfersService {
       });
     });
 
-    await this.balanceService.invalidate(userId);
+    await this.balanceService.invalidate(userId, [dto.fromAccountId]);
     const { balances, total } = await this.balanceService.getAccountBalances(userId);
 
     return {
@@ -74,6 +74,9 @@ export class TransfersService {
       await this.repository.softDeleteGroup(db, userId, transferGroupId);
     });
 
-    await this.balanceService.invalidate(userId);
+    await this.balanceService.invalidate(
+      userId,
+      legs.map((l) => l.accountId),
+    );
   }
 }

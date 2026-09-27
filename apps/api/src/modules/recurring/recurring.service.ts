@@ -1,65 +1,45 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { RecurrenceFrequency, TransactionType } from '@prisma/client';
 import {
   CreateRecurringRuleInput,
-  UpdateRecurringRuleInput,
   RecurringRuleResponse,
   TransactionResponse,
-  addDays,
-  addMonths,
-  addYears,
-  endOfMonth,
+  UpdateRecurringRuleInput,
   formatIsoDate,
   parseIsoDate,
 } from '@fintrack/shared';
-import { PrismaService } from '../../infra/prisma/prisma.service';
 import {
+  OccurrenceWithRelations,
   RecurringRepository,
   RecurringRuleWithRelations,
 } from './recurring.repository';
-import { AccountsRepository } from '../accounts/accounts.repository';
+import { RecurringRunnerService } from './recurring-runner.service';
+import { defaultDayOfCycle, firstOccurrenceOnOrAfter } from './recurrence';
+import { AccountAccessService } from '../accounts/account-access.service';
+import { BalanceGuardService } from '../accounts/balance-guard.service';
 import { CategoriesRepository } from '../categories/categories.repository';
-import { BalanceService } from '../accounts/balance.service';
-import { BudgetsService } from '../budgets/budgets.service';
+import { PrismaService } from '../../infra/prisma/prisma.service';
+import { ClockService } from '../../infra/clock/clock.service';
 import {
-  NotFoundDomainException,
+  ConflictDomainException,
+  DomainException,
   InvalidCategoryTypeException,
+  NotFoundDomainException,
 } from '../../common/exceptions/domain.exception';
 
-export function computeNextRun(
-  current: Date,
-  frequency: RecurrenceFrequency,
-  dayOfCycle?: number | null,
-): Date {
-  switch (frequency) {
-    case 'DAILY':
-      return addDays(current, 1);
-    case 'WEEKLY':
-      return addDays(current, 7);
-    case 'MONTHLY': {
-      const nextMonth = addMonths(current, 1);
-      if (dayOfCycle && dayOfCycle >= 1 && dayOfCycle <= 31) {
-        const maxDays = endOfMonth(nextMonth).getUTCDate();
-        const targetDay = Math.min(dayOfCycle, maxDays);
-        return new Date(Date.UTC(nextMonth.getUTCFullYear(), nextMonth.getUTCMonth(), targetDay));
-      }
-      return nextMonth;
-    }
-    case 'YEARLY':
-      return addYears(current, 1);
-  }
+function laterOf(a: Date, b: Date): Date {
+  return a > b ? a : b;
 }
 
 @Injectable()
 export class RecurringService {
-  private readonly logger = new Logger(RecurringService.name);
-
   constructor(
     private readonly repository: RecurringRepository,
-    private readonly accountsRepository: AccountsRepository,
+    private readonly runner: RecurringRunnerService,
+    private readonly accountAccess: AccountAccessService,
     private readonly categoriesRepository: CategoriesRepository,
-    private readonly balanceService: BalanceService,
-    private readonly budgetsService: BudgetsService,
+    private readonly balanceGuard: BalanceGuardService,
+    private readonly clock: ClockService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -69,233 +49,156 @@ export class RecurringService {
   }
 
   async getById(userId: string, id: string): Promise<RecurringRuleResponse> {
-    const rule = await this.repository.findById(userId, id);
-    if (!rule) {
-      throw new NotFoundDomainException('Takroriy to‘lov qoidasi topilmadi');
-    }
-    return this.mapRule(rule);
+    return this.mapRule(await this.requireRule(userId, id));
   }
 
+  /** Past occurrences are not back-filled: the schedule starts at max(startsAt, today). */
   async create(userId: string, dto: CreateRecurringRuleInput): Promise<RecurringRuleResponse> {
-    const account = await this.accountsRepository.findById(userId, dto.accountId);
-    if (!account) {
-      throw new NotFoundDomainException('Hisob topilmadi');
-    }
+    await this.accountAccess.assertWritable(userId, dto.accountId);
+    if (dto.categoryId) await this.assertCategory(userId, dto.categoryId, dto.type);
 
-    if (dto.categoryId) {
-      const category = await this.categoriesRepository.findById(userId, dto.categoryId);
-      if (!category) {
-        throw new NotFoundDomainException('Kategoriya topilmadi');
-      }
-      if (category.type !== dto.type) {
-        throw new InvalidCategoryTypeException();
-      }
-    }
-
+    const frequency = dto.frequency as RecurrenceFrequency;
     const startsAt = parseIsoDate(dto.startsAt);
-    const endsAt = dto.endsAt ? parseIsoDate(dto.endsAt) : null;
-    const nextRunAt = startsAt;
+    const dayOfCycle = defaultDayOfCycle(frequency, startsAt, dto.dayOfCycle);
+    const today = parseIsoDate(await this.clock.todayFor(userId));
 
     const created = await this.repository.create(userId, {
       accountId: dto.accountId,
       categoryId: dto.categoryId ?? null,
       type: dto.type as TransactionType,
       amount: BigInt(dto.amount),
-      frequency: dto.frequency as RecurrenceFrequency,
-      dayOfCycle: dto.dayOfCycle ?? null,
+      frequency,
+      dayOfCycle,
       startsAt,
-      endsAt,
-      nextRunAt,
+      endsAt: dto.endsAt ? parseIsoDate(dto.endsAt) : null,
+      nextRunAt: firstOccurrenceOnOrAfter(laterOf(startsAt, today), frequency, startsAt, dayOfCycle),
       note: dto.note ?? null,
     });
 
-    return this.mapRule(created);
+    // A rule that is due today should not wait for the next hourly run.
+    await this.runner.materialize(created.id);
+    return this.getById(userId, created.id);
   }
 
-  async update(
-    userId: string,
-    id: string,
-    dto: UpdateRecurringRuleInput,
-  ): Promise<RecurringRuleResponse> {
-    const existing = await this.repository.findById(userId, id);
-    if (!existing) {
-      throw new NotFoundDomainException('Takroriy to‘lov qoidasi topilmadi');
+  async update(userId: string, id: string, dto: UpdateRecurringRuleInput): Promise<RecurringRuleResponse> {
+    const existing = await this.requireRule(userId, id);
+    const endsAt = dto.endsAt === undefined ? undefined : dto.endsAt ? parseIsoDate(dto.endsAt) : null;
+    if (endsAt && endsAt < existing.startsAt) {
+      throw new DomainException(
+        'Tugash sanasi boshlanish sanasidan oldin bo‘lishi mumkin emas',
+        'VALIDATION_ERROR',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const dayOfCycle =
+      dto.dayOfCycle === undefined
+        ? undefined
+        : defaultDayOfCycle(existing.frequency, existing.startsAt, dto.dayOfCycle);
+
+    // Re-activating or re-anchoring restarts the schedule from today instead of replaying the gap.
+    const reschedule = (dto.isActive === true && !existing.isActive) || dayOfCycle !== undefined;
+    let nextRunAt: Date | undefined;
+    if (reschedule) {
+      const today = parseIsoDate(await this.clock.todayFor(userId));
+      nextRunAt = firstOccurrenceOnOrAfter(
+        laterOf(existing.startsAt, today),
+        existing.frequency,
+        existing.startsAt,
+        dayOfCycle === undefined ? existing.dayOfCycle : dayOfCycle,
+      );
     }
 
     const updated = await this.repository.update(userId, id, {
       amount: dto.amount ? BigInt(dto.amount) : undefined,
       note: dto.note,
       isActive: dto.isActive,
-      dayOfCycle: dto.dayOfCycle,
-      endsAt: dto.endsAt ? parseIsoDate(dto.endsAt) : undefined,
+      dayOfCycle,
+      endsAt,
+      nextRunAt,
     });
-
     return this.mapRule(updated);
   }
 
   async delete(userId: string, id: string): Promise<void> {
-    const existing = await this.repository.findById(userId, id);
-    if (!existing) {
-      throw new NotFoundDomainException('Takroriy to‘lov qoidasi topilmadi');
-    }
+    await this.requireRule(userId, id);
     await this.repository.delete(userId, id);
   }
 
+  /**
+   * Books today's occurrence immediately. Repeating it the same day returns the same row;
+   * an occurrence the user already deleted today is not silently recreated.
+   */
   async runNow(
     userId: string,
     id: string,
   ): Promise<{ transaction: TransactionResponse; rule: RecurringRuleResponse }> {
-    const rule = await this.repository.findById(userId, id);
-    if (!rule) {
-      throw new NotFoundDomainException('Takroriy to‘lov qoidasi topilmadi');
+    const existing = await this.requireRule(userId, id);
+    if (!existing.isActive) {
+      throw new DomainException(
+        'Nofaol takroriy to‘lovni ishga tushirib bo‘lmaydi',
+        'RECURRING_INACTIVE',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
     }
+    await this.accountAccess.assertWritable(userId, existing.accountId);
+    const todayIso = await this.clock.todayFor(userId);
+    const today = parseIsoDate(todayIso);
 
-    const todayStr = formatIsoDate(new Date());
-    const today = parseIsoDate(todayStr);
+    const result = await this.prisma.$transaction(async (db) => {
+      const rule = await this.repository.lock(db, id, userId);
+      if (!rule) throw new NotFoundDomainException('Takroriy to‘lov qoidasi topilmadi');
 
-    let tx = await this.prisma.transaction.findFirst({
-      where: {
-        recurringRuleId: rule.id,
-        date: today,
-        deletedAt: null,
-      },
-      include: {
-        account: { select: { id: true, name: true, icon: true } },
-        category: { select: { id: true, name: true, icon: true, color: true } },
-        tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
-      },
+      const live = await this.repository.findLiveOccurrence(db, rule.id, today);
+      if (live) return { transaction: live, rule: existing, created: false };
+      if (await this.repository.findOccurrence(db, rule.id, today)) {
+        throw new ConflictDomainException(
+          'RECURRING_ALREADY_RAN',
+          'Bugungi to‘lov allaqachon yozilgan va o‘chirilgan',
+          { date: todayIso },
+        );
+      }
+
+      if (rule.type === 'EXPENSE') {
+        await this.balanceGuard.assertCanDebit(db, userId, rule.accountId, rule.amount);
+      }
+      const transaction = await this.repository.createOccurrence(db, rule, today);
+
+      // Today's scheduled occurrence has now been paid; the schedule moves past it.
+      const nextRunAt =
+        rule.nextRunAt <= today
+          ? firstOccurrenceOnOrAfter(
+              new Date(today.getTime() + 86_400_000),
+              rule.frequency,
+              rule.startsAt,
+              rule.dayOfCycle,
+            )
+          : rule.nextRunAt;
+      const saved = await this.repository.saveSchedule(db, rule.id, nextRunAt, rule.isActive);
+      return { transaction, rule: saved, created: true };
     });
 
-    let updatedRule = rule;
-
-    if (!tx) {
-      const result = await this.prisma.$transaction(async (prismaTx) => {
-        const createdTx = await prismaTx.transaction.create({
-          data: {
-            userId: rule.userId,
-            accountId: rule.accountId,
-            categoryId: rule.categoryId,
-            type: rule.type,
-            amount: rule.amount,
-            date: today,
-            note: rule.note ?? 'Takroriy to‘lov',
-            recurringRuleId: rule.id,
-          },
-          include: {
-            account: { select: { id: true, name: true, icon: true } },
-            category: { select: { id: true, name: true, icon: true, color: true } },
-            tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
-          },
-        });
-
-        let nextRun = rule.nextRunAt;
-        if (nextRun <= today) {
-          nextRun = computeNextRun(today, rule.frequency, rule.dayOfCycle);
-        }
-        const isDeactivated = rule.endsAt ? nextRun > rule.endsAt : false;
-
-        const updated = await prismaTx.recurringRule.update({
-          where: { id: rule.id },
-          data: {
-            nextRunAt: nextRun,
-            isActive: isDeactivated ? false : rule.isActive,
-          },
-          include: {
-            account: { select: { id: true, name: true, icon: true } },
-            category: { select: { id: true, name: true, icon: true, color: true } },
-          },
-        });
-
-        return { createdTx, updated };
+    if (result.created) {
+      await this.runner.afterCommit({
+        rule: result.rule,
+        created: [result.transaction],
+        skippedDates: [],
+        deactivatedReason: null,
       });
-
-      tx = result.createdTx;
-      updatedRule = result.updated;
-
-      await this.balanceService.invalidate(userId);
-
-      if (rule.type === 'EXPENSE' && rule.categoryId) {
-        await this.budgetsService.checkAndNotify(userId, rule.categoryId, today).catch(() => {});
-      }
     }
-
-    return {
-      transaction: this.mapTransaction(tx),
-      rule: this.mapRule(updatedRule),
-    };
+    return { transaction: this.mapTransaction(result.transaction), rule: this.mapRule(result.rule) };
   }
 
-  async processDueRules(
-    targetDate?: Date,
-  ): Promise<{ processed: number; skipped: number; errors: number }> {
-    const effectiveDate = targetDate ?? parseIsoDate(formatIsoDate(new Date()));
-    const dueRules = await this.repository.findDueRules(effectiveDate);
+  private async requireRule(userId: string, id: string): Promise<RecurringRuleWithRelations> {
+    const rule = await this.repository.findById(userId, id);
+    if (!rule) throw new NotFoundDomainException('Takroriy to‘lov qoidasi topilmadi');
+    return rule;
+  }
 
-    let processed = 0;
-    let skipped = 0;
-    let errors = 0;
-
-    for (const rule of dueRules) {
-      try {
-        const existing = await this.repository.findExistingTransaction(rule.id, rule.nextRunAt);
-        if (existing) {
-          const nextRun = computeNextRun(rule.nextRunAt, rule.frequency, rule.dayOfCycle);
-          const isDeactivated = rule.endsAt ? nextRun > rule.endsAt : false;
-          await this.repository.update(rule.userId, rule.id, {
-            nextRunAt: nextRun,
-            isActive: isDeactivated ? false : undefined,
-          });
-          skipped++;
-          continue;
-        }
-
-        await this.prisma.$transaction(async (tx) => {
-          await tx.transaction.create({
-            data: {
-              userId: rule.userId,
-              accountId: rule.accountId,
-              categoryId: rule.categoryId,
-              type: rule.type,
-              amount: rule.amount,
-              date: rule.nextRunAt,
-              note: rule.note ?? 'Takroriy to‘lov',
-              recurringRuleId: rule.id,
-            },
-          });
-
-          const nextRun = computeNextRun(rule.nextRunAt, rule.frequency, rule.dayOfCycle);
-          const isDeactivated = rule.endsAt ? nextRun > rule.endsAt : false;
-
-          await tx.recurringRule.update({
-            where: { id: rule.id },
-            data: {
-              nextRunAt: nextRun,
-              isActive: isDeactivated ? false : undefined,
-            },
-          });
-        });
-
-        await this.balanceService.invalidate(rule.userId);
-
-        if (rule.type === 'EXPENSE' && rule.categoryId) {
-          await this.budgetsService
-            .checkAndNotify(rule.userId, rule.categoryId, rule.nextRunAt)
-            .catch(() => {});
-        }
-
-        processed++;
-      } catch (err: unknown) {
-        const errorObject = err as { code?: string; message?: string };
-        if (errorObject?.code === 'P2002') {
-          skipped++;
-        } else {
-          this.logger.error(`Error processing recurring rule ${rule.id}: ${errorObject?.message}`);
-          errors++;
-        }
-      }
-    }
-
-    return { processed, skipped, errors };
+  private async assertCategory(userId: string, categoryId: string, type: string): Promise<void> {
+    const category = await this.categoriesRepository.findById(userId, categoryId);
+    if (!category) throw new NotFoundDomainException('Kategoriya topilmadi');
+    if (category.type !== type) throw new InvalidCategoryTypeException();
   }
 
   private mapRule(rule: RecurringRuleWithRelations): RecurringRuleResponse {
@@ -318,19 +221,7 @@ export class RecurringService {
     };
   }
 
-  private mapTransaction(tx: {
-    id: string;
-    type: TransactionType;
-    amount: bigint;
-    date: Date;
-    note: string | null;
-    account: { id: string; name: string; icon: string };
-    category: { id: string; name: string; icon: string; color: string } | null;
-    tags: Array<{ tag: { id: string; name: string; color: string } }>;
-    debtId?: string | null;
-    transferGroupId?: string | null;
-    createdAt: Date;
-  }): TransactionResponse {
+  private mapTransaction(tx: OccurrenceWithRelations): TransactionResponse {
     return {
       id: tx.id,
       type: tx.type,
@@ -340,8 +231,8 @@ export class RecurringService {
       account: tx.account,
       category: tx.category,
       tags: tx.tags.map((t) => t.tag),
-      debtId: tx.debtId ?? null,
-      transferGroupId: tx.transferGroupId ?? null,
+      debtId: tx.debtId,
+      transferGroupId: tx.transferGroupId,
       createdAt: tx.createdAt.toISOString(),
     };
   }

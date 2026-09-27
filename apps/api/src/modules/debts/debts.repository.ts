@@ -50,7 +50,17 @@ export interface DebtSummaryRow {
   overdueAmount: bigint;
 }
 
-const paymentsInclude = { payments: { orderBy: { paidAt: 'desc' } } } satisfies Prisma.DebtInclude;
+export interface ReminderCandidate {
+  id: string;
+  userId: string;
+  direction: DebtDirection;
+  personName: string;
+  dueDate: Date;
+  remaining: bigint;
+  timezone: string;
+}
+
+const paymentsInclude ={ payments: { orderBy: { paidAt: 'desc' } } } satisfies Prisma.DebtInclude;
 
 @Injectable()
 export class DebtsRepository {
@@ -261,6 +271,31 @@ export class DebtsRepository {
       where: { debtId: id, userId, deletedAt: null },
       data: { deletedAt: now },
     });
+  }
+
+  /** System-wide scan for the daily reminder job: unpaid debts due on or before `until`. */
+  async findReminderCandidates(until: Date): Promise<ReminderCandidate[]> {
+    const debts = await this.prisma.debt.findMany({
+      where: {
+        deletedAt: null,
+        status: { not: 'PAID' },
+        dueDate: { not: null, lte: until },
+        user: { deletedAt: null },
+      },
+      include: {
+        payments: { select: { amount: true } },
+        user: { select: { timezone: true } },
+      },
+    });
+    return debts.map((d) => ({
+      id: d.id,
+      userId: d.userId,
+      direction: d.direction,
+      personName: d.personName,
+      dueDate: d.dueDate as Date,
+      remaining: d.amount - d.payments.reduce((acc, p) => acc + p.amount, 0n),
+      timezone: d.user.timezone,
+    }));
   }
 
   async findPayments(userId: string, debtId: string): Promise<DebtPayment[]> {

@@ -23,6 +23,7 @@ import { BudgetsModule } from './modules/budgets/budgets.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RecurringModule } from './modules/recurring/recurring.module';
 import { ExportModule } from './modules/export/export.module';
+import { JobsModule } from './modules/jobs/jobs.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { CsrfGuard } from './common/guards/csrf.guard';
 
@@ -99,6 +100,7 @@ const REDACTED_LOG_PATHS = [
     NotificationsModule,
     RecurringModule,
     ExportModule,
+    JobsModule,
   ],
 
   providers: [

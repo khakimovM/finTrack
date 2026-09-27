@@ -92,7 +92,7 @@ export class DebtsService {
       });
     });
 
-    await this.balanceService.invalidate(userId);
+    await this.balanceService.invalidate(userId, [dto.accountId]);
     const totalBalance = await this.balanceService.getTotalBalance(userId);
 
     return {
@@ -117,14 +117,15 @@ export class DebtsService {
 
   /** Removing a debt reverses all of its ledger rows so balances heal themselves. */
   async delete(userId: string, id: string): Promise<void> {
-    await this.prisma.$transaction(async (db) => {
+    const touched = await this.prisma.$transaction(async (db) => {
       const debt = await this.repository.lock(db, userId, id);
       if (!debt) throw new NotFoundDomainException('Qarz topilmadi');
 
       const rows = await this.repository.liveLedgerRows(db, userId, id);
       await this.balanceGuard.assertDeltas(db, userId, balanceDeltas(rows, []));
       await this.repository.softDelete(db, userId, id);
+      return rows.map((row) => row.accountId);
     });
-    await this.balanceService.invalidate(userId);
+    await this.balanceService.invalidate(userId, touched);
   }
 }

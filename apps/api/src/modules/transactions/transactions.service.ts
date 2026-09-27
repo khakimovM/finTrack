@@ -100,7 +100,7 @@ export class TransactionsService {
       );
     });
 
-    await this.balanceService.invalidate(userId);
+    await this.balanceService.invalidate(userId, [dto.accountId]);
 
     const [accountBalance, totalBalance, budgetAlert] = await Promise.all([
       this.balanceService.getBalance(userId, dto.accountId),
@@ -152,7 +152,7 @@ export class TransactionsService {
       );
     });
 
-    await this.balanceService.invalidate(userId);
+    await this.balanceService.invalidate(userId, [existing.accountId, accountId]);
     await this.notifyBudget(userId, updated);
     return this.mapToResponse(updated);
   }
@@ -189,7 +189,7 @@ export class TransactionsService {
     });
     if (!restored) throw new NotFoundDomainException('Tranzaksiya topilmadi');
 
-    await this.balanceService.invalidate(userId);
+    await this.balanceService.invalidate(userId, [deleted.accountId]);
     await this.notifyBudget(userId, restored);
     return this.mapToResponse(restored);
   }
@@ -204,7 +204,10 @@ export class TransactionsService {
         rows.map((row) => row.id),
       );
     });
-    await this.balanceService.invalidate(userId);
+    await this.balanceService.invalidate(
+      userId,
+      rows.map((row) => row.accountId),
+    );
   }
 
   private assertUserManaged(row: Pick<Transaction, 'id' | 'type' | 'transferGroupId' | 'debtId'>): void {

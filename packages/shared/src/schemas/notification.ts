@@ -7,6 +7,7 @@ export const NotificationTypeSchema = z.enum([
   'DEBT_OVERDUE',
   'NEGATIVE_BALANCE',
   'RECURRING_CREATED',
+  'RECURRING_SKIPPED',
 ]);
 export type NotificationType = z.infer<typeof NotificationTypeSchema>;
 

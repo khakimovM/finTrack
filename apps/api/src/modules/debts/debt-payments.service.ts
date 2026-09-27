@@ -125,7 +125,7 @@ export class DebtPaymentsService {
       return { payment, transaction, updatedDebt };
     });
 
-    await this.balanceService.invalidate(userId);
+    await this.balanceService.invalidate(userId, [request.accountId]);
     const totalBalance = await this.balanceService.getTotalBalance(userId);
 
     return {
@@ -153,10 +153,11 @@ export class DebtPaymentsService {
       await this.repository.deletePayment(db, userId, payment);
 
       const paid = await this.repository.paidAmount(db, debtId);
-      return this.repository.setStatus(db, userId, debtId, debtStatusFor(debt.amount, paid), null);
+      const debtAfter = await this.repository.setStatus(db, userId, debtId, debtStatusFor(debt.amount, paid), null);
+      return { debtAfter, accountId: payment.transaction.accountId };
     });
 
-    await this.balanceService.invalidate(userId);
-    return toDebtResponse(updated, await this.clock.todayFor(userId));
+    await this.balanceService.invalidate(userId, [updated.accountId]);
+    return toDebtResponse(updated.debtAfter, await this.clock.todayFor(userId));
   }
 }

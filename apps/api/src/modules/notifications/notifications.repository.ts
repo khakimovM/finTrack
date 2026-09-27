@@ -2,6 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { Notification, NotificationType, Prisma } from '@prisma/client';
 
+export interface NewNotification {
+  type: NotificationType;
+  title: string;
+  body: string;
+  meta?: Prisma.InputJsonValue;
+  /** Same key for the same user → stored once (see Notification.dedupeKey). */
+  dedupeKey?: string;
+}
+
 @Injectable()
 export class NotificationsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -41,15 +50,7 @@ export class NotificationsRepository {
     });
   }
 
-  async create(
-    userId: string,
-    data: {
-      type: NotificationType;
-      title: string;
-      body: string;
-      meta?: Prisma.InputJsonValue;
-    },
-  ): Promise<Notification> {
+  async create(userId: string, data: NewNotification): Promise<Notification> {
     return this.prisma.notification.create({
       data: {
         userId,
@@ -57,6 +58,7 @@ export class NotificationsRepository {
         title: data.title,
         body: data.body,
         meta: data.meta,
+        dedupeKey: data.dedupeKey,
       },
     });
   }

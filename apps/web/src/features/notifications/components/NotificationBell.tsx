@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { format, parseISO } from 'date-fns';
 import {
   useNotifications,
   useMarkNotificationRead,
@@ -7,6 +8,10 @@ import {
 import { Bell, CheckCheck, AlertTriangle, AlertCircle, Clock, Info } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { cn } from '../../../lib/utils';
+
+// createdAt is UTC; format() renders it in the viewer's local time.
+const SEVERE_TYPES = new Set(['BUDGET_EXCEEDED', 'DEBT_OVERDUE', 'NEGATIVE_BALANCE']);
+const WARNING_TYPES = new Set(['BUDGET_WARNING', 'DEBT_DUE_SOON', 'RECURRING_SKIPPED']);
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
@@ -113,9 +118,9 @@ export function NotificationBell() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-1.5 font-bold text-foreground">
-                        {n.type === 'BUDGET_EXCEEDED' ? (
+                        {SEVERE_TYPES.has(n.type) ? (
                           <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                        ) : n.type === 'BUDGET_WARNING' ? (
+                        ) : WARNING_TYPES.has(n.type) ? (
                           <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />
                         ) : (
                           <Info className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -125,7 +130,7 @@ export function NotificationBell() {
 
                       <div className="flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground">
                         <Clock className="h-2.5 w-2.5" />
-                        <span>{n.createdAt.slice(11, 16)}</span>
+                        <span>{format(parseISO(n.createdAt), 'HH:mm')}</span>
                         {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-primary ml-0.5" />}
                       </div>
                     </div>

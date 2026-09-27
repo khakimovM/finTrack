@@ -9,6 +9,9 @@ export interface AccountBalances {
 
 const CACHE_TTL_SECONDS = 3600;
 
+/** Runs after a committed ledger write, e.g. to raise NEGATIVE_BALANCE alerts. */
+export type LedgerCommitListener = (userId: string, touchedAccountIds: string[]) => Promise<void>;
+
 const balancesCodec = {
   encode: (value: AccountBalances) =>
     JSON.stringify({
@@ -27,6 +30,8 @@ const balancesCodec = {
 /** Read side of balances: derived from the ledger, cached per user (never stored). */
 @Injectable()
 export class BalanceService {
+  private readonly listeners: LedgerCommitListener[] = [];
+
   constructor(
     private readonly repository: BalanceRepository,
     private readonly cache: UserCacheService,
@@ -57,8 +62,21 @@ export class BalanceService {
     return total;
   }
 
-  /** Must be called after every committed ledger or account write. */
-  async invalidate(userId: string): Promise<void> {
+  /**
+   * Must be called after every committed ledger or account write. `touchedAccountIds` are the
+   * accounts whose balance may have gone down; listeners (alerts) inspect them.
+   */
+  async invalidate(userId: string, touchedAccountIds: Iterable<string> = []): Promise<void> {
     await this.cache.invalidate(userId);
+    const touched = [...new Set(touchedAccountIds)];
+    if (touched.length === 0) return;
+    for (const listener of this.listeners) {
+      await listener(userId, touched);
+    }
+  }
+
+  /** Observer hook so alerting can live outside this module without a dependency cycle. */
+  onLedgerCommitted(listener: LedgerCommitListener): void {
+    this.listeners.push(listener);
   }
 }

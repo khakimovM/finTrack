@@ -6,8 +6,11 @@ import { AccountAccessService } from './account-access.service';
 import { BalanceService } from './balance.service';
 import { BalanceGuardService } from './balance-guard.service';
 import { BalanceRepository } from './balance.repository';
+import { NegativeBalanceNotifier } from './negative-balance.notifier';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
+  imports: [NotificationsModule],
   controllers: [AccountsController],
   providers: [
     AccountsService,
@@ -16,7 +19,15 @@ import { BalanceRepository } from './balance.repository';
     BalanceRepository,
     BalanceService,
     BalanceGuardService,
+    NegativeBalanceNotifier,
   ],
-  exports: [AccountsService, AccountsRepository, AccountAccessService, BalanceService, BalanceGuardService],
+  exports: [
+    AccountsService,
+    AccountsRepository,
+    AccountAccessService,
+    BalanceService,
+    BalanceGuardService,
+    NegativeBalanceNotifier,
+  ],
 })
 export class AccountsModule {}

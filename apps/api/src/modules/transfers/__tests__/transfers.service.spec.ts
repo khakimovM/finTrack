@@ -129,7 +129,7 @@ describe('TransfersService', () => {
       ]),
     );
     expect(t.repository.softDeleteGroup).toHaveBeenCalledWith(t.prisma.tx, USER, 'tg_1');
-    expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER);
+    expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER, expect.any(Array));
   });
 
   it('returns 404 for an unknown or foreign transfer group', async () => {

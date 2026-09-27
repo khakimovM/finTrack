@@ -137,7 +137,7 @@ describe('DebtsService', () => {
 
       expect(t.prisma.$transaction).toHaveBeenCalledTimes(1);
       expect(t.guard.assertCanDebit).toHaveBeenCalledWith(t.prisma.tx, USER, ACCOUNT, 1_000_000n);
-      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER);
+      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER, expect.any(Array));
       expect(result.debt.remainingAmount).toBe('1000000');
       expect(result.transaction.id).toBe('tx-1');
     });
@@ -192,7 +192,7 @@ describe('DebtsService', () => {
         new Map([[ACCOUNT, -600_000n]]),
       );
       expect(t.repository.softDelete).toHaveBeenCalledWith(t.prisma.tx, USER, DEBT_ID);
-      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER);
+      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER, expect.any(Array));
     });
 
     it('returns 404 for someone else’s debt', async () => {

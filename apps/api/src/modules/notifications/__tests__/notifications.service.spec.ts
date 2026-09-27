@@ -16,6 +16,8 @@ describe('NotificationsService', () => {
     title: 'Byudjet ogohlantirishi',
     body: 'Oziq-ovqat byudjeti 80% ga yetdi',
     meta: { categoryId: 'cat-1', percent: 85 },
+    dedupeKey: null,
+    telegramSentAt: null,
     readAt: null,
     createdAt: new Date('2026-09-01T12:00:00Z'),
   };
@@ -140,5 +142,20 @@ describe('NotificationsService', () => {
 
       expect(result).toBeNull();
     });
+  });
+});
+
+describe('NotificationsService.createSafe idempotency', () => {
+  it('treats a duplicate dedupeKey as already delivered (returns null, never throws)', async () => {
+    const { Prisma } = await import('@prisma/client');
+    const repo = {
+      create: jest.fn().mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: '5.22.0' }),
+      ),
+    };
+    const service = new NotificationsService(repo as unknown as NotificationsRepository);
+    await expect(
+      service.createSafe('u1', { type: 'DEBT_OVERDUE', title: 't', body: 'b', dedupeKey: 'k' }),
+    ).resolves.toBeNull();
   });
 });

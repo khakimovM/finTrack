@@ -116,7 +116,7 @@ describe('TransactionsService', () => {
         expect.objectContaining({ type: 'EXPENSE', amount: 50_000n }),
         [],
       );
-      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER);
+      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER, expect.any(Array));
       expect(t.budgets.checkAndNotify).toHaveBeenCalledWith(USER, CAT, expect.any(Date));
       expect(res).toMatchObject({ accountBalance: '950000', totalBalance: '1950000' });
       expect(res.transaction.date).toBe('2026-09-01');
@@ -230,7 +230,7 @@ describe('TransactionsService', () => {
 
       expect(t.guard.assertDeltas).toHaveBeenCalledWith(t.prisma.tx, USER, new Map([[ACC, -70_000n]]));
       expect(t.repository.softDelete).toHaveBeenCalledWith(t.prisma.tx, USER, ['tx-1']);
-      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER);
+      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER, expect.any(Array));
     });
 
     it('refuses to delete a loan row', async () => {

@@ -65,6 +65,7 @@ enum NotificationType {
   DEBT_OVERDUE
   NEGATIVE_BALANCE
   RECURRING_CREATED
+  RECURRING_SKIPPED // strict mode refused an occurrence, or its account was archived
 }
 
 // ============================================================
@@ -213,24 +214,24 @@ model TransactionTag {
 // ============================================================
 
 model Transaction {
-  id         String          @id @default(uuid())
-  userId     String          @map("user_id")
-  accountId  String          @map("account_id")
-  type       TransactionType
+  id              String          @id @default(uuid())
+  userId          String          @map("user_id")
+  accountId       String          @map("account_id")
+  type            TransactionType
   /// Amount in tiyin, always positive. The sign comes from `type`.
-  amount     BigInt
+  amount          BigInt
   /// Amount converted to the user's base currency at the transaction date (Phase 8).
-  amountBase BigInt?         @map("amount_base")
-  categoryId String?         @map("category_id")
-  debtId     String?         @map("debt_id")
+  amountBase      BigInt?         @map("amount_base")
+  categoryId      String?         @map("category_id")
+  debtId          String?         @map("debt_id")
   /// Links the two rows of a single transfer.
-  transferGroupId String?    @map("transfer_group_id")
-  recurringRuleId String?    @map("recurring_rule_id")
-  date       DateTime        @db.Date
-  note       String?         @db.VarChar(500)
-  createdAt  DateTime        @default(now()) @map("created_at")
-  updatedAt  DateTime        @updatedAt @map("updated_at")
-  deletedAt  DateTime?       @map("deleted_at")
+  transferGroupId String?         @map("transfer_group_id")
+  recurringRuleId String?         @map("recurring_rule_id")
+  date            DateTime        @db.Date
+  note            String?         @db.VarChar(500)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  deletedAt       DateTime?       @map("deleted_at")
 
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   account       Account          @relation(fields: [accountId], references: [id], onDelete: Restrict)
@@ -300,16 +301,16 @@ model DebtPayment {
 // ============================================================
 
 model Budget {
-  id           String    @id @default(uuid())
-  userId       String    @map("user_id")
-  categoryId   String    @map("category_id")
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  categoryId  String   @map("category_id")
   /// First day of the budgeted month, e.g. 2026-08-01.
-  month        DateTime  @db.Date
-  limitAmount  BigInt    @map("limit_amount")
+  month       DateTime @db.Date
+  limitAmount BigInt   @map("limit_amount")
   /// Highest threshold already notified (0, 80 or 100) — keeps alerts idempotent.
-  notifiedAt   Int       @default(0) @map("notified_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  notifiedAt  Int      @default(0) @map("notified_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -356,18 +357,24 @@ model RecurringRule {
 // ============================================================
 
 model Notification {
-  id        String           @id @default(uuid())
-  userId    String           @map("user_id")
-  type      NotificationType
-  title     String
-  body      String           @db.VarChar(500)
+  id             String           @id @default(uuid())
+  userId         String           @map("user_id")
+  type           NotificationType
+  title          String
+  body           String           @db.VarChar(500)
   /// Free-form payload: { budgetId, debtId, percent, ... }
-  meta      Json?
-  readAt    DateTime?        @map("read_at")
-  createdAt DateTime         @default(now()) @map("created_at")
+  meta           Json?
+  /// Idempotency key for system-generated alerts (e.g. "debt-overdue:{id}:{week}").
+  /// Unique per user, so a retried job or a double click can never notify twice.
+  dedupeKey      String?          @map("dedupe_key") @db.VarChar(200)
+  /// Set once the alert was delivered to Telegram (outbox bookkeeping).
+  telegramSentAt DateTime?        @map("telegram_sent_at")
+  readAt         DateTime?        @map("read_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, dedupeKey])
   @@index([userId, readAt, createdAt])
   @@map("notifications")
 }
@@ -377,12 +384,12 @@ model Notification {
 // ============================================================
 
 model ExchangeRate {
-  id       String   @id @default(uuid())
-  base     String   @db.VarChar(3)
-  quote    String   @db.VarChar(3)
+  id        String   @id @default(uuid())
+  base      String   @db.VarChar(3)
+  quote     String   @db.VarChar(3)
   /// Rate scaled by 1e6 to stay integral: 1 USD = 12 650,25 UZS -> 12650250000
-  rate     BigInt
-  date     DateTime @db.Date
+  rate      BigInt
+  date      DateTime @db.Date
   createdAt DateTime @default(now()) @map("created_at")
 
   @@unique([base, quote, date])

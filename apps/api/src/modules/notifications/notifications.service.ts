@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NotificationsRepository } from './notifications.repository';
+import { NewNotification, NotificationsRepository } from './notifications.repository';
 import { ListNotificationsQueryDto } from './dto/notification.dto';
 import { NotFoundDomainException } from '../../common/exceptions/domain.exception';
-import { Notification, NotificationType, Prisma } from '@prisma/client';
+import { Notification, Prisma } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
@@ -57,18 +57,14 @@ export class NotificationsService {
    * Internal helper for other modules to safely create notifications.
    * Will never throw to prevent blocking the main business operation.
    */
-  async createSafe(
-    userId: string,
-    data: {
-      type: NotificationType;
-      title: string;
-      body: string;
-      meta?: Prisma.InputJsonValue;
-    },
-  ): Promise<Notification | null> {
+  async createSafe(userId: string, data: NewNotification): Promise<Notification | null> {
     try {
       return await this.repository.create(userId, data);
     } catch (err) {
+      // A duplicate dedupeKey means this alert was already delivered: that is success.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        return null;
+      }
       this.logger.error(`Failed to create notification for user ${userId}`, err);
       return null;
     }

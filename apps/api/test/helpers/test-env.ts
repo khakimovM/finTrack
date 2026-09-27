@@ -37,6 +37,7 @@ process.env.REDIS_URL = resolveTestRedisUrl();
 process.env.NODE_ENV = 'test';
 process.env.LOG_LEVEL = 'fatal';
 process.env.SWAGGER_ENABLED = 'false';
+process.env.SCHEDULER_ENABLED = 'false';
 process.env.TRUST_PROXY = '1';
 process.env.JWT_ACCESS_SECRET ??= 'e2e_access_secret_that_is_long_enough_32';
 process.env.JWT_REFRESH_SECRET ??= 'e2e_refresh_secret_that_is_long_enough_32';

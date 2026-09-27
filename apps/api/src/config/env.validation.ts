@@ -33,6 +33,8 @@ export const envSchema = z.object({
     .default('1')
     .transform((v) => (v === 'true' ? true : v === 'false' ? false : Number(v))),
   SWAGGER_ENABLED: booleanFlag.optional(),
+  /** Registers the repeatable jobs on boot; e2e tests turn it off. */
+  SCHEDULER_ENABLED: booleanFlag.default('true'),
   APP_TIMEZONE: z.string().default('Asia/Tashkent'),
 });
 
