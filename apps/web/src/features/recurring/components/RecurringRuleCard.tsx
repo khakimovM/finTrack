@@ -26,7 +26,9 @@ export function RecurringRuleCard({
   onDelete,
   busy,
 }: RecurringRuleCardProps) {
-  const title = rule.category?.name ?? (rule.type === 'INCOME' ? 'Kirim' : 'Chiqim');
+  const title = rule.category?.name ?? rule.note ?? (rule.type === 'INCOME' ? 'Kirim' : 'Chiqim');
+  // The note is the title when there is no category; otherwise it is shown under the details.
+  const note = rule.category ? rule.note : null;
   const icon = rule.category?.icon ?? (rule.type === 'INCOME' ? '💼' : '🔁');
 
   return (
@@ -64,6 +66,7 @@ export function RecurringRuleCard({
           )}
           {rule.endsAt && <span>{formatDate(rule.endsAt)} gacha</span>}
         </div>
+        {note && <p className="truncate text-xs italic text-muted-foreground">{note}</p>}
 
         <div className="flex flex-wrap items-center justify-end gap-1 border-t border-border/40 pt-3">
           {rule.isActive && (

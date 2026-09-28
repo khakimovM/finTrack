@@ -40,6 +40,26 @@ describe('Background jobs & notifications (e2e)', () => {
   }
 
   describe('recurring rules', () => {
+    it('returns the note it stores, and lets the user change or clear it', async () => {
+      const user = await newUser(ctx);
+      const acc = await account(user, 'Notes');
+      const created = await user.post('/recurring', {
+        accountId: acc,
+        type: 'EXPENSE',
+        amount: '100',
+        frequency: 'MONTHLY',
+        startsAt: shift(1),
+        note: 'Kvartira ijarasi',
+      });
+      expect(created.body.data.note).toBe('Kvartira ijarasi');
+
+      const renamed = await user.patch(`/recurring/${created.body.data.id}`, { note: 'Ijara' });
+      expect(renamed.body.data.note).toBe('Ijara');
+      const cleared = await user.patch(`/recurring/${created.body.data.id}`, { note: null });
+      expect(cleared.body.data.note).toBeNull();
+      expect((await user.get('/recurring')).body.data[0].note).toBeNull();
+    });
+
     it('books today on creation without back-filling a past start date', async () => {
       const user = await newUser(ctx);
       const acc = await account(user, 'Rec');

@@ -24,10 +24,11 @@ function valuesOf(rule: RecurringRuleResponse | null): UpdateRecurringRuleInput 
     amount: rule?.amount ?? '',
     dayOfCycle: rule?.dayOfCycle ?? null,
     endsAt: rule?.endsAt ?? '',
+    note: rule?.note ?? '',
   };
 }
 
-/** Amount, day and end date. Type, account and frequency define the rule: create a new one instead. */
+/** Amount, day, end date and note. Type, account and frequency define the rule: create a new one instead. */
 export function RecurringEditModal({ rule, onClose }: RecurringEditModalProps) {
   const updateRule = useUpdateRecurringRule();
   const {
@@ -53,6 +54,8 @@ export function RecurringEditModal({ rule, onClose }: RecurringEditModalProps) {
     if (dirtyFields.amount) changes.amount = data.amount;
     if (dirtyFields.dayOfCycle) changes.dayOfCycle = data.dayOfCycle;
     if (dirtyFields.endsAt) changes.endsAt = data.endsAt;
+    // An emptied note is removed, not stored as "".
+    if (dirtyFields.note) changes.note = data.note?.trim() || null;
     if (Object.keys(changes).length > 0)
       await updateRule.mutateAsync({ id: rule.id, data: changes });
     onClose();
@@ -94,6 +97,14 @@ export function RecurringEditModal({ rule, onClose }: RecurringEditModalProps) {
             {...register('endsAt')}
           />
         </div>
+
+        <Input
+          type="text"
+          label="Izoh (ixtiyoriy)"
+          placeholder="Masalan: Kvartira ijarasi"
+          error={errors.note?.message}
+          {...register('note')}
+        />
 
         {hasDayOfCycle(rule.frequency) && (
           <p className="text-xs text-muted-foreground">

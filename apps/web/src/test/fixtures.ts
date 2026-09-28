@@ -57,6 +57,7 @@ export function rule(over: Partial<RecurringRuleResponse> = {}): RecurringRuleRe
     endsAt: null,
     nextRunAt: '2026-10-05',
     isActive: true,
+    note: null,
     account: cash,
     category: { id: uuid(), name: 'Uy-joy', icon: '🏠', color: '#84cc16' },
     createdAt: '2026-09-01T00:00:00.000Z',

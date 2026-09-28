@@ -76,6 +76,7 @@ export const RecurringRuleResponseSchema = z.object({
   endsAt: z.string().nullable(),
   nextRunAt: z.string(),
   isActive: z.boolean(),
+  note: z.string().nullable(),
   account: z.object({
     id: z.string().uuid(),
     name: z.string(),

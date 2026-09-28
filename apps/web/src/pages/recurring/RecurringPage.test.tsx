@@ -52,6 +52,22 @@ describe('RecurringPage', () => {
     expect(screen.getByText('5-oktabr, 2026')).toBeTruthy();
   });
 
+  it('shows the note: as the title without a category, under the details with one', async () => {
+    mockApi(
+      {
+        active: [
+          rule({ category: null, categoryId: null, note: 'Internet' }),
+          rule({ note: 'Kvartira ijarasi' }),
+        ],
+      },
+      newCalls(),
+    );
+    renderWithProviders(<RecurringPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Internet' })).toBeTruthy();
+    expect(screen.getByText('Kvartira ijarasi')).toBeTruthy();
+  });
+
   it('offers to create the first rule when there are none', async () => {
     mockApi({ active: [] }, newCalls());
     renderWithProviders(<RecurringPage />);

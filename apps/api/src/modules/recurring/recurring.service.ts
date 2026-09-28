@@ -214,6 +214,7 @@ export class RecurringService {
       endsAt: rule.endsAt ? formatIsoDate(rule.endsAt) : null,
       nextRunAt: formatIsoDate(rule.nextRunAt),
       isActive: rule.isActive,
+      note: rule.note,
       account: rule.account,
       category: rule.category,
       createdAt: rule.createdAt.toISOString(),
