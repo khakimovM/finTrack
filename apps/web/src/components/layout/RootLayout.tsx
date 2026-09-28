@@ -16,6 +16,7 @@ import {
   Wallet,
   ShieldCheck,
   ShieldAlert,
+  Repeat,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useUiStore } from '../../stores/uiStore';
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { to: '/app/accounts', label: 'Hisoblar', icon: CreditCard },
   { to: '/app/debts', label: 'Qarzlar', icon: HandCoins },
   { to: '/app/budgets', label: 'Byudjetlar', icon: PiggyBank },
+  { to: '/app/recurring', label: 'Takroriy to‘lovlar', icon: Repeat },
   { to: '/app/categories', label: 'Kategoriyalar', icon: FolderTree },
   { to: '/app/reports', label: 'Hisobotlar', icon: BarChart3 },
   { to: '/app/settings', label: 'Sozlamalar', icon: Settings },
@@ -59,7 +61,7 @@ export function RootLayout() {
       {/* Mobile Drawer Backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -67,7 +69,7 @@ export function RootLayout() {
       {/* Sidebar (Desktop & Mobile Drawer) */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-72 flex-col justify-between border-r border-border bg-surface px-4 py-6 transition-transform duration-300 md:static md:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-72 flex-col justify-between border-r border-border bg-surface px-4 py-6 transition-transform duration-300 lg:static lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -83,7 +85,7 @@ export function RootLayout() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="lg:hidden"
               onClick={toggleSidebar}
               aria-label="Menyuni yopish"
             >
@@ -170,7 +172,7 @@ export function RootLayout() {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar for mobile */}
         <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-4 md:px-8">
-          <div className="flex items-center space-x-3 md:hidden">
+          <div className="flex items-center space-x-3 lg:hidden">
             <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Menyuni ochish">
               <Menu className="h-5 w-5" />
             </Button>
@@ -180,7 +182,7 @@ export function RootLayout() {
             </div>
           </div>
 
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <h1 className="text-sm font-medium text-muted-foreground">
               Xush kelibsiz, <span className="font-bold text-foreground">{user?.name}</span>!
             </h1>

@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useBudgetsStatus, useDeleteBudget } from '../../features/budgets/hooks/useBudgets';
 import { BudgetStatusItem, formatMoney, formatIsoDate, todayLocalIso } from '@fintrack/shared';
 import { BudgetModal } from '../../features/budgets/components/BudgetModal';
+import { BudgetCard } from '../../features/budgets/components/BudgetCard';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -13,15 +13,13 @@ import {
   PlusCircle,
   ChevronLeft,
   ChevronRight,
-  Edit2,
-  Trash2,
-  AlertTriangle,
-  AlertCircle,
-  CheckCircle2,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { formatMonth } from '../../lib/format';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 export function BudgetsPage() {
+  const [confirmDialog, confirm] = useConfirm();
   const [currentMonth, setCurrentMonth] = useState(() => {
     return todayLocalIso().slice(0, 7); // YYYY-MM
   });
@@ -48,7 +46,13 @@ export function BudgetsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Haqiqatan ham ushbu byudjet limitini o‘chirmoqchimisiz?')) {
+    if (
+      await confirm({
+        title: 'Byudjet limiti o‘chirilsinmi?',
+        confirmLabel: 'O‘chirish',
+        destructive: true,
+      })
+    ) {
       await deleteBudget.mutateAsync(id);
     }
   };
@@ -92,19 +96,21 @@ export function BudgetsPage() {
               variant="ghost"
               size="sm"
               onClick={handlePrevMonth}
-              className="h-8 w-8 p-0"
+              className="h-11 w-11 p-0 sm:h-8 sm:w-8"
+              aria-label="Oldingi oy"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-xs font-black px-2 min-w-[90px] text-center">
-              {currentMonth}
+            <span className="text-xs font-black px-2 min-w-[110px] text-center" aria-live="polite">
+              {formatMonth(currentMonth)}
             </span>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={handleNextMonth}
-              className="h-8 w-8 p-0"
+              className="h-11 w-11 p-0 sm:h-8 sm:w-8"
+              aria-label="Keyingi oy"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -128,9 +134,7 @@ export function BudgetsPage() {
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Jami Limit
             </span>
-            <div className="text-xl font-black text-foreground">
-              {formatMoney(totalLimitTiyin)}
-            </div>
+            <div className="text-xl font-black text-foreground">{formatMoney(totalLimitTiyin)}</div>
             <p className="text-[11px] text-muted-foreground">Belgilangan oylik limit</p>
           </CardContent>
         </Card>
@@ -185,7 +189,9 @@ export function BudgetsPage() {
       ) : isError ? (
         <div className="py-12">
           <ErrorState
-            message={error instanceof Error ? error.message : 'Byudjetlarni yuklashda xatolik yuz berdi'}
+            message={
+              error instanceof Error ? error.message : 'Byudjetlarni yuklashda xatolik yuz berdi'
+            }
             onRetry={refetch}
           />
         </div>
@@ -194,7 +200,7 @@ export function BudgetsPage() {
           <EmptyState
             icon={<PieChart className="h-10 w-10 text-muted-foreground/60" />}
             title="Byudjetlar belgilanmagan"
-            description={`Ushbu oy (${currentMonth}) uchun hali birorta kategoriya byudjeti kiritilmagan`}
+            description={`${formatMonth(currentMonth)} uchun hali birorta kategoriya byudjeti kiritilmagan`}
             action={
               <Button size="sm" onClick={handleOpenCreate}>
                 + Byudjet belgilash
@@ -204,120 +210,9 @@ export function BudgetsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {budgets.map((b) => {
-            const isOk = b.state === 'OK';
-            const isWarning = b.state === 'WARNING';
-            const isExceeded = b.state === 'EXCEEDED';
-
-            return (
-              <Card
-                key={b.id}
-                className="border border-border/60 shadow-sm hover:border-primary/40 transition-all overflow-hidden"
-              >
-                <CardContent className="p-5 space-y-4">
-                  {/* Card Header: Category & State Badge */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-2xl shrink-0">{b.category.icon}</span>
-                      <div className="min-w-0">
-                        <h3 className="text-base font-black text-foreground truncate">
-                          {b.category.name}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          Limit: <b className="text-foreground">{formatMoney(b.limitAmount)}</b>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Badge
-                        variant={isExceeded ? 'destructive' : isWarning ? 'warning' : 'success'}
-                        className="text-[11px] font-bold flex items-center gap-1"
-                      >
-                        {isExceeded && <AlertCircle className="h-3 w-3" />}
-                        {isWarning && <AlertTriangle className="h-3 w-3" />}
-                        {isOk && <CheckCircle2 className="h-3 w-3" />}
-                        <span>
-                          {isExceeded
-                            ? 'Oshib ketdi'
-                            : isWarning
-                              ? '80% dan oshdi'
-                              : 'Meʼyorda'}
-                        </span>
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">
-                        Sarflangan: <b className="text-foreground">{formatMoney(b.spent)}</b>
-                      </span>
-                      <span
-                        className={cn(
-                          'font-black',
-                          isExceeded && 'text-destructive',
-                          isWarning && 'text-warning',
-                          isOk && 'text-success',
-                        )}
-                      >
-                        {b.percent.toFixed(1)}%
-                      </span>
-                    </div>
-
-                    <div className="h-3 w-full rounded-full bg-muted/60 overflow-hidden relative">
-                      <div
-                        className={cn(
-                          'h-full rounded-full transition-all duration-500',
-                          isExceeded && 'bg-destructive',
-                          isWarning && 'bg-warning',
-                          isOk && 'bg-success',
-                        )}
-                        style={{ width: `${Math.min(100, b.percent)}%` }}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
-                      <span>
-                        {isExceeded ? (
-                          <span className="text-destructive font-semibold">
-                            ⚠️ Limitdan {formatMoney(BigInt(b.spent) - BigInt(b.limitAmount))} ko‘p sarflandi
-                          </span>
-                        ) : (
-                          <span>Qoldiq: <b className="text-foreground">{formatMoney(b.remaining)}</b></span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(b)}
-                      className="text-xs h-8 text-muted-foreground hover:text-foreground"
-                    >
-                      <Edit2 className="h-3.5 w-3.5 mr-1" />
-                      Tahrirlash
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(b.id)}
-                      className="text-xs h-8 text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-1" />
-                      O‘chirish
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {budgets.map((b) => (
+            <BudgetCard key={b.id} budget={b} onEdit={handleEdit} onDelete={handleDelete} />
+          ))}
         </div>
       )}
 
@@ -331,6 +226,7 @@ export function BudgetsPage() {
         month={currentMonth}
         editItem={editItem}
       />
+      {confirmDialog}
     </div>
   );
 }

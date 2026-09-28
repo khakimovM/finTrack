@@ -3,6 +3,7 @@ import { accountsApi } from '../api/accounts.api';
 import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
+import { invalidateAfter } from '../../../lib/invalidation';
 
 export function useAccounts() {
   return useQuery({
@@ -17,8 +18,7 @@ export function useCreateAccount() {
   return useMutation({
     mutationFn: accountsApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'account');
       toast.success('Yangi hisob muvaffaqiyatli ochildi');
     },
     onError: (err) => {
@@ -34,8 +34,7 @@ export function useUpdateAccount() {
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof accountsApi.update>[1] }) =>
       accountsApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'account');
       toast.success('Hisob maʼlumotlari yangilandi');
     },
     onError: (err) => {
@@ -50,8 +49,7 @@ export function useArchiveAccount() {
   return useMutation({
     mutationFn: accountsApi.archive,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'account');
       toast.success('Hisob arxivlandi');
     },
     onError: (err) => {

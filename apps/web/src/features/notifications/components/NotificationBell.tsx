@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, isToday, parseISO } from 'date-fns';
+import { uz } from 'date-fns/locale';
 import {
   useNotifications,
   useMarkNotificationRead,
@@ -8,16 +9,25 @@ import {
 import { Bell, CheckCheck, AlertTriangle, AlertCircle, Clock, Info } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { cn } from '../../../lib/utils';
+import { Skeleton } from '../../../components/ui/Skeleton';
 
 // createdAt is UTC; format() renders it in the viewer's local time.
 const SEVERE_TYPES = new Set(['BUDGET_EXCEEDED', 'DEBT_OVERDUE', 'NEGATIVE_BALANCE']);
 const WARNING_TYPES = new Set(['BUDGET_WARNING', 'DEBT_DUE_SOON', 'RECURRING_SKIPPED']);
 
+/** "14:05" for today, "27-sen, 14:05" for older ones (local time; createdAt is UTC). */
+function timeLabel(createdAt: string): string {
+  const date = parseISO(createdAt);
+  return isToday(date)
+    ? format(date, 'HH:mm')
+    : format(date, 'd-MMM, HH:mm', { locale: uz }).toLowerCase();
+}
+
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data } = useNotifications();
+  const { data, isLoading, isError, refetch } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
 
@@ -96,7 +106,24 @@ export function NotificationBell() {
           </div>
 
           <div className="mt-2 max-h-80 overflow-y-auto space-y-1.5 pr-1 divide-y divide-border/20">
-            {notifications.length === 0 ? (
+            {isLoading ? (
+              <div className="space-y-2 py-2">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : isError ? (
+              <div className="py-6 text-center text-xs text-muted-foreground">
+                Bildirishnomalarni yuklab bo‘lmadi.{' '}
+                <button
+                  type="button"
+                  className="font-semibold text-primary underline"
+                  onClick={() => void refetch()}
+                >
+                  Qayta urinish
+                </button>
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
                 <Bell className="h-6 w-6 mx-auto mb-1.5 text-muted-foreground/50" />
                 Hozircha yangi bildirishnomalar yo‘q
@@ -106,18 +133,19 @@ export function NotificationBell() {
                 const isUnread = !n.readAt;
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={n.id}
                     onClick={() => handleItemClick(n.id, !isUnread)}
                     className={cn(
-                      'p-2.5 rounded-xl cursor-pointer transition-colors text-xs space-y-1',
+                      'block w-full text-left p-2.5 rounded-xl cursor-pointer transition-colors text-xs space-y-1',
                       isUnread
                         ? 'bg-primary/5 hover:bg-primary/10 border-l-2 border-primary'
                         : 'opacity-70 hover:opacity-100 hover:bg-muted/40',
                     )}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 font-bold text-foreground">
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="flex items-center gap-1.5 font-bold text-foreground">
                         {SEVERE_TYPES.has(n.type) ? (
                           <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
                         ) : WARNING_TYPES.has(n.type) ? (
@@ -126,19 +154,21 @@ export function NotificationBell() {
                           <Info className="h-3.5 w-3.5 text-primary shrink-0" />
                         )}
                         <span className="truncate">{n.title}</span>
-                      </div>
+                      </span>
 
-                      <div className="flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground">
                         <Clock className="h-2.5 w-2.5" />
-                        <span>{format(parseISO(n.createdAt), 'HH:mm')}</span>
-                        {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-primary ml-0.5" />}
-                      </div>
-                    </div>
+                        <span>{timeLabel(n.createdAt)}</span>
+                        {isUnread && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary ml-0.5" />
+                        )}
+                      </span>
+                    </span>
 
-                    <p className="text-[11px] text-muted-foreground leading-relaxed pl-5">
+                    <span className="block text-[11px] text-muted-foreground leading-relaxed pl-5">
                       {n.body}
-                    </p>
-                  </div>
+                    </span>
+                  </button>
                 );
               })
             )}

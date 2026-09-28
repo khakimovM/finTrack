@@ -4,6 +4,7 @@ import { ListDebtsQuery, CreateDebtInput, UpdateDebtInput, CreateDebtPaymentInpu
 import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
+import { invalidateAfter } from '../../../lib/invalidation';
 
 export function useDebts(filters?: Partial<ListDebtsQuery>) {
   return useQuery({
@@ -14,10 +15,18 @@ export function useDebts(filters?: Partial<ListDebtsQuery>) {
   });
 }
 
+export function useDebt(id?: string) {
+  return useQuery({
+    queryKey: queryKeys.debts.detail(id ?? ''),
+    queryFn: () => debtsApi.get(id ?? ''),
+    enabled: Boolean(id),
+  });
+}
+
 export function useDebtPayments(debtId?: string) {
   return useQuery({
     queryKey: queryKeys.debts.payments(debtId ?? ''),
-    queryFn: () => debtsApi.listPayments(debtId!),
+    queryFn: () => debtsApi.listPayments(debtId ?? ''),
     enabled: Boolean(debtId),
   });
 }
@@ -28,10 +37,7 @@ export function useCreateDebt() {
   return useMutation({
     mutationFn: (data: CreateDebtInput) => debtsApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['debts'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'debt');
       toast.success('Qarz muvaffaqiyatli qo‘shildi');
     },
     onError: (err) => {
@@ -47,7 +53,7 @@ export function useUpdateDebt() {
     mutationFn: ({ id, data }: { id: string; data: UpdateDebtInput }) =>
       debtsApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['debts'] });
+      void invalidateAfter(queryClient, 'debt');
       toast.success('Qarz ma’lumotlari yangilandi');
     },
     onError: (err) => {
@@ -62,10 +68,7 @@ export function useDeleteDebt() {
   return useMutation({
     mutationFn: (id: string) => debtsApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['debts'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'debt');
       toast.success('Qarz o‘chirildi va balans tiklandi');
     },
     onError: (err) => {
@@ -81,10 +84,7 @@ export function useCreateDebtPayment() {
     mutationFn: ({ id, data }: { id: string; data: CreateDebtPaymentInput }) =>
       debtsApi.createPayment(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['debts'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'debtPayment');
       toast.success('To‘lov muvaffaqiyatli qabul qilindi');
     },
     onError: (err) => {
@@ -100,10 +100,7 @@ export function useSettleDebt() {
     mutationFn: ({ id, data }: { id: string; data: SettleDebtInput }) =>
       debtsApi.settle(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['debts'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'debtPayment');
       toast.success('Qarz to‘liq yopildi');
     },
     onError: (err) => {

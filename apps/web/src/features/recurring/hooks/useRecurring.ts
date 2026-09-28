@@ -2,10 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { recurringApi } from '../recurring.api';
-import {
-  CreateRecurringRuleInput,
-  UpdateRecurringRuleInput,
-} from '@fintrack/shared';
+import { CreateRecurringRuleInput, UpdateRecurringRuleInput } from '@fintrack/shared';
+import { invalidateAfter } from '../../../lib/invalidation';
 
 export const recurringKeys = {
   all: ['recurring'] as const,
@@ -27,7 +25,7 @@ export function useCreateRecurringRule() {
     mutationFn: (data: CreateRecurringRuleInput) => recurringApi.create(data),
     onSuccess: () => {
       toast.success('Takrorlanuvchi to‘lov qoidasi yaratildi');
-      queryClient.invalidateQueries({ queryKey: recurringKeys.all });
+      void invalidateAfter(queryClient, 'recurringRun');
     },
     onError: (err: unknown) => {
       toast.error(apiErrorToMessage(err));
@@ -43,7 +41,7 @@ export function useUpdateRecurringRule() {
       recurringApi.update(id, data),
     onSuccess: () => {
       toast.success('Takrorlanuvchi to‘lov qoidasi yangilandi');
-      queryClient.invalidateQueries({ queryKey: recurringKeys.all });
+      void invalidateAfter(queryClient, 'recurring');
     },
     onError: (err: unknown) => {
       toast.error(apiErrorToMessage(err));
@@ -58,7 +56,7 @@ export function useDeleteRecurringRule() {
     mutationFn: (id: string) => recurringApi.delete(id),
     onSuccess: () => {
       toast.success('Takrorlanuvchi to‘lov qoidasi o‘chirildi');
-      queryClient.invalidateQueries({ queryKey: recurringKeys.all });
+      void invalidateAfter(queryClient, 'recurring');
     },
     onError: (err: unknown) => {
       toast.error(apiErrorToMessage(err));
@@ -73,11 +71,7 @@ export function useRunNowRecurringRule() {
     mutationFn: (id: string) => recurringApi.runNow(id),
     onSuccess: (data) => {
       toast.success('Tranzaksiya muvaffaqiyatli yaratildi');
-      queryClient.invalidateQueries({ queryKey: recurringKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'recurringRun');
       return data;
     },
     onError: (err: unknown) => {

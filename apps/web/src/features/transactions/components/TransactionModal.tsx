@@ -14,8 +14,8 @@ import { MoneyInput } from '../../../components/ui/MoneyInput';
 import { useAccounts } from '../../accounts/hooks/useAccounts';
 import { useCategories } from '../../categories/hooks/useCategories';
 import { useCreateTransaction } from '../hooks/useTransactions';
-import { cn } from '../../../lib/utils';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { categoryOptions } from '../../categories/categoryOptions';
+import { EntryTypeToggle } from './EntryTypeToggle';
 
 export interface TransactionModalProps {
   isOpen: boolean;
@@ -36,21 +36,7 @@ export function TransactionModal({
   const accounts = accountsData?.data ?? [];
   const allCategories = categoriesData ?? [];
 
-  // Filter categories by activeType
-  const filteredCategories: Array<{ id: string; name: string }> = [];
-  allCategories
-    .filter((c) => c.type === activeType)
-    .forEach((parent) => {
-      filteredCategories.push({ id: parent.id, name: `${parent.icon} ${parent.name}` });
-      if (parent.children && parent.children.length > 0) {
-        parent.children.forEach((child) => {
-          filteredCategories.push({
-            id: child.id,
-            name: `  ↳ ${child.icon} ${child.name}`,
-          });
-        });
-      }
-    });
+  const filteredCategories = categoryOptions(allCategories, activeType);
 
   const {
     register,
@@ -110,36 +96,7 @@ export function TransactionModal({
       description="Kirim yoki chiqim operatsiyasini qayd etish"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* Type Toggle Tabs */}
-        <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-muted/20">
-          <button
-            type="button"
-            onClick={() => handleTypeChange('EXPENSE')}
-            className={cn(
-              'flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all duration-150',
-              activeType === 'EXPENSE'
-                ? 'bg-destructive text-destructive-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <ArrowDownLeft className="h-4 w-4" />
-            <span>Chiqim (Xarajat)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTypeChange('INCOME')}
-            className={cn(
-              'flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all duration-150',
-              activeType === 'INCOME'
-                ? 'bg-success text-success-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <ArrowUpRight className="h-4 w-4" />
-            <span>Kirim (Daromad)</span>
-          </button>
-        </div>
+        <EntryTypeToggle value={activeType} onChange={handleTypeChange} />
 
         {/* Amount Input */}
         <Controller

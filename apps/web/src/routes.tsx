@@ -10,6 +10,8 @@ import { AccountsPage } from './pages/accounts/AccountsPage';
 import { CategoriesPage } from './pages/categories/CategoriesPage';
 import { DebtsPage } from './pages/debts/DebtsPage';
 import { BudgetsPage } from './pages/budgets/BudgetsPage';
+import { RecurringPage } from './pages/recurring/RecurringPage';
+import { ReportsPage } from './pages/reports/ReportsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorPage } from './pages/ErrorPage';
 
@@ -39,7 +41,8 @@ export const router = createBrowserRouter([
           { path: 'debts', element: <DebtsPage /> },
           { path: 'budgets', element: <BudgetsPage /> },
           { path: 'categories', element: <CategoriesPage /> },
-          { path: 'reports', element: <DashboardPage /> },
+          { path: 'recurring', element: <RecurringPage /> },
+          { path: 'reports', element: <ReportsPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },

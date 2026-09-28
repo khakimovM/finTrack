@@ -10,8 +10,10 @@ import { AccountCard } from '../../features/accounts/components/AccountCard';
 import { AccountModal } from '../../features/accounts/components/AccountModal';
 import { TransferModal } from '../../features/accounts/components/TransferModal';
 import { useAccounts, useArchiveAccount } from '../../features/accounts/hooks/useAccounts';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 export function AccountsPage() {
+  const [confirmDialog, confirm] = useConfirm();
   const { data, isLoading, isError, error, refetch } = useAccounts();
   const archiveAccount = useArchiveAccount();
 
@@ -34,9 +36,12 @@ export function AccountsPage() {
 
   const handleArchive = async (id: string) => {
     if (
-      window.confirm(
-        'Haqiqatan ham bu hisobni arxivlamoqchimisiz? Arxivlangan hisob tranzaksiyalar tarixida saqlanadi, ammo yangi amallar uchun ko‘rsatilmaydi.',
-      )
+      await confirm({
+        title: 'Hisob arxivlansinmi?',
+        description:
+          'Arxivlangan hisob tranzaksiyalar tarixida saqlanadi, ammo yangi amallar uchun ko‘rsatilmaydi.',
+        confirmLabel: 'Arxivlash',
+      })
     ) {
       await archiveAccount.mutateAsync(id);
     }
@@ -89,9 +94,7 @@ export function AccountsPage() {
         </div>
 
         <div className="text-xs text-muted-foreground sm:text-right">
-          <p className="font-semibold text-foreground">
-            Faol hisoblar: {accounts.length} ta
-          </p>
+          <p className="font-semibold text-foreground">Faol hisoblar: {accounts.length} ta</p>
           <p className="mt-0.5">Valyuta: UZS (O‘zbek so‘mi)</p>
         </div>
       </div>
@@ -112,9 +115,7 @@ export function AccountsPage() {
         <EmptyState
           title="Hisoblar mavjud emas"
           description="Moliyaviy amallaringizni boshlash uchun dastlabki bank kartangiz yoki naqd pul hamyoningizni qo‘shing."
-          action={
-            <Button onClick={handleOpenCreate}>Yangi hisob ochish</Button>
-          }
+          action={<Button onClick={handleOpenCreate}>Yangi hisob ochish</Button>}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -141,10 +142,8 @@ export function AccountsPage() {
       />
 
       {/* Transfer Modal */}
-      <TransferModal
-        isOpen={isTransferModalOpen}
-        onClose={() => setIsTransferModalOpen(false)}
-      />
+      <TransferModal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} />
+      {confirmDialog}
     </div>
   );
 }
