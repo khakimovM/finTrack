@@ -6,6 +6,8 @@ import { useAuthStore } from '../../../stores/authStore';
 import { resetSessionCache } from '../../../lib/queryClient';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
+import { exchangeInitData, isMiniAppSession } from '../../../lib/miniAppAuth';
+import { useMiniAppStore } from '../../../stores/miniAppStore';
 
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
@@ -44,11 +46,27 @@ export function useRevokeSession() {
 }
 
 /** Signs this device out too, so the caller should navigate to /login afterwards. */
+/**
+ * Resolves to true when the user stays signed in: inside Telegram the launch is still signed by
+ * Telegram, so only the other devices are signed out and this app opens a fresh session.
+ */
 export function useLogoutAll() {
-  const setUser = useAuthStore((s) => s.setUser);
+  const { setUser, signIn } = useAuthStore();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: usersApi.logoutAll,
-    onSuccess: () => {
+    mutationFn: async () => {
+      await usersApi.logoutAll();
+      if (!isMiniAppSession()) return false;
+      const { user } = await exchangeInitData();
+      return user;
+    },
+    onSuccess: (stayed) => {
+      if (stayed) {
+        signIn(stayed);
+        queryClient.setQueryData(queryKeys.auth.me(), stayed);
+        toast.success('Boshqa qurilmalardagi sessiyalar yakunlandi');
+        return;
+      }
       resetSessionCache();
       setUser(null);
     },
@@ -70,6 +88,8 @@ export function useDeleteAccount() {
     onSuccess: () => {
       resetSessionCache();
       setUser(null);
+      // Inside Telegram there is no login page: explain how to register again instead.
+      if (isMiniAppSession()) useMiniAppStore.getState().setStatus('unregistered');
     },
     onError: (err) => toast.error(apiErrorToMessage(err)),
   });

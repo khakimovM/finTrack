@@ -12,8 +12,22 @@ export const MENU = {
   budgets: '🎯 Byudjet',
   debts: '🤝 Qarzlar',
   settings: '⚙️ Sozlamalar',
+  app: '🌐 Ilova',
 } as const;
 
+/**
+ * Mini App entry point, or undefined when it cannot be opened: Telegram only opens HTTPS pages.
+ * The app starts on /app; the web router takes care of the rest.
+ */
+export function miniAppUrl(webAppUrl?: string): string | undefined {
+  if (!webAppUrl?.startsWith('https://')) return undefined;
+  return `${webAppUrl.replace(/\/+$/, '')}/app`;
+}
+
+/**
+ * A web_app button on this reply keyboard would open the Mini App without initData (Telegram
+ * does not sign keyboard launches), so "Ilova" is a plain button answered with an inline one.
+ */
 export function mainMenu(webAppUrl?: string): ReplyKeyboardMarkup {
   const rows: ReplyKeyboardMarkup['keyboard'] = [
     [{ text: MENU.expense }, { text: MENU.income }],
@@ -21,11 +35,12 @@ export function mainMenu(webAppUrl?: string): ReplyKeyboardMarkup {
     [{ text: MENU.report }, { text: MENU.budgets }],
     [{ text: MENU.debts }, { text: MENU.settings }],
   ];
-  // Telegram only opens Mini Apps over HTTPS.
-  if (webAppUrl?.startsWith('https://')) {
-    rows.push([{ text: '🌐 Ilovani ochish', web_app: { url: webAppUrl } }]);
-  }
+  if (miniAppUrl(webAppUrl)) rows.push([{ text: MENU.app }]);
   return { keyboard: rows, resize_keyboard: true, is_persistent: true };
+}
+
+export function openAppKeyboard(url: string): InlineKeyboardMarkup {
+  return { inline_keyboard: [[{ text: '🌐 FinTrack ilovasini ochish', web_app: { url } }]] };
 }
 
 export const TEXT = {

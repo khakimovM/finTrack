@@ -9,6 +9,7 @@ import { TelegramLoginRepository } from './telegram-login.repository';
 import { TelegramLoginService } from './telegram-login.service';
 import { TelegramLoginBotService } from './telegram-login-bot.service';
 import { LoginCodeService } from './login-code.service';
+import { TelegramWebAppService } from './telegram-webapp.service';
 
 @Module({
   imports: [JwtModule.register({})],
@@ -22,6 +23,7 @@ import { LoginCodeService } from './login-code.service';
     TelegramLoginService,
     TelegramLoginBotService,
     LoginCodeService,
+    TelegramWebAppService,
   ],
   exports: [
     AuthService,

@@ -5,7 +5,8 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { AuthService, TokenMeta } from './auth.service';
 import { AuthCookiesService } from './auth-cookies.service';
 import { TelegramLoginService } from './telegram-login.service';
-import { TelegramRequestRefDto, VerifyTelegramLoginDto } from './dto/auth.dto';
+import { TelegramWebAppService } from './telegram-webapp.service';
+import { TelegramRequestRefDto, TelegramWebAppAuthDto, VerifyTelegramLoginDto } from './dto/auth.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -23,6 +24,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly telegramLogin: TelegramLoginService,
     private readonly cookies: AuthCookiesService,
+    private readonly webApp: TelegramWebAppService,
   ) {}
 
   @Public()
@@ -68,6 +70,18 @@ export class AuthController {
   @ApiOperation({ summary: 'Kodni qayta yuborish' })
   async resendTelegramCode(@Body() dto: TelegramRequestRefDto) {
     return this.telegramLogin.resend(dto.requestId);
+  }
+
+  /** Telegram Mini App sign-in: no cookies, the access token travels in the body (see schema). */
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Post('telegram/webapp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Telegram Mini App: initData evaziga access token' })
+  @ApiResponse({ status: 401, description: 'TELEGRAM_INIT_DATA_INVALID | TELEGRAM_INIT_DATA_EXPIRED' })
+  @ApiResponse({ status: 403, description: 'TELEGRAM_NOT_REGISTERED' })
+  async telegramWebApp(@Body() dto: TelegramWebAppAuthDto, @Req() req: FastifyRequest) {
+    return this.webApp.exchange(dto.initData, requestMeta(req));
   }
 
   @Public()

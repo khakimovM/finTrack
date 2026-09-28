@@ -4,8 +4,11 @@ export type Theme = 'light' | 'dark' | 'system';
 
 interface UiState {
   theme: Theme;
+  /** Inside Telegram the colour scheme follows the Telegram app and is not user-selectable. */
+  telegramTheme: boolean;
   sidebarOpen: boolean;
   setTheme: (theme: Theme) => void;
+  followTelegramTheme: (scheme: 'light' | 'dark') => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
 }
@@ -37,11 +40,17 @@ export const useUiStore = create<UiState>((set) => {
 
   return {
     theme: initialTheme,
+    telegramTheme: false,
     sidebarOpen: false,
     setTheme: (theme) => {
       localStorage.setItem('fintrack-theme', theme);
       applyThemeToDom(theme);
       set({ theme });
+    },
+    // Not persisted: the browser's saved preference must survive using the Mini App.
+    followTelegramTheme: (scheme) => {
+      applyThemeToDom(scheme);
+      set({ theme: scheme, telegramTheme: true });
     },
     toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
     setSidebarOpen: (open) => set({ sidebarOpen: open }),

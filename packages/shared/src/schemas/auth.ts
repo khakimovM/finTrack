@@ -87,3 +87,27 @@ export const SessionResponseSchema = z.object({
   isCurrent: z.boolean(),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
+
+// ------------------------------------------------------------------
+// Telegram Mini App
+// ------------------------------------------------------------------
+
+/** `Telegram.WebApp.initData` exactly as Telegram passed it (a signed query string). */
+export const TelegramWebAppAuthSchema = z
+  .object({
+    initData: z.string().min(1, 'initData bo‘sh').max(4096, 'initData juda uzun'),
+  })
+  .strict();
+export type TelegramWebAppAuthInput = z.infer<typeof TelegramWebAppAuthSchema>;
+
+/**
+ * Mini Apps run in Telegram's webview (an iframe on Telegram Web) where cookies are unreliable:
+ * the access token is returned in the body and kept in memory. When it expires the app
+ * exchanges the same initData again; there is no refresh token.
+ */
+export const TelegramWebAppAuthResponseSchema = z.object({
+  user: UserResponseSchema,
+  accessToken: z.string(),
+  accessTokenExpiresIn: z.number().int(),
+});
+export type TelegramWebAppAuthResponse = z.infer<typeof TelegramWebAppAuthResponseSchema>;

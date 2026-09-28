@@ -7,6 +7,7 @@ import { MenuHandlers } from './handlers/menu.handlers';
 import { DebtHandlers } from './handlers/debt.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
 import { VoiceHandlers } from './handlers/voice.handlers';
+import { miniAppUrl } from './bot-ui';
 
 export const ALLOWED_UPDATES = ['message', 'callback_query'] as const;
 
@@ -63,6 +64,11 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
         { command: 'menu', description: 'Menyu' },
         { command: 'balans', description: 'Balans' },
       ]);
+      // The menu button next to the input field opens the Mini App with signed initData.
+      const appUrl = miniAppUrl(this.config.get<string>('WEB_APP_URL') ?? this.config.get<string>('CLIENT_URL'));
+      await bot.api.setChatMenuButton({
+        menu_button: appUrl ? { type: 'web_app', text: 'Ilova', web_app: { url: appUrl } } : { type: 'commands' },
+      });
       if (webhookUrl) {
         await bot.api.setWebhook(webhookUrl, {
           secret_token: this.config.get<string>('TELEGRAM_WEBHOOK_SECRET'),

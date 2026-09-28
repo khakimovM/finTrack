@@ -62,12 +62,12 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   private extractToken(request: FastifyRequest): string | null {
-    const cookies = (request as unknown as { cookies?: Record<string, string> }).cookies;
-    if (cookies?.accessToken) return cookies.accessToken;
-
-    // The Telegram Mini App cannot rely on cookies inside Telegram Web's iframe.
+    // The Telegram Mini App sends a Bearer token (cookies are unreliable in Telegram's webview).
+    // An explicit header wins: a leftover web-session cookie of another account must not.
     const authHeader = request.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7);
-    return null;
+
+    const cookies = (request as unknown as { cookies?: Record<string, string> }).cookies;
+    return cookies?.accessToken ?? null;
   }
 }

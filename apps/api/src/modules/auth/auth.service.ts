@@ -17,6 +17,15 @@ export interface TokenMeta {
   ipAddress?: string;
 }
 
+export interface MiniAppAccess {
+  user: UserResponse;
+  accessToken: string;
+  accessTokenExpiresIn: number;
+}
+
+/** Marks Mini App sessions in the sessions list (the webview's own User-Agent follows). */
+export const MINI_APP_AGENT_PREFIX = 'TelegramMiniApp';
+
 export interface AuthResult {
   user: UserResponse;
   accessToken: string;
@@ -47,6 +56,28 @@ export class AuthService {
   /** Starts a new session (device) for an already-verified user. */
   async issueSession(user: User, meta: TokenMeta): Promise<AuthResult> {
     return this.buildResult(user, crypto.randomUUID(), meta);
+  }
+
+  /**
+   * A Mini App session is a refresh-token family whose token is never handed out: the row only
+   * makes the session visible and revocable in the sessions list. It ends with the initData.
+   */
+  async startMiniAppSession(user: User, meta: TokenMeta, expiresAt: Date): Promise<string> {
+    const familyId = crypto.randomUUID();
+    await this.repository.createRefreshToken({
+      userId: user.id,
+      tokenHash: this.hashToken(crypto.randomBytes(32).toString('hex')),
+      familyId,
+      userAgent: `${MINI_APP_AGENT_PREFIX} ${meta.userAgent ?? ''}`.trim().slice(0, 300),
+      ipAddress: meta.ipAddress,
+      expiresAt,
+    });
+    return familyId;
+  }
+
+  async miniAppAccess(user: User, familyId: string): Promise<MiniAppAccess> {
+    const { accessToken, expiresIn } = await this.signAccessToken(user.id, familyId);
+    return { user: this.toUserResponse(user), accessToken, accessTokenExpiresIn: expiresIn };
   }
 
   async refresh(rawRefreshToken: string | undefined, meta: TokenMeta): Promise<AuthResult> {
@@ -171,14 +202,18 @@ export class AuthService {
     };
   }
 
-  private async buildResult(user: User, familyId: string, meta: TokenMeta): Promise<AuthResult> {
+  private async signAccessToken(userId: string, familyId: string): Promise<{ accessToken: string; expiresIn: number }> {
     const accessTtl = this.configService.get<string>('ACCESS_TOKEN_TTL', '15m');
-    const refreshTtl = this.configService.get<string>('REFRESH_TOKEN_TTL', '7d');
-
     const accessToken = await this.jwtService.signAsync(
-      { sub: user.id, sid: familyId },
+      { sub: userId, sid: familyId },
       { secret: this.configService.get<string>('JWT_ACCESS_SECRET'), expiresIn: accessTtl },
     );
+    return { accessToken, expiresIn: Math.floor(durationToMs(accessTtl) / 1000) };
+  }
+
+  private async buildResult(user: User, familyId: string, meta: TokenMeta): Promise<AuthResult> {
+    const refreshTtl = this.configService.get<string>('REFRESH_TOKEN_TTL', '7d');
+    const { accessToken, expiresIn } = await this.signAccessToken(user.id, familyId);
     const refreshToken = await this.jwtService.signAsync(
       { sub: user.id, familyId, jti: crypto.randomUUID() },
       { secret: this.configService.get<string>('JWT_REFRESH_SECRET'), expiresIn: refreshTtl },
@@ -198,7 +233,7 @@ export class AuthService {
       accessToken,
       refreshToken,
       sessionId: familyId,
-      accessTokenExpiresIn: Math.floor(durationToMs(accessTtl) / 1000),
+      accessTokenExpiresIn: expiresIn,
     };
   }
 

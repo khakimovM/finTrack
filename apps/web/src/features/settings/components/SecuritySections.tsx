@@ -23,6 +23,7 @@ import {
 function deviceLabel(ua: string | null | undefined): { label: string; mobile: boolean } {
   if (!ua) return { label: 'Nomaʼlum qurilma', mobile: false };
   const mobile = /Android|iPhone|iPad|Mobile/.test(ua);
+  if (ua.startsWith('TelegramMiniApp')) return { label: 'Telegram ilovasi', mobile };
   const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Brauzer';
   const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
   return { label: os ? `${browser}, ${os}` : browser, mobile };
@@ -139,8 +140,8 @@ export function SessionsSection() {
           className="w-full"
           loading={logoutAll.isPending}
           onClick={async () => {
-            await logoutAll.mutateAsync();
-            navigate('/login', { replace: true });
+            const stayed = await logoutAll.mutateAsync();
+            if (!stayed) navigate('/login', { replace: true });
           }}
         >
           Barcha qurilmalardan chiqish

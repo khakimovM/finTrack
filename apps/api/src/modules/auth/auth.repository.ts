@@ -117,6 +117,17 @@ export class AuthRepository {
     return active.map((t) => t.familyId);
   }
 
+  /** 'missing' also covers a family whose first row is still being written by another request. */
+  async familyStatus(userId: string, familyId: string): Promise<'active' | 'ended' | 'missing'> {
+    const latest = await this.prisma.refreshToken.findFirst({
+      where: { userId, familyId },
+      orderBy: { createdAt: 'desc' },
+      select: { revokedAt: true, expiresAt: true },
+    });
+    if (!latest) return 'missing';
+    return latest.revokedAt === null && latest.expiresAt.getTime() > Date.now() ? 'active' : 'ended';
+  }
+
   /** Newest first; one live token per family is the family's current state. */
   async getActiveTokens(userId: string): Promise<RefreshToken[]> {
     return this.prisma.refreshToken.findMany({

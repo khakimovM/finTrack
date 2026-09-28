@@ -1,6 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { resetSessionCache } from './queryClient';
+import { exchangeInitData, isMiniAppSession, miniAppAccessToken, miniAppStatusFor } from './miniAppAuth';
+import { useMiniAppStore } from '../stores/miniAppStore';
 
 export const api = axios.create({
   baseURL: '/api/v1',
@@ -10,6 +12,12 @@ export const api = axios.create({
     // Required by the API's CSRF guard on every state-changing request.
     'X-Requested-With': 'XMLHttpRequest',
   },
+});
+
+api.interceptors.request.use((config) => {
+  const token = miniAppAccessToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 let isRefreshing = false;
@@ -59,6 +67,18 @@ api.interceptors.response.use(
 
     const isAuthEndpoint =
       originalRequest.url?.includes('/auth/telegram/') || originalRequest.url?.includes('/auth/refresh');
+
+    // Inside Telegram an expired token is renewed with the launch's initData, not a cookie.
+    if (isMiniAppSession() && error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+      originalRequest._retry = true;
+      try {
+        await exchangeInitData();
+      } catch (exchangeError) {
+        useMiniAppStore.getState().setStatus(miniAppStatusFor(exchangeError));
+        return Promise.reject(exchangeError);
+      }
+      return api(originalRequest);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {

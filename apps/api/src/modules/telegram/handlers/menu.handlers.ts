@@ -6,7 +6,7 @@ import { User } from '@prisma/client';
 import { BotUserService, chatErrorMessage } from '../bot-user.service';
 import { BotReportsService, ReportPeriod } from '../bot-reports.service';
 import { DraftStore } from '../drafts/draft.store';
-import { MENU, TEXT, mainMenu } from '../bot-ui';
+import { MENU, TEXT, mainMenu, miniAppUrl, openAppKeyboard } from '../bot-ui';
 import { UsersService } from '../../users/users.service';
 import { AuthService } from '../../auth/auth.service';
 
@@ -87,6 +87,14 @@ export class MenuHandlers {
       withUser(async (ctx, user) => html(ctx, await this.reports.report(user, 'month'), REPORT_KEYBOARD('month'))),
     );
     pm.hears(MENU.settings, withUser(async (ctx, user) => html(ctx, SETTINGS_TEXT, settingsKeyboard(user))));
+    pm.hears(
+      MENU.app,
+      withUser(async (ctx) => {
+        const url = miniAppUrl(this.webAppUrl);
+        if (!url) return ctx.reply('Ilova hozircha faqat saytda ochiladi.');
+        return ctx.reply('Hisoblar, grafiklar va hisobotlar — to‘liq ilovada 👇', { reply_markup: openAppKeyboard(url) });
+      }),
+    );
 
     bot.callbackQuery(/^r:(today|week|month)$/, async (ctx) => {
       const user = await this.users.resolve(ctx);
