@@ -62,7 +62,11 @@ export const envSchema = z.object({
 
   /** Voice notes and free text: Gemini (free tier) transcribes and extracts entries. */
   GEMINI_API_KEY: z.string().min(20, 'GEMINI_API_KEY looks too short').optional(),
-  GEMINI_MODEL: z.string().regex(/^[a-z0-9.-]+$/, 'GEMINI_MODEL: a model id like gemini-3.8-flash').default('gemini-3.8-flash'),
+  /** Tried in order; each model has its own free-tier quota. Unset = the built-in chain. */
+  GEMINI_MODELS: z
+    .string()
+    .regex(/^[a-z0-9.-]+(s*,s*[a-z0-9.-]+)*$/, 'GEMINI_MODELS: comma-separated model ids')
+    .optional(),
   /** Fallback speech-to-text (Groq Whisper) when Gemini is out of quota. */
   GROQ_API_KEY: z.string().min(20, 'GROQ_API_KEY looks too short').optional(),
   GROQ_STT_MODEL: z.string().regex(/^[a-z0-9.-]+$/, 'GROQ_STT_MODEL: a model id').default('whisper-large-v3'),

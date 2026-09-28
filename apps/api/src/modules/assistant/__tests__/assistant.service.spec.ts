@@ -85,21 +85,30 @@ describe('AssistantService.fromVoice', () => {
     expect(groq.transcribe).not.toHaveBeenCalled();
   });
 
-  it('falls back to Groq when Gemini is out of quota, and stops calling Gemini while it cools down', async () => {
+  it('falls back to Groq when every Gemini model is out of quota', async () => {
     const { service, gemini, groq, redis } = setup();
-    gemini.extractFromAudio.mockRejectedValue(new AssistantProviderError('gemini', 'rate_limited', 30));
+    // GeminiClient pauses each model itself and reports no delay.
+    gemini.extractFromAudio.mockRejectedValue(new AssistantProviderError('gemini', 'rate_limited'));
+    gemini.extractFromText.mockRejectedValue(new AssistantProviderError('gemini', 'rate_limited'));
     groq.transcribe.mockResolvedValue('Taksiga 20000 berdim');
 
-    const first = await service.fromVoice(user, voice);
-    const second = await service.fromVoice(user, voice);
+    const outcome = await service.fromVoice(user, voice);
 
-    expect(redis.set).toHaveBeenCalledWith('ai:cooldown:gemini', '1', 30);
-    expect(gemini.extractFromAudio).toHaveBeenCalledTimes(1);
-    expect(gemini.extractFromText).not.toHaveBeenCalled();
-    // No AI text extractor available: the local parser reads the single amount.
-    for (const outcome of [first, second]) {
-      expect(outcome).toMatchObject({ status: 'ok', result: { entries: [{ amount: 2_000_000n, type: 'EXPENSE' }] } });
-    }
+    expect(redis.store.has('ai:cooldown:gemini')).toBe(false);
+    // No AI text extractor answered: the local parser reads the single amount.
+    expect(outcome).toMatchObject({ status: 'ok', result: { entries: [{ amount: 2_000_000n, type: 'EXPENSE' }] } });
+  });
+
+  it('pauses Groq for its Retry-After when it is rate limited', async () => {
+    const { service, gemini, groq, redis } = setup();
+    gemini.extractFromAudio.mockRejectedValue(new AssistantProviderError('gemini', 'rate_limited'));
+    groq.transcribe.mockRejectedValue(new AssistantProviderError('groq', 'rate_limited', 20));
+
+    expect(await service.fromVoice(user, voice)).toEqual({ status: 'unavailable' });
+    expect(await service.fromVoice(user, voice)).toEqual({ status: 'unavailable' });
+
+    expect(redis.set).toHaveBeenCalledWith('ai:cooldown:groq', '1', 20);
+    expect(groq.transcribe).toHaveBeenCalledTimes(1);
   });
 
   it('sends the Groq transcript to an AI text extractor when one is available', async () => {
@@ -120,7 +129,8 @@ describe('AssistantService.fromVoice', () => {
 
   it('never guesses with the local parser when a transcript holds several amounts', async () => {
     const { service, gemini, groq } = setup();
-    gemini.extractFromAudio.mockRejectedValue(new AssistantProviderError('gemini', 'rate_limited', 60));
+    gemini.extractFromAudio.mockRejectedValue(new AssistantProviderError('gemini', 'rate_limited'));
+    gemini.extractFromText.mockRejectedValue(new AssistantProviderError('gemini', 'rate_limited'));
     groq.transcribe.mockResolvedValue('taksi 20000, tushlik 45000');
 
     expect(await service.fromVoice(user, voice)).toMatchObject({ status: 'ok', result: { entries: [] } });

@@ -194,8 +194,10 @@ export class AssistantService {
       return;
     }
     this.logger.warn(`Assistant provider failed: ${err.message}`);
-    if (err.reason === 'rate_limited') {
-      const ttl = Math.min(COOLDOWN_CAP_SECONDS, Math.max(1, Math.ceil(err.retryAfterSeconds ?? 60)));
+    // Gemini tracks cooldowns per model and reports no delay; a provider-wide pause would also
+    // block its models that still have quota.
+    if (err.reason === 'rate_limited' && err.retryAfterSeconds !== undefined) {
+      const ttl = Math.min(COOLDOWN_CAP_SECONDS, Math.max(1, Math.ceil(err.retryAfterSeconds)));
       await this.redis.set(`ai:cooldown:${err.provider}`, '1', ttl);
     }
   }

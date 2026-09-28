@@ -1,7 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { Messages } from '@anthropic-ai/sdk/resources/messages/messages';
 import Anthropic from '@anthropic-ai/sdk';
-import { GeminiClient } from '../providers/gemini.client';
+import { DEFAULT_GEMINI_MODELS, GeminiClient, retryDelaySeconds } from '../providers/gemini.client';
+import { RedisService } from '../../../infra/redis/redis.service';
 import { GroqSpeechToText } from '../providers/groq-stt.client';
 import { ClaudeClient } from '../providers/claude.client';
 import { AssistantProviderError } from '../assistant.types';
@@ -26,17 +27,44 @@ async function failure(promise: Promise<unknown>): Promise<AssistantProviderErro
   throw new Error('expected a provider error');
 }
 
+/** In-memory stand-in for the cooldown keys. */
+function memoryRedis() {
+  const store = new Map<string, { value: string; ttl?: number }>();
+  return {
+    store,
+    get: jest.fn(async (key: string) => store.get(key)?.value ?? null),
+    set: jest.fn(async (key: string, value: string, ttl?: number) => {
+      store.set(key, { value, ttl });
+      return 'OK' as const;
+    }),
+  };
+}
+
 describe('GeminiClient', () => {
   // Spies are created per test: a restored spy would let requests reach the real network.
   let fetchMock: jest.SpiedFunction<typeof fetch>;
+  let redis: ReturnType<typeof memoryRedis>;
+  let gemini: GeminiClient;
   beforeEach(() => {
     fetchMock = jest.spyOn(global, 'fetch');
+    redis = memoryRedis();
+    gemini = new GeminiClient(
+      config({ GEMINI_API_KEY: 'g'.repeat(39), GEMINI_MODELS: 'model-a, model-b' }),
+      redis as unknown as RedisService,
+    );
   });
   afterEach(() => fetchMock.mockRestore());
-  const gemini = new GeminiClient(config({ GEMINI_API_KEY: 'g'.repeat(39), GEMINI_MODEL: 'gemini-test' }));
+
   const ok = (text: string, finishReason = 'STOP') =>
     jsonResponse(200, { candidates: [{ content: { parts: [{ text }] }, finishReason }] });
-
+  const quotaExceeded = () =>
+    jsonResponse(429, {
+      error: {
+        message: 'Quota exceeded for metric: generate_content_free_tier_requests, limit: 5\nPlease retry in 44.88s.',
+        details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '44s' }],
+      },
+    });
+  const modelOf = (call: number) => /models\/([^:]+):/.exec(String(fetchMock.mock.calls[call][0]))?.[1];
 
   it('sends the audio inline with the schema and returns the validated answer', async () => {
     fetchMock.mockResolvedValue(ok(JSON.stringify(answer)));
@@ -44,7 +72,7 @@ describe('GeminiClient', () => {
     await expect(gemini.extractFromAudio(Buffer.from('OggS'), 'audio/ogg', ctx)).resolves.toEqual(answer);
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent');
+    expect(String(url)).toBe('https://generativelanguage.googleapis.com/v1beta/models/model-a:generateContent');
     expect((init?.headers as Record<string, string>)['x-goog-api-key']).toBe('g'.repeat(39));
     const body = JSON.parse(String(init?.body));
     expect(body.contents[0].parts[0]).toEqual({ inlineData: { mimeType: 'audio/ogg', data: 'T2dnUw==' } });
@@ -61,27 +89,65 @@ describe('GeminiClient', () => {
     await expect(gemini.extractFromText('x', ctx)).resolves.toEqual(answer);
   });
 
-  it.each([
-    ['a 429 with its retry-after', () => jsonResponse(429, {}, { 'retry-after': '17' }), 'rate_limited', 17],
-    ['a 5xx', () => jsonResponse(503, {}), 'unavailable', undefined],
-    ['a 4xx', () => jsonResponse(400, {}), 'rejected', undefined],
-    ['a blocked prompt', () => jsonResponse(200, { promptFeedback: { blockReason: 'SAFETY' } }), 'rejected', undefined],
-    ['a truncated answer', () => ok('{"transcript":', 'MAX_TOKENS'), 'bad_output', undefined],
-    ['JSON that breaks the schema', () => ok('{"transcript":1}'), 'bad_output', undefined],
-  ])('maps %s', async (_label, response, reason, retryAfter) => {
-    fetchMock.mockResolvedValue(response());
-    const err = await failure(gemini.extractFromText('x', ctx));
-    expect(err).toMatchObject({ provider: 'gemini', reason });
-    if (retryAfter) expect(err.retryAfterSeconds).toBe(retryAfter);
+  it('moves to the next model when one is out of quota and skips it until its retry delay ends', async () => {
+    // A Response body can be read once: every call needs a fresh one.
+    fetchMock.mockResolvedValueOnce(quotaExceeded()).mockImplementation(async () => ok(JSON.stringify(answer)));
+
+    await expect(gemini.extractFromText('x', ctx)).resolves.toEqual(answer);
+    await expect(gemini.extractFromText('y', ctx)).resolves.toEqual(answer);
+
+    expect([modelOf(0), modelOf(1), modelOf(2)]).toEqual(['model-a', 'model-b', 'model-b']);
+    expect(redis.store.get('ai:cooldown:gemini:model-a')).toEqual({ value: '1', ttl: 44 });
   });
 
-  it('treats network errors and timeouts as unavailable', async () => {
-    fetchMock.mockRejectedValue(new Error('ECONNRESET'));
-    expect(await failure(gemini.extractFromText('x', ctx))).toMatchObject({ reason: 'unavailable' });
+  it.each([
+    ['an overloaded model (503)', () => jsonResponse(503, {}), 30],
+    ['a model the key cannot use (404)', () => jsonResponse(404, {}), 3600],
+  ])('falls through %s and pauses it', async (_label, response, ttl) => {
+    fetchMock.mockResolvedValueOnce(response()).mockResolvedValue(ok(JSON.stringify(answer)));
+
+    await expect(gemini.extractFromText('x', ctx)).resolves.toEqual(answer);
+    expect(redis.store.get('ai:cooldown:gemini:model-a')?.ttl).toBe(ttl);
+  });
+
+  it('does not call the API at all while every model cools down', async () => {
+    await redis.set('ai:cooldown:gemini:model-a', '1', 10);
+    await redis.set('ai:cooldown:gemini:model-b', '1', 10);
+
+    const err = await failure(gemini.extractFromText('x', ctx));
+
+    expect(err).toMatchObject({ provider: 'gemini', reason: 'rate_limited', retryAfterSeconds: undefined });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a blocked prompt', () => jsonResponse(200, { promptFeedback: { blockReason: 'SAFETY' } }), 'rejected'],
+    ['a truncated answer', () => ok('{"transcript":', 'MAX_TOKENS'), 'bad_output'],
+    ['JSON that breaks the schema', () => ok('{"transcript":1}'), 'bad_output'],
+    ['a network error', () => Promise.reject(new Error('ECONNRESET')), 'unavailable'],
+  ])('reports %s once every model has failed', async (_label, response, reason) => {
+    fetchMock.mockImplementation(() => response() as Promise<Response>);
+    expect(await failure(gemini.extractFromText('x', ctx))).toMatchObject({ provider: 'gemini', reason });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('is disabled without a key', () => {
-    expect(new GeminiClient(config({})).enabled).toBe(false);
+    expect(new GeminiClient(config({}), redis as unknown as RedisService).enabled).toBe(false);
+  });
+
+  it('defaults to the built-in model chain', () => {
+    expect(new GeminiClient(config({}), redis as unknown as RedisService).models).toEqual(
+      DEFAULT_GEMINI_MODELS.split(','),
+    );
+  });
+});
+
+describe('retryDelaySeconds', () => {
+  it('reads RetryInfo, then the message, and rounds up', () => {
+    expect(retryDelaySeconds({ error: { details: [{ retryDelay: '44.2s' }] } })).toBe(45);
+    expect(retryDelaySeconds({ error: { message: 'Please retry in 12.5s.' } })).toBe(13);
+    expect(retryDelaySeconds({ error: { message: 'nothing here' } })).toBeNull();
+    expect(retryDelaySeconds(null)).toBeNull();
   });
 });
 
