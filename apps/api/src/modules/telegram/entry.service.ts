@@ -4,7 +4,7 @@ import { addDays, formatIsoDate, parseIsoDate } from '@fintrack/shared';
 import { DraftStore, TransactionDraft } from './drafts/draft.store';
 import { DraftView } from './bot-ui';
 import { parseQuickEntry } from './parsing/quick-entry.parser';
-import { guessCategory } from './parsing/category-guesser';
+import { guessCategory, normalizeText } from './parsing/category-guesser';
 import { CategoriesRepository } from '../categories/categories.repository';
 import { AccountsRepository } from '../accounts/accounts.repository';
 import { TransactionsService, CreateTransactionResult } from '../transactions/transactions.service';
@@ -59,11 +59,13 @@ export class EntryService {
 
   async createDraft(user: User, entry: EntryCandidate, source: 'text' | 'voice'): Promise<TransactionDraft> {
     const [categories, accounts] = await Promise.all([this.categoryList(user.id), this.accounts.findAll(user.id)]);
+    // Names can come from an AI extractor that spells apostrophes differently (Sog'liq / Sog‘liq).
+    const same = (a: string, b: string) => normalizeText(a) === normalizeText(b);
     const byName = (name?: string | null) =>
-      name ? categories.find((c) => c.type === entry.type && c.name.toLowerCase() === name.toLowerCase()) : undefined;
+      name ? categories.find((c) => c.type === entry.type && same(c.name, name)) : undefined;
     const category = byName(entry.categoryName) ?? guessCategory(entry.note, entry.type, categories);
     const account =
-      accounts.find((a) => entry.accountName && a.name.toLowerCase() === entry.accountName.toLowerCase()) ??
+      accounts.find((a) => entry.accountName && same(a.name, entry.accountName)) ??
       accounts.find((a) => a.isDefault) ??
       accounts[0];
 

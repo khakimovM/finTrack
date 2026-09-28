@@ -6,6 +6,7 @@ import { AuthHandlers } from './handlers/auth.handlers';
 import { MenuHandlers } from './handlers/menu.handlers';
 import { DebtHandlers } from './handlers/debt.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
+import { VoiceHandlers } from './handlers/voice.handlers';
 
 export const ALLOWED_UPDATES = ['message', 'callback_query'] as const;
 
@@ -26,6 +27,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     private readonly menuHandlers: MenuHandlers,
     private readonly debtHandlers: DebtHandlers,
     private readonly entryHandlers: EntryHandlers,
+    private readonly voiceHandlers: VoiceHandlers,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -40,6 +42,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     this.menuHandlers.register(bot);
     this.debtHandlers.register(bot);
     this.entryHandlers.register(bot);
+    this.voiceHandlers.register(bot);
     this.entryHandlers.registerTextFallback(bot);
     bot.catch((err: BotError) => this.logError(err));
 

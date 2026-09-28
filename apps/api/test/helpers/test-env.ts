@@ -48,3 +48,8 @@ process.env.TELEGRAM_WEBHOOK_SECRET = 'e2e_webhook_secret_that_is_long_enough_32
 delete process.env.TELEGRAM_WEBHOOK_URL;
 delete process.env.TELEGRAM_API_ROOT;
 process.env.OTP_SECRET = 'e2e_otp_secret_that_is_definitely_long_enough';
+// Never call real AI providers from tests (a developer's .env may hold real keys); suites that
+// need the assistant override its provider clients with fakes. Empty means "unset" to validateEnv.
+process.env.GEMINI_API_KEY = '';
+process.env.GROQ_API_KEY = '';
+process.env.ANTHROPIC_API_KEY = '';

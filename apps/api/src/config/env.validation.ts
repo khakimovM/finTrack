@@ -59,6 +59,20 @@ export const envSchema = z.object({
     .optional(),
   /** Alternative Bot API server (local Bot API server or a test double). */
   TELEGRAM_API_ROOT: z.string().url().optional(),
+
+  /** Voice notes and free text: Gemini (free tier) transcribes and extracts entries. */
+  GEMINI_API_KEY: z.string().min(20, 'GEMINI_API_KEY looks too short').optional(),
+  GEMINI_MODEL: z.string().regex(/^[a-z0-9.-]+$/, 'GEMINI_MODEL: a model id like gemini-3.8-flash').default('gemini-3.8-flash'),
+  /** Fallback speech-to-text (Groq Whisper) when Gemini is out of quota. */
+  GROQ_API_KEY: z.string().min(20, 'GROQ_API_KEY looks too short').optional(),
+  GROQ_STT_MODEL: z.string().regex(/^[a-z0-9.-]+$/, 'GROQ_STT_MODEL: a model id').default('whisper-large-v3'),
+  /** Optional paid text extractor. */
+  ANTHROPIC_API_KEY: z.string().min(20, 'ANTHROPIC_API_KEY looks too short').optional(),
+  ANTHROPIC_MODEL: z.string().regex(/^[a-z0-9.-]+$/, 'ANTHROPIC_MODEL: a model id').default('claude-opus-5'),
+  VOICE_MAX_SECONDS: z.coerce.number().int().min(5).max(600).default(60),
+  /** Per user per day; protects the free quotas from a single chatty user. */
+  VOICE_DAILY_LIMIT: z.coerce.number().int().min(0).default(30),
+  AI_TEXT_DAILY_LIMIT: z.coerce.number().int().min(0).default(50),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

@@ -150,6 +150,16 @@ export function contactUpdate(from: FakeTgUser, contactUserId: number, phone: st
   };
 }
 
+export function voiceUpdate(from: FakeTgUser, duration: number) {
+  return {
+    update_id: updateSeq++,
+    message: {
+      ...base(from),
+      voice: { file_id: `voice-${updateSeq}`, file_unique_id: `u-${updateSeq}`, duration, mime_type: 'audio/ogg' },
+    },
+  };
+}
+
 export function callbackUpdate(from: FakeTgUser, data: string) {
   return {
     update_id: updateSeq++,

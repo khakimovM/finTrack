@@ -6,6 +6,7 @@ import { AuthHandlers } from './handlers/auth.handlers';
 import { MenuHandlers } from './handlers/menu.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
 import { DebtHandlers } from './handlers/debt.handlers';
+import { VoiceHandlers } from './handlers/voice.handlers';
 import { BotUserService } from './bot-user.service';
 import { BotReportsService } from './bot-reports.service';
 import { EntryService } from './entry.service';
@@ -22,6 +23,7 @@ import { BudgetsModule } from '../budgets/budgets.module';
 import { DebtsModule } from '../debts/debts.module';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AssistantModule } from '../assistant/assistant.module';
 import { QUEUES } from '../../infra/queue/queues';
 
 @Module({
@@ -36,6 +38,7 @@ import { QUEUES } from '../../infra/queue/queues';
     DebtsModule,
     UsersModule,
     NotificationsModule,
+    AssistantModule,
   ],
   controllers: [TelegramWebhookController],
   providers: [
@@ -44,6 +47,7 @@ import { QUEUES } from '../../infra/queue/queues';
     MenuHandlers,
     EntryHandlers,
     DebtHandlers,
+    VoiceHandlers,
     BotUserService,
     BotReportsService,
     EntryService,
