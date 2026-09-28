@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useInitOnOpen } from '../../../lib/useInitOnOpen';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -57,19 +58,17 @@ export function TransactionModal({
     },
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      setActiveType(defaultType);
-      setValue('type', defaultType);
-      if (accounts.length > 0) {
-        const defaultAcc = accounts.find((a) => a.isDefault) ?? accounts[0];
-        setValue('accountId', defaultAcc.id);
-      }
-      // From defaultType, not activeType: the state still holds the previous opening's type
-      // here, and an income category on an expense is rejected by the API.
-      setValue('categoryId', categoryOptions(allCategories, defaultType)[0]?.id ?? '');
+  useInitOnOpen(isOpen, accountsData !== undefined && categoriesData !== undefined, () => {
+    setActiveType(defaultType);
+    setValue('type', defaultType);
+    if (accounts.length > 0) {
+      const defaultAcc = accounts.find((a) => a.isDefault) ?? accounts[0];
+      setValue('accountId', defaultAcc.id);
     }
-  }, [isOpen, defaultType, accounts.length, allCategories.length]);
+    // From defaultType, not activeType: the state still holds the previous opening's type
+    // here, and an income category on an expense is rejected by the API.
+    setValue('categoryId', categoryOptions(allCategories, defaultType)[0]?.id ?? '');
+  });
 
   const handleTypeChange = (type: 'INCOME' | 'EXPENSE') => {
     setActiveType(type);
@@ -114,11 +113,7 @@ export function TransactionModal({
 
         {/* Account and Category selectors */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Select
-            label="Hisob"
-            error={errors.accountId?.message}
-            {...register('accountId')}
-          >
+          <Select label="Hisob" error={errors.accountId?.message} {...register('accountId')}>
             {accounts.map((acc) => (
               <option key={acc.id} value={acc.id}>
                 {acc.icon} {acc.name}
@@ -126,11 +121,7 @@ export function TransactionModal({
             ))}
           </Select>
 
-          <Select
-            label="Kategoriya"
-            error={errors.categoryId?.message}
-            {...register('categoryId')}
-          >
+          <Select label="Kategoriya" error={errors.categoryId?.message} {...register('categoryId')}>
             {filteredCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
@@ -141,12 +132,7 @@ export function TransactionModal({
 
         {/* Date and Note */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input
-            type="date"
-            label="Sana"
-            error={errors.date?.message}
-            {...register('date')}
-          />
+          <Input type="date" label="Sana" error={errors.date?.message} {...register('date')} />
           <Input
             type="text"
             label="Izoh (ixtiyoriy)"

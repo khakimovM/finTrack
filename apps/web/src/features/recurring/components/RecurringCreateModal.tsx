@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useInitOnOpen } from '../../../lib/useInitOnOpen';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -61,13 +61,12 @@ export function RecurringCreateModal({ isOpen, onClose }: RecurringCreateModalPr
   const frequency = watch('frequency');
   const categories = categoryOptions(categoriesData ?? [], type);
 
-  useEffect(() => {
-    if (!isOpen) return;
+  useInitOnOpen(isOpen, accountsData !== undefined && categoriesData !== undefined, () => {
     reset(defaults());
     const account = accounts.find((a) => a.isDefault) ?? accounts[0];
     if (account) setValue('accountId', account.id);
     setValue('categoryId', categoryOptions(categoriesData ?? [], 'EXPENSE')[0]?.id ?? '');
-  }, [isOpen, accounts.length, categoriesData?.length]);
+  });
 
   const changeType = (next: EntryType) => {
     setValue('type', next);
