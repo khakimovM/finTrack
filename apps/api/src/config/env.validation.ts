@@ -25,7 +25,7 @@ export const envSchema = z.object({
   COOKIE_DOMAIN: z.string().optional(),
   THROTTLE_TTL: z.coerce.number().int().positive().default(60),
   THROTTLE_LIMIT: z.coerce.number().int().positive().default(100),
-  // Number of reverse-proxy hops in front of the API (Railway edge = 1, Vercel rewrite + Railway = 2).
+  // Number of reverse-proxy hops in front of the API (Railway edge = 1).
   TRUST_PROXY: z
     .string()
     .regex(/^(true|false|\d+)$/, 'TRUST_PROXY must be true, false or a hop count')
@@ -36,6 +36,8 @@ export const envSchema = z.object({
   SCHEDULER_ENABLED: booleanFlag.default('true'),
   APP_TIMEZONE: z.string().default('Asia/Tashkent'),
 
+  /** Built web app (apps/web/dist) to serve from this process; unset in development (Vite). */
+  WEB_DIST_DIR: z.string().min(1).optional(),
   /** Public URL of the web app (Mini App + links sent by the bot). Defaults to CLIENT_URL. */
   WEB_APP_URL: z.string().url().optional(),
   /** Keys the one-time sign-in codes. Required in production; dev derives one from JWT_ACCESS_SECRET. */

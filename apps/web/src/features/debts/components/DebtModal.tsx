@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CreateDebtInputSchema, CreateDebtInput } from '@fintrack/shared';
@@ -43,6 +44,11 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT' }: Debt
   const selectedDirection = watch('direction');
   const amountValue = watch('amount');
   const accountIdValue = watch('accountId');
+  // The select shows the default account before the user touches it; the form must hold it too.
+  const defaultAccountId = (accounts.find((a) => a.isDefault) ?? accounts[0])?.id;
+  useEffect(() => {
+    if (isOpen && !accountIdValue && defaultAccountId) setValue('accountId', defaultAccountId);
+  }, [isOpen, accountIdValue, defaultAccountId, setValue]);
 
   const onSubmit = async (data: CreateDebtInput) => {
     try {
@@ -90,62 +96,58 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT' }: Debt
 
         {/* Person Name & Phone */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Shaxs ismi *</label>
-            <Input
-              {...register('personName')}
-              placeholder="Masalan: Jasur Karimov"
-              error={errors.personName?.message}
-            />
-          </div>
+          <Input
+            label="Shaxs ismi *"
+            {...register('personName')}
+            placeholder="Masalan: Jasur Karimov"
+            error={errors.personName?.message}
+          />
 
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Telefon raqami</label>
-            <Input
-              {...register('personPhone')}
-              placeholder="+998 90 123 45 67"
-              error={errors.personPhone?.message}
-            />
-          </div>
+          <Input
+            label="Telefon raqami"
+            {...register('personPhone')}
+            placeholder="+998 90 123 45 67"
+            error={errors.personPhone?.message}
+          />
         </div>
 
         {/* Account & Amount */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Hisob *</label>
-            <Select
-              value={accountIdValue || accounts[0]?.id || ''}
-              onChange={(e) => setValue('accountId', e.target.value)}
-              options={accounts.map((a) => ({
-                value: a.id,
-                label: `${a.icon} ${a.name}`,
-              }))}
-              error={errors.accountId?.message}
-            />
-          </div>
+          <Select
+            label="Hisob *"
+            value={accountIdValue || defaultAccountId || ''}
+            onChange={(e) => setValue('accountId', e.target.value)}
+            options={accounts.map((a) => ({
+              value: a.id,
+              label: `${a.icon} ${a.name}`,
+            }))}
+            error={errors.accountId?.message}
+          />
 
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Summa *</label>
-            <MoneyInput
-              value={amountValue}
-              onChange={(tiyinStr: string) => setValue('amount', tiyinStr)}
-              placeholder="0"
-              error={errors.amount?.message}
-            />
-          </div>
+          <MoneyInput
+            label="Summa *"
+            value={amountValue}
+            onChange={(tiyinStr: string) => setValue('amount', tiyinStr)}
+            placeholder="0"
+            error={errors.amount?.message}
+          />
         </div>
 
         {/* Due Date & Note */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Qaytarish muddati</label>
-            <Input type="date" {...register('dueDate')} error={errors.dueDate?.message} />
-          </div>
+          <Input
+            label="Qaytarish muddati"
+            type="date"
+            {...register('dueDate')}
+            error={errors.dueDate?.message}
+          />
 
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Izoh</label>
-            <Input {...register('note')} placeholder="Ixtiyoriy izoh..." error={errors.note?.message} />
-          </div>
+          <Input
+            label="Izoh"
+            {...register('note')}
+            placeholder="Ixtiyoriy izoh..."
+            error={errors.note?.message}
+          />
         </div>
 
         {/* Buttons */}

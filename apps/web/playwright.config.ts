@@ -1,25 +1,33 @@
 import { defineConfig, devices } from '@playwright/test';
+import { API_URL } from './e2e/support/env';
 
+/**
+ * Browser tests against the production shape: the built API serves the built web app on one
+ * origin, and a mock Telegram Bot API stands in for Telegram (e2e/support/start-stack.ts).
+ * Run `npm run build` first.
+ */
 export default defineConfig({
   testDir: './e2e',
-  timeout: 45_000,
-  expect: {
-    timeout: 10_000,
-  },
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
-  retries: 0,
-  reporter: [['html', { open: 'never' }], ['list']],
+  retries: process.env.CI ? 1 : 0,
+  reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.CLIENT_URL || 'http://localhost:5173',
-    trace: 'on-first-retry',
+    baseURL: API_URL,
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
   },
   projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
+    { name: 'desktop', testIgnore: /mobile\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile', testMatch: /mobile\.spec\.ts/, use: { ...devices['Pixel 7'] } },
   ],
+  webServer: {
+    command: 'node e2e/support/start-stack.ts',
+    url: `${API_URL}/api/v1/health/ready`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
+    stdout: 'pipe',
+  },
 });

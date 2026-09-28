@@ -65,11 +65,11 @@ export function TransactionModal({
         const defaultAcc = accounts.find((a) => a.isDefault) ?? accounts[0];
         setValue('accountId', defaultAcc.id);
       }
-      if (filteredCategories.length > 0) {
-        setValue('categoryId', filteredCategories[0].id);
-      }
+      // From defaultType, not activeType: the state still holds the previous opening's type
+      // here, and an income category on an expense is rejected by the API.
+      setValue('categoryId', categoryOptions(allCategories, defaultType)[0]?.id ?? '');
     }
-  }, [isOpen, defaultType, accounts.length]);
+  }, [isOpen, defaultType, accounts.length, allCategories.length]);
 
   const handleTypeChange = (type: 'INCOME' | 'EXPENSE') => {
     setActiveType(type);

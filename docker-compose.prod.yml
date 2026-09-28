@@ -1,3 +1,6 @@
+# Self-hosting on one machine. Railway (see railway.json) is the primary deployment target.
+# Put a TLS-terminating proxy in front of port 80 in real use: Telegram webhooks and the
+# Mini App require HTTPS.
 services:
   postgres:
     image: postgres:16-alpine
@@ -27,41 +30,45 @@ services:
       timeout: 3s
       retries: 10
 
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    container_name: fintrack-api-prod
+  # Applies pending migrations once, before the app starts (Railway: preDeployCommand).
+  migrate:
+    build: .
+    command: ["npx", "prisma", "migrate", "deploy", "--schema", "apps/api/prisma/schema.prisma"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fintrack}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-fintrack}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build: .
+    container_name: fintrack-app-prod
     restart: always
-    # Reached only through the web container's /api proxy; not published on the host.
-    expose:
-      - "5000"
+    ports:
+      - "80:5000"
     environment:
       NODE_ENV: production
-      PORT: 5000
       DATABASE_URL: postgresql://${POSTGRES_USER:-fintrack}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-fintrack}?schema=public
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
-      CLIENT_URL: ${CLIENT_URL:-http://localhost}
+      OTP_SECRET: ${OTP_SECRET:?OTP_SECRET is required}
+      CLIENT_URL: ${CLIENT_URL:?CLIENT_URL is required}
+      WEB_APP_URL: ${CLIENT_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN is required}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:?TELEGRAM_BOT_USERNAME is required}
+      TELEGRAM_WEBHOOK_URL: ${CLIENT_URL}/api/v1/telegram/webhook
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:?TELEGRAM_WEBHOOK_SECRET is required}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       TRUST_PROXY: "1"
       SWAGGER_ENABLED: "false"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
-
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: fintrack-web-prod
-    restart: always
-    ports:
-      - "80:80"
-    depends_on:
-      - api
 
 volumes:
   pgdata_prod:

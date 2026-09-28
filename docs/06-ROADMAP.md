@@ -178,6 +178,28 @@ Dockerfile'lar, README va skrinshotlar, deploy (API + Web + boshqariladigan Post
 
 ---
 
+## Production va Telegram bosqichlari (A–I)
+
+Audit natijasida 0–12 bosqichlar ustiga qilingan ishlar (batafsil: git tarixi,
+`feat/production-hardening` branch). Auth endi **faqat Telegram** orqali: 2-bosqichdagi
+email/parol endpointlari olib tashlangan.
+
+| Bosqich | Mazmuni | Holat |
+|---|---|---|
+| A | Migratsiyalar, xavfsizlik (CSRF, CSP, rate limit, loglarda sir yo'q), Prisma xatolari, vaqt zonasi | ✅ |
+| B | Boshqariladigan yozuvlar, qator qulflari, refresh CAS, userId scoping, byudjet/kategoriya qoidalari | ✅ |
+| C | BullMQ jadval, recurring quvib yetish, qarz eslatmalari, bildirishnoma dedupe | ✅ |
+| D | Telegram OTP kirish, sessiyalar, `users/me`, Sozlamalar sahifasi | ✅ |
+| E | Botdan boshqarish: tez kiritish, hisobot, qarzlar, sozlamalar, Telegram push, kunlik xulosa | ✅ |
+| F | Ovozli yordamchi (Gemini → Groq → Claude) | ✅ |
+| G | Telegram Mini App (`initData` kirish, mavzu, Back tugmasi) | ✅ |
+| H | Takroriy to'lovlar va hisobotlar sahifalari, invalidatsiya jadvali, Vitest | ✅ |
+| I | Yagona Docker image + Railway, CI (4 job), Playwright (mock Telegram), hujjatlar | ✅ |
+
+Qolgan: haqiqiy Telegram bilan sinov (ovoz, Mini App) va production deploy — foydalanuvchi bilan birga.
+
+---
+
 ## Ixtiyoriy — Bosqich 13: ko'p valyuta
 `Account.currency`, `ExchangeRate`, `amountBase`, kurs qotirish, statistikani bazaviy
 valyutada hisoblash. Faqat 12-bosqich tugagach boshlanadi.
