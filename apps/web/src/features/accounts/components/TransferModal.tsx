@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
+import { useInitOnOpen } from '../../../lib/useInitOnOpen';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   CreateTransferInput,
   CreateTransferInputSchema,
-  formatIsoDate,
+  todayLocalIso,
   formatMoney,
 } from '@fintrack/shared';
 import { Modal } from '../../../components/ui/Modal';
@@ -22,11 +22,7 @@ export interface TransferModalProps {
   defaultFromAccountId?: string;
 }
 
-export function TransferModal({
-  isOpen,
-  onClose,
-  defaultFromAccountId,
-}: TransferModalProps) {
+export function TransferModal({ isOpen, onClose, defaultFromAccountId }: TransferModalProps) {
   const { data: accountsData } = useAccounts();
   const createTransfer = useCreateTransfer();
   const accounts = accountsData?.data ?? [];
@@ -46,7 +42,7 @@ export function TransferModal({
       fromAccountId: '',
       toAccountId: '',
       amount: '',
-      date: formatIsoDate(new Date()),
+      date: todayLocalIso(),
       note: '',
     },
   });
@@ -54,15 +50,14 @@ export function TransferModal({
   const fromAccountId = watch('fromAccountId');
   const toAccountId = watch('toAccountId');
 
-  useEffect(() => {
-    if (isOpen && accounts.length >= 2) {
-      const from = defaultFromAccountId ?? accounts[0].id;
-      const to = accounts.find((a) => a.id !== from)?.id ?? accounts[1].id;
-      setValue('fromAccountId', from);
-      setValue('toAccountId', to);
-      setValue('date', formatIsoDate(new Date()));
-    }
-  }, [isOpen, defaultFromAccountId, accounts, setValue]);
+  useInitOnOpen(isOpen, accountsData !== undefined, () => {
+    if (accounts.length < 2) return;
+    const from = defaultFromAccountId ?? accounts[0].id;
+    const to = accounts.find((a) => a.id !== from)?.id ?? accounts[1].id;
+    setValue('fromAccountId', from);
+    setValue('toAccountId', to);
+    setValue('date', todayLocalIso());
+  });
 
   const onSubmit = async (data: CreateTransferInput) => {
     if (data.fromAccountId === data.toAccountId) {
@@ -138,12 +133,7 @@ export function TransferModal({
 
         {/* Date and Note */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input
-            type="date"
-            label="Sana"
-            error={errors.date?.message}
-            {...register('date')}
-          />
+          <Input type="date" label="Sana" error={errors.date?.message} {...register('date')} />
           <Input
             type="text"
             label="Izoh (ixtiyoriy)"

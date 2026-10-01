@@ -49,11 +49,11 @@ export function TransactionFilterBar({
 
   const hasActiveFilters = Boolean(
     filters.search ||
-      filters.type ||
-      filters.accountId ||
-      filters.categoryId ||
-      filters.from ||
-      filters.to,
+    filters.type ||
+    filters.accountId ||
+    filters.categoryId ||
+    filters.from ||
+    filters.to,
   );
 
   return (
@@ -151,18 +151,14 @@ export function TransactionFilterBar({
           <input
             type="date"
             value={filters.from ?? ''}
-            onChange={(e) =>
-              onFilterChange({ ...filters, from: e.target.value || undefined })
-            }
+            onChange={(e) => onFilterChange({ ...filters, from: e.target.value || undefined })}
             className="h-8 px-2.5 rounded-lg border border-input bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
           <span className="text-xs text-muted-foreground">—</span>
           <input
             type="date"
             value={filters.to ?? ''}
-            onChange={(e) =>
-              onFilterChange({ ...filters, to: e.target.value || undefined })
-            }
+            onChange={(e) => onFilterChange({ ...filters, to: e.target.value || undefined })}
             className="h-8 px-2.5 rounded-lg border border-input bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>

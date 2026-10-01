@@ -1,28 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, Transaction, TransactionType } from '@prisma/client';
+import { ListTransactionsQuery, TransactionFilters, parseIsoDate } from '@fintrack/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
-import { ListTransactionsQuery, ExportTransactionsQuery } from '@fintrack/shared';
+import { Db } from '../../infra/prisma/prisma.types';
 
-export type TransactionWithRelations = Transaction & {
-  account: {
-    id: string;
-    name: string;
-    icon: string;
-  };
-  category: {
-    id: string;
-    name: string;
-    icon: string;
-    color: string;
-  } | null;
-  tags: Array<{
-    tag: {
-      id: string;
-      name: string;
-      color: string;
-    };
-  }>;
-};
+const relationsInclude = {
+  account: { select: { id: true, name: true, icon: true } },
+  category: { select: { id: true, name: true, icon: true, color: true } },
+  tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
+} satisfies Prisma.TransactionInclude;
+
+export type TransactionWithRelations = Prisma.TransactionGetPayload<{ include: typeof relationsInclude }>;
 
 export interface CreateTransactionData {
   type: TransactionType;
@@ -31,7 +19,6 @@ export interface CreateTransactionData {
   categoryId?: string | null;
   date: Date;
   note?: string | null;
-  recurringRuleId?: string | null;
 }
 
 export interface UpdateTransactionData {
@@ -46,63 +33,33 @@ export interface UpdateTransactionData {
 export class TransactionsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  private getRelationsInclude() {
-    return {
-      account: {
-        select: { id: true, name: true, icon: true },
-      },
-      category: {
-        select: { id: true, name: true, icon: true, color: true },
-      },
-      tags: {
-        include: {
-          tag: {
-            select: { id: true, name: true, color: true },
-          },
-        },
-      },
-    };
-  }
-
-  buildWhereClause(userId: string, query: Partial<ListTransactionsQuery>): Prisma.TransactionWhereInput {
+  buildWhereClause(userId: string, filters: TransactionFilters): Prisma.TransactionWhereInput {
     const where: Prisma.TransactionWhereInput = {
       userId,
       deletedAt: null,
+      // Rows of legacy soft-deleted accounts are outside every balance, so hide them everywhere.
+      account: { deletedAt: null },
     };
 
-    if (query.type) {
-      where.type = query.type as TransactionType;
-    }
-    if (query.accountId) {
-      where.accountId = query.accountId;
-    }
-    if (query.categoryId) {
-      where.categoryId = query.categoryId;
-    }
-    if (query.tagId) {
-      where.tags = {
-        some: { tagId: query.tagId },
-      };
-    }
-    if (query.from || query.to) {
+    if (filters.type) where.type = filters.type as TransactionType;
+    if (filters.accountId) where.accountId = filters.accountId;
+    if (filters.categoryId) where.categoryId = filters.categoryId;
+    if (filters.tagId) where.tags = { some: { tagId: filters.tagId } };
+    if (filters.from || filters.to) {
       where.date = {
-        ...(query.from ? { gte: new Date(query.from) } : {}),
-        ...(query.to ? { lte: new Date(query.to) } : {}),
+        ...(filters.from ? { gte: parseIsoDate(filters.from) } : {}),
+        ...(filters.to ? { lte: parseIsoDate(filters.to) } : {}),
       };
     }
-    if (query.minAmount || query.maxAmount) {
+    if (filters.minAmount || filters.maxAmount) {
       where.amount = {
-        ...(query.minAmount ? { gte: BigInt(query.minAmount) } : {}),
-        ...(query.maxAmount ? { lte: BigInt(query.maxAmount) } : {}),
+        ...(filters.minAmount ? { gte: BigInt(filters.minAmount) } : {}),
+        ...(filters.maxAmount ? { lte: BigInt(filters.maxAmount) } : {}),
       };
     }
-    if (query.search) {
-      where.note = {
-        contains: query.search,
-        mode: 'insensitive',
-      };
+    if (filters.search) {
+      where.note = { contains: filters.search, mode: 'insensitive' };
     }
-
     return where;
   }
 
@@ -129,205 +86,106 @@ export class TransactionsRepository {
     query: ListTransactionsQuery,
   ): Promise<{ transactions: TransactionWithRelations[]; total: number }> {
     const where = this.buildWhereClause(userId, query);
-    const orderBy = this.buildOrderBy(query.sort);
-    const skip = (query.page - 1) * query.limit;
-    const take = query.limit;
-
     const [transactions, total] = await Promise.all([
       this.prisma.transaction.findMany({
         where,
-        include: this.getRelationsInclude(),
-        orderBy,
-        skip,
-        take,
+        include: relationsInclude,
+        orderBy: this.buildOrderBy(query.sort),
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
       }),
       this.prisma.transaction.count({ where }),
     ]);
-
     return { transactions, total };
   }
 
-  async calculateSums(
-    userId: string,
-    query: ListTransactionsQuery,
-  ): Promise<{ income: string; expense: string }> {
-    const baseWhere = this.buildWhereClause(userId, query);
-
-    const [incomeResult, expenseResult] = await Promise.all([
-      this.prisma.transaction.aggregate({
-        where: { ...baseWhere, type: 'INCOME' },
-        _sum: { amount: true },
-      }),
-      this.prisma.transaction.aggregate({
-        where: { ...baseWhere, type: 'EXPENSE' },
-        _sum: { amount: true },
-      }),
-    ]);
-
-    return {
-      income: (incomeResult._sum.amount ?? 0n).toString(),
-      expense: (expenseResult._sum.amount ?? 0n).toString(),
-    };
+  /** Income and expense totals for the whole filter (not just the current page). */
+  async calculateSums(userId: string, filters: TransactionFilters): Promise<{ income: string; expense: string }> {
+    const groups = await this.prisma.transaction.groupBy({
+      by: ['type'],
+      where: { ...this.buildWhereClause(userId, filters), type: { in: ['INCOME', 'EXPENSE'] } },
+      _sum: { amount: true },
+    });
+    const sumOf = (type: TransactionType) =>
+      (groups.find((g) => g.type === type)?._sum.amount ?? 0n).toString();
+    return { income: sumOf('INCOME'), expense: sumOf('EXPENSE') };
   }
 
-  async findById(userId: string, id: string): Promise<TransactionWithRelations | null> {
-    return this.prisma.transaction.findFirst({
-      where: {
-        id,
-        userId,
-        deletedAt: null,
-      },
-      include: this.getRelationsInclude(),
+  async findById(userId: string, id: string, db: Db = this.prisma): Promise<TransactionWithRelations | null> {
+    return db.transaction.findFirst({
+      where: { id, userId, deletedAt: null },
+      include: relationsInclude,
     });
   }
 
   async findDeletedById(userId: string, id: string): Promise<Transaction | null> {
     return this.prisma.transaction.findFirst({
-      where: {
-        id,
-        userId,
-        deletedAt: { not: null },
-      },
+      where: { id, userId, deletedAt: { not: null }, account: { deletedAt: null } },
     });
   }
 
+  async findLiveByIds(userId: string, ids: string[]): Promise<Transaction[]> {
+    return this.prisma.transaction.findMany({ where: { id: { in: ids }, userId, deletedAt: null } });
+  }
+
   async create(
+    db: Db,
     userId: string,
     data: CreateTransactionData,
-    tagIds?: string[],
+    tagIds: string[] = [],
   ): Promise<TransactionWithRelations> {
-    return this.prisma.$transaction(async (tx) => {
-      const transaction = await tx.transaction.create({
-        data: {
-          userId,
-          type: data.type,
-          accountId: data.accountId,
-          amount: data.amount,
-          categoryId: data.categoryId,
-          date: data.date,
-          note: data.note,
-          recurringRuleId: data.recurringRuleId,
-        },
-      });
-
-      if (tagIds && tagIds.length > 0) {
-        await tx.transactionTag.createMany({
-          data: tagIds.map((tagId) => ({
-            transactionId: transaction.id,
-            tagId,
-          })),
-        });
-      }
-
-      return tx.transaction.findUniqueOrThrow({
-        where: { id: transaction.id },
-        include: this.getRelationsInclude(),
-      });
+    return db.transaction.create({
+      data: {
+        ...data,
+        userId,
+        tags: { create: tagIds.map((tagId) => ({ tagId })) },
+      },
+      include: relationsInclude,
     });
   }
 
   async update(
+    db: Db,
     userId: string,
     id: string,
     data: UpdateTransactionData,
     tagIds?: string[],
   ): Promise<TransactionWithRelations> {
-    return this.prisma.$transaction(async (tx) => {
-      await tx.transaction.update({
-        where: { id },
-        data,
-      });
-
-      if (tagIds !== undefined) {
-        await tx.transactionTag.deleteMany({
-          where: { transactionId: id },
-        });
-
-        if (tagIds.length > 0) {
-          await tx.transactionTag.createMany({
-            data: tagIds.map((tagId) => ({
-              transactionId: id,
-              tagId,
-            })),
-          });
-        }
-      }
-
-      return tx.transaction.findUniqueOrThrow({
-        where: { id },
-        include: this.getRelationsInclude(),
-      });
-    });
-  }
-
-  async softDelete(userId: string, transaction: Transaction): Promise<void> {
-    const now = new Date();
-    if (transaction.transferGroupId) {
-      await this.prisma.transaction.updateMany({
-        where: {
-          transferGroupId: transaction.transferGroupId,
-          userId,
-          deletedAt: null,
-        },
-        data: { deletedAt: now },
-      });
-    } else {
-      await this.prisma.transaction.update({
-        where: { id: transaction.id },
-        data: { deletedAt: now },
-      });
-    }
-  }
-
-  async bulkSoftDelete(userId: string, ids: string[]): Promise<void> {
-    const now = new Date();
-    const transactions = await this.prisma.transaction.findMany({
-      where: { id: { in: ids }, userId, deletedAt: null },
-      select: { id: true, transferGroupId: true },
-    });
-
-    const transferGroupIds = transactions
-      .map((t) => t.transferGroupId)
-      .filter((gid): gid is string => Boolean(gid));
-
-    await this.prisma.transaction.updateMany({
-      where: {
-        userId,
-        deletedAt: null,
-        OR: [
-          { id: { in: ids } },
-          ...(transferGroupIds.length > 0 ? [{ transferGroupId: { in: transferGroupIds } }] : []),
-        ],
+    return db.transaction.update({
+      where: { id, userId, deletedAt: null },
+      data: {
+        ...data,
+        ...(tagIds !== undefined
+          ? { tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) } }
+          : {}),
       },
-      data: { deletedAt: now },
+      include: relationsInclude,
     });
   }
 
-  async restore(userId: string, transaction: Transaction): Promise<void> {
-    if (transaction.transferGroupId) {
-      await this.prisma.transaction.updateMany({
-        where: {
-          transferGroupId: transaction.transferGroupId,
-          userId,
-        },
-        data: { deletedAt: null },
-      });
-    } else {
-      await this.prisma.transaction.update({
-        where: { id: transaction.id },
-        data: { deletedAt: null },
-      });
-    }
+  async softDelete(db: Db, userId: string, ids: string[]): Promise<number> {
+    const result = await db.transaction.updateMany({
+      where: { id: { in: ids }, userId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    return result.count;
   }
 
-  async findForExport(
-    userId: string,
-    query: ExportTransactionsQuery,
-  ): Promise<TransactionWithRelations[]> {
-    const where = this.buildWhereClause(userId, query);
+  async restore(db: Db, userId: string, id: string): Promise<void> {
+    await db.transaction.update({
+      where: { id, userId, deletedAt: { not: null } },
+      data: { deletedAt: null },
+    });
+  }
+
+  async countForExport(userId: string, filters: TransactionFilters): Promise<number> {
+    return this.prisma.transaction.count({ where: this.buildWhereClause(userId, filters) });
+  }
+
+  async findForExport(userId: string, filters: TransactionFilters): Promise<TransactionWithRelations[]> {
     return this.prisma.transaction.findMany({
-      where,
-      include: this.getRelationsInclude(),
+      where: this.buildWhereClause(userId, filters),
+      include: relationsInclude,
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     });
   }

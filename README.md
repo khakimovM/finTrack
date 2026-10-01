@@ -1,188 +1,132 @@
 # FinTrack
 
-Ko'p foydalanuvchili shaxsiy moliya platformasi. NestJS + PostgreSQL + Prisma backend,
-React + TanStack Query frontend. Google Antigravity bilan agent yordamida qurish uchun
-to'liq sozlangan.
+Ko'p foydalanuvchili shaxsiy moliya platformasi: kirim-chiqim, hisoblar, byudjetlar, qarzlar,
+takroriy to'lovlar va hisobotlar. Kirish **faqat Telegram orqali** (bot bir martalik kod yuboradi),
+moliyani **botning o'zidan** ham boshqarish mumkin — matn yoki ovozli xabar bilan — va ilova
+**Telegram Mini App** sifatida bot ichida ochiladi.
 
-## Talablar (Prerequisites)
-
-- **Node.js**: `>=20.11.0`
-- **npm**: `>=10.0.0`
-- **Docker va Docker Compose** (PostgreSQL 16 va Redis 7 uchun)
-
----
-
-## Loyihani ishga tushirish (Qadam-baqadam qo'llanma)
-
-Barcha dasturchilar loyihani qiynalmasdan o'z kompyuterlarida ishga tushirishlari uchun quyidagi bosqichlarni ketma-ket bajaring:
-
-### 1-qadam: Docker Desktop-ni ishga tushirish
-1. Kompyuteringizda **Docker Desktop** dasturini oching.
-2. Dastur to'liq yuklanguncha kuting (pastki chap burchakda yashil rangda *"Engine running"* bo'lishi kerak).
-
-### 2-qadam: Terminalda loyiha papkasiga kirish
-Terminalni oching va loyiha joylashgan papkaga kiring:
-```powershell
-cd fintrack
-```
-
-> [!TIP]
-> **Windows PowerShell foydalanuvchilari uchun muhim:**  
-> Agar PowerShell'da `File npm.ps1 cannot be loaded because running scripts is disabled` degan xatolik chiqsa:
-> - Buyruqlarni `npm` o'rniga **`npm.cmd`** deb yozing (masalan: `npm.cmd run dev`), **yoki**
-> - Terminalda bir marta quyidagi ruxsat berish buyrug'ini bajaring:
->   ```powershell
->   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
->   ```
-
-### 3-qadam: Ma'lumotlar bazasi va Redis-ni ko'tarish
-PostgreSQL (port `5434`) va Redis (port `6380`) konteynerlarini fonda ishga tushiring:
-```bash
-npm run db:up
-```
-*(yoki to'g'ridan-to'g'ri: `docker compose up -d`)*
-
-### 4-qadam: Bog'liqliklar va Prisma-ni sozlash
-1. Konfiguratsiya faylini tayyorlang va paketlarni o'rnating:
-   ```bash
-   cp .env.example .env          # agar .env mavjud bo'lmasa
-   npm install
-   ```
-2. Prisma Client generatsiya qilish va sxemani sinxronlash:
-   ```bash
-   npm run db:generate
-   ```
-3. Test ma'lumotlar va namunaviy foydalanuvchini yuklash (seed):
-   ```bash
-   npm run db:seed
-   ```
-
-### 5-qadam: Loyihani ishga tushirish (Dev serverlar)
-API va Web ilovani bir vaqtda parallel ishga tushirish:
-```bash
-npm run dev
-```
-
-*(Agar xohlasangiz, ikkita alohida terminal ochib alohida ham yurgizishingiz mumkin: birinchisida `npm run dev:api`, ikkinchisida `npm run dev:web`)*.
-
----
-
-### 6-qadam: Havolalar va foydalanuvchi ma'lumotlari
-
-Loyihani brauzerda oching:
-- 🌐 **Web ilova (Frontend):** [http://localhost:5173](http://localhost:5173)
-- 🔌 **Backend API:** [http://localhost:5000/api/v1](http://localhost:5000/api/v1)
-- 📖 **Swagger API Hujjatlari:** [http://localhost:5000/api/docs](http://localhost:5000/api/docs)
-- 🗄️ **Adminer (DB boshqaruvi):** [http://localhost:8081](http://localhost:8081)
-- 👤 **Standart test foydalanuvchi:** `aziz@fintrack.uz` / `Parol123!`
-
----
-
-### Loyihani to'xtatish:
-- **Dev serverlarni to'xtatish:** Terminalda `Ctrl + C` tugmalarini bosing.
-- **Docker konteynerlarni to'xtatish:** 
-  ```bash
-  npm run db:down
-  ```
-
----
-
-### Production muhitida Docker Compose orqali ishga tushirish
-
-Ilovani production rejimida barcha konteynerlar (postgres, redis, api, web) bilan birga ko'tarish:
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-npm --workspace=api run db:deploy
-```
-
----
-
-## Sinov va sifat nazorati (Verification)
-
-Loyihada 80%+ test qamrovi, qat'iy TypeScript (`strict: true`) va ESLint qoidalari o'rnatilgan.
-
-| Buyruq | Vazifasi |
+| Qatlam | Texnologiya |
 |---|---|
-| `npm run verify` | Monorepo bo'ylab `lint` + `typecheck` + `test` (coverage bilan) |
-| `npm run lint` | ESLint tekshiruvi (`api`, `web`, `shared`) |
-| `npm run typecheck` | TypeScript tekshiruvi (`tsc --noEmit`) |
-| `npm run test` | Jest testlari (servislar, yordamchi modullar, hisob-kitoblar) |
-| `npm run test:e2e` | Playwright e2e testlari (kritik foydalanuvchi oqimi) |
+| Monorepo | npm workspaces + Turborepo (`apps/api`, `apps/web`, `packages/shared`) |
+| Backend | NestJS 10 (Fastify), Prisma 5 + PostgreSQL 16, Redis + BullMQ, grammY (Telegram) |
+| Frontend | React 18 + Vite, TanStack Query v5, Zustand, Tailwind, Recharts |
+| Ovozli yordamchi | Gemini (tekin tarif, model zanjiri) → Groq Whisper (zaxira) → ixtiyoriy Claude |
+| Testlar | Jest + Supertest (API), Vitest + Testing Library + MSW (web), Playwright (brauzer) |
+| Deploy | Bitta Docker image (API web'ni ham beradi) → Railway |
 
 ---
 
-## Arxitektura va texnologiyalar
+## Lokal ishga tushirish
 
-| Qatlam | Texnologiya | Tavsif |
-|---|---|---|
-| **Monorepo** | npm workspaces + Turborepo | `apps/api`, `apps/web`, `packages/shared` |
-| **Backend** | NestJS 10 (Fastify) | TypeScript strict, BullMQ, Redis, Pino logger |
-| **Ma'lumotlar bazasi** | PostgreSQL 16 + Prisma 5 | Tranzaksion ledger, indekslangan so'rovlar |
-| **Frontend** | React 18 + Vite + TS | TanStack Query v5, Zustand, Tailwind CSS, Recharts |
-| **Validatsiya** | Zod / nestjs-zod | Backend va frontend uchun yagona `packages/shared` sxemalari |
-| **Sinovlar** | Jest + Playwright | Biznes mantiq uchun 88%+ qamrov, Playwright e2e |
+**Talablar:** Node.js 22, Docker Desktop.
+
+```bash
+npm install
+npm run db:up          # PostgreSQL (:5434) va Redis (:6380)
+cp .env.example apps/api/.env
+npm run db:deploy      # migratsiyalar
+npm run dev            # API :5000 va web :5173
+```
+
+> PowerShell `npm.ps1 cannot be loaded` desa: `npm.cmd` ishlating yoki bir marta
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+### Telegram bot (kirish uchun majburiy)
+1. [@BotFather](https://t.me/BotFather) → `/newbot` → token va username oling (test uchun alohida bot tavsiya etiladi).
+2. `apps/api/.env` ga yozing:
+   ```
+   TELEGRAM_BOT_TOKEN=...
+   TELEGRAM_BOT_USERNAME=mening_fintrack_botim
+   ```
+3. `npm run dev` — lokal muhitda bot **long polling** bilan ishlaydi (webhook kerak emas).
+4. <http://localhost:5173> → "Telegram orqali kirish" → botda Start → raqamni ulashing → kodni kiriting.
+
+Namunaviy ma'lumot: `DEMO_TELEGRAM_ID=<sizning Telegram ID>` qo'yib `npm run db:seed` — shu ID bilan
+kirganingizda 3 oylik demo ma'lumot ko'rinadi.
+
+### Ovozli yordamchi (ixtiyoriy)
+`GEMINI_API_KEY` ([AI Studio](https://aistudio.google.com), tekin) va `GROQ_API_KEY`
+([Groq](https://console.groq.com), tekin) ni `apps/api/.env` ga yozing. Botga ovozli xabar yuboring —
+u yozuvlarni qoralama sifatida chiqaradi, siz faqat tasdiqlaysiz. Diqqat: Gemini'ning tekin tarifida
+Google so'rovlarni o'z mahsulotlarini yaxshilash uchun ishlatishi mumkin.
+
+### Mini App'ni lokal sinash
+Telegram Mini App'ni faqat HTTPS manzildan ochadi: lokal sinov uchun HTTPS tunnel
+(masalan, `cloudflared tunnel --url http://localhost:5173`) va `WEB_APP_URL=<tunnel manzili>` kerak.
 
 ---
 
-## Loyihaning beshta qonuni (Domain Invariants)
+## Tekshiruvlar
 
-1. **Pul — `BigInt` tiyinda (1 UZS = 100 tiyin)**: Hech qachon `Float` yoki `Number` saqlanmaydi va hisoblanmaydi. JSON orqali `string` ko'rinishida uzatiladi.
-2. **Balans saqlanmaydi**: Doimo ledger yozuvlarining yig'indisi (`SUM(signed amounts)`) orqali hisoblanadi.
-3. **Qarz berish xarajat emas**: `LOAN_GIVEN` operatsiyasi hisob balansini o'zgartiradi, ammo xarajatlar statistikasiga kirmaydi.
-4. **Har bir so'rov `userId` bo'yicha cheklangan**: So'rovlarda `userId` filtrining yo'qligi xavfsizlik insidenti deb baholanadi.
-5. **Ko'p bosqichli pul amallari atomar**: O'tkazmalar, qarzlarni so'ndirish, qayta hisoblar faqat `prisma.$transaction()` ichida bajariladi.
-
----
-
-## Antigravity bilan ishlash
-
-Loyihani Antigravityda oching. Agent avtomatik o'qiydi:
-
-| Fayl / papka | Nima |
+| Buyruq | Nima qiladi |
 |---|---|
-| `AGENTS.md` | Asosiy qoidalar — agent har sessiyada shundan boshlaydi |
-| `.agents/rules/` | 8 ta qoida fayli (backend, DB, frontend, pul, test, xavfsizlik, git) |
-| `.agents/skills/` | 8 ta skill — kerak bo'lganda avtomatik yuklanadi |
-| `.agents/workflows/` | `/next-task`, `/review`, `/verify`, `/debug`, `/new-endpoint`, `/new-page`, `/phase-report` |
-| `.agents/agents/` | 4 ta persona: backend-architect, frontend-engineer, qa-reviewer, devops |
-| `.agents/mcp_config.json` | MCP serverlar: postgres, filesystem, context7, playwright, github |
-| `.agents/hooks.json` | Destruktiv buyruqlarni bloklovchi hook + formatlash |
-| `docs/` | Spetsifikatsiya — haqiqat manbai |
+| `npm run verify` | lint + typecheck + unit testlar (API Jest + web Vitest) — "tayyor" deyishdan oldin |
+| `npm run build` | shared → api → web |
+| `npm --workspace=api run test:e2e` | API e2e: haqiqiy Postgres/Redis, soxta Telegram Bot API |
+| `npm --workspace=web run test:e2e` | Playwright: build qilingan ilova + mock Telegram (avval `npm run build` va `npx playwright install chromium`) |
+| `npm run test:e2e` | ikkalasi, ketma-ket |
 
-### Birinchi sessiya
-
-```
-/next-task
-```
-
-Agent `docs/06-ROADMAP.md` dan keyingi bosqichni oladi, rejasini aytadi, bajaradi va to'xtaydi.
-Har bosqich oxirida:
-
-```
-/phase-report      → holat hisoboti
-/review            → diffni qoidalar bo'yicha tekshirish
-/verify            → lint + typecheck + test
-```
-
-### Personalarga vazifa berish
-```
-@backend-architect  5-bosqich: qarz modulini qisman to'lovlar bilan qil
-@frontend-engineer  Dashboard grafiklarini spec bo'yicha qur
-@qa-reviewer        Oxirgi diffni tekshir va buzilgan joyini top
-@devops             CI ni ishga tushir va deploy konfiguratsiyasini tayyorla
-```
+E2E testlar faqat nomi `_test` bilan tugaydigan bazada ishlaydi (`fintrack_test`), jadvallarni tozalaydi —
+ishchi bazangizga tegmaydi.
 
 ---
+
+## Production: Railway
+
+Bitta servis: API + fon ishlari (BullMQ) + web (API `apps/web/dist` ni o'zi beradi — sayt va API bitta
+domenda, shuning uchun cookie'lar first-party va CORS kerak emas). Konfiguratsiya: `Dockerfile`, `railway.json`
+(pre-deploy'da `prisma migrate deploy`, healthcheck `/api/v1/health/ready`).
+
+1. Railway'da loyiha → **PostgreSQL** va **Redis** qo'shing.
+2. GitHub repodan servis yarating (root papka; `railway.json` avtomatik o'qiladi).
+3. Servisga domen bering (Settings → Networking → Generate Domain yoki o'z domeningiz).
+4. O'zgaruvchilar (Variables):
+
+   | O'zgaruvchi | Qiymat |
+   |---|---|
+   | `NODE_ENV` | `production` |
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `REDIS_URL` | `${{Redis.REDIS_URL}}` |
+   | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `OTP_SECRET` | har biri `openssl rand -base64 48` |
+   | `CLIENT_URL`, `WEB_APP_URL` | `https://<domen>` |
+   | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` | production bot |
+   | `TELEGRAM_WEBHOOK_URL` | `https://<domen>/api/v1/telegram/webhook` |
+   | `TELEGRAM_WEBHOOK_SECRET` | `openssl rand -hex 32` |
+   | `GEMINI_API_KEY`, `GROQ_API_KEY` | ixtiyoriy (ovozli yordamchi) |
+
+5. Deploy. Ishga tushganda API webhook'ni, bot buyruqlarini va "Ilova" menyu tugmasini o'zi o'rnatadi.
+
+### Production checklist
+- [ ] `https://<domen>/api/v1/health/ready` → `{"status":"ok","db":"ok","redis":"ok"}`
+- [ ] Telegram'da `getWebhookInfo`: url to'g'ri, `last_error_message` yo'q
+- [ ] Saytda Telegram orqali kirish va botda `50000 taksi` → saqlash ishlaydi
+- [ ] Bot menyusidagi "Ilova" tugmasi Mini App'ni ochadi va avtomatik kiritadi
+- [ ] Railway loglarida token, cookie yoki moliyaviy matn ko'rinmaydi
+- [ ] Swagger production'da yopiq (`SWAGGER_ENABLED` bo'sh)
+- [ ] Bazaning muntazam zaxira nusxasi olinadi (Railway volume backup yoki rejalashtirilgan `pg_dump`)
+
+O'z serveringizda: `docker compose -f docker-compose.prod.yml up -d --build` (oldiga HTTPS proxy qo'ying).
+
+---
+
+## Loyihaning beshta qonuni
+
+1. **Pul — `BigInt` tiyinda** (1 so'm = 100 tiyin), JSONda string.
+2. **Balans saqlanmaydi** — har doim ledgerdan hisoblanadi.
+3. **Qarz berish xarajat emas** — `LOAN_*` statistikaga kirmaydi.
+4. **Har bir so'rov `userId` bilan cheklangan.**
+5. **Ko'p bosqichli pul amallari atomar** (`prisma.$transaction`).
+
+Batafsil: `AGENTS.md`, `.agents/rules/40-domain-money.md`.
 
 ## Hujjatlar
 
 | Fayl | Mazmuni |
 |---|---|
 | `docs/01-PRD.md` | Nima quriladi va nega |
-| `docs/02-ARCHITECTURE.md` | Qatlamlar, papka strukturasi, ma'lumot oqimi |
+| `docs/02-ARCHITECTURE.md` | Qatlamlar, modullar, auth va deploy topologiyasi |
 | `docs/03-DATA-MODEL.md` | Ledger mantiqi, qarz hisobi, indekslar |
-| `docs/04-API-CONTRACT.md` | 72 endpoint, so'rov/javob namunalari |
+| `docs/04-API-CONTRACT.md` | 77 endpoint, xato kodlari, so'rov/javob namunalari |
 | `docs/05-FRONTEND-SPEC.md` | Sahifalar, state chegarasi, invalidatsiya jadvali |
-| `docs/06-ROADMAP.md` | 13 bosqich, har birida qabul mezonlari |
+| `docs/06-ROADMAP.md` | Bosqichlar va qabul mezonlari |
 | `docs/07-DEFINITION-OF-DONE.md` | "Tayyor" degani nima |

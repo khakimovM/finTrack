@@ -1,14 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NotificationsRepository } from './notifications.repository';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { JOBS, OUTBOX_JOB_OPTIONS, QUEUES } from '../../infra/queue/queues';
+import { NewNotification, NotificationsRepository } from './notifications.repository';
 import { ListNotificationsQueryDto } from './dto/notification.dto';
 import { NotFoundDomainException } from '../../common/exceptions/domain.exception';
-import { Notification, NotificationType, Prisma } from '@prisma/client';
+import { Notification, Prisma } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly repository: NotificationsRepository) {}
+  constructor(
+    private readonly repository: NotificationsRepository,
+    @InjectQueue(QUEUES.TELEGRAM_OUTBOX) private readonly outbox: Queue,
+  ) {}
 
   async list(userId: string, query: ListNotificationsQueryDto) {
     const page = query.page ?? 1;
@@ -57,20 +63,30 @@ export class NotificationsService {
    * Internal helper for other modules to safely create notifications.
    * Will never throw to prevent blocking the main business operation.
    */
-  async createSafe(
-    userId: string,
-    data: {
-      type: NotificationType;
-      title: string;
-      body: string;
-      meta?: Prisma.InputJsonValue;
-    },
-  ): Promise<Notification | null> {
+  async createSafe(userId: string, data: NewNotification): Promise<Notification | null> {
     try {
-      return await this.repository.create(userId, data);
+      const notification = await this.repository.create(userId, data);
+      await this.enqueueTelegram(notification.id);
+      return notification;
     } catch (err) {
+      // A duplicate dedupeKey means this alert was already delivered: that is success.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        return null;
+      }
       this.logger.error(`Failed to create notification for user ${userId}`, err);
       return null;
+    }
+  }
+
+  /**
+   * Telegram delivery is asynchronous and retried (rate limits); the job id makes a duplicate
+   * enqueue harmless. Failure to enqueue never loses the in-app notification.
+   */
+  private async enqueueTelegram(notificationId: string): Promise<void> {
+    try {
+      await this.outbox.add(JOBS.DELIVER_NOTIFICATION, { notificationId }, { ...OUTBOX_JOB_OPTIONS, jobId: notificationId });
+    } catch (err) {
+      this.logger.warn(`Could not enqueue Telegram delivery for ${notificationId}: ${String(err)}`);
     }
   }
 

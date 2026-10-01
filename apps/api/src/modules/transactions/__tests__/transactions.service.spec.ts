@@ -1,315 +1,282 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Transaction } from '@prisma/client';
 import { TransactionsService } from '../transactions.service';
 import { TransactionsRepository, TransactionWithRelations } from '../transactions.repository';
-import { AccountsRepository } from '../../accounts/accounts.repository';
+import { AccountAccessService } from '../../accounts/account-access.service';
 import { CategoriesRepository } from '../../categories/categories.repository';
 import { TagsRepository } from '../../tags/tags.repository';
 import { BalanceService } from '../../accounts/balance.service';
 import { BalanceGuardService } from '../../accounts/balance-guard.service';
 import { BudgetsService } from '../../budgets/budgets.service';
+import { ClockService } from '../../../infra/clock/clock.service';
+import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
+import { prismaStub } from '../../../infra/prisma/__tests__/prisma.stub';
 import {
-  NotFoundDomainException,
-  InvalidCategoryTypeException,
   FutureDateException,
   InsufficientBalanceException,
+  InvalidCategoryTypeException,
+  InvalidTransactionTypeException,
+  ManagedTransactionException,
+  NotFoundDomainException,
 } from '../../../common/exceptions/domain.exception';
 
-describe('TransactionsService', () => {
-  let service: TransactionsService;
-  let repository: {
-    findMany: jest.Mock;
-    calculateSums: jest.Mock;
-    findById: jest.Mock;
-    findDeletedById: jest.Mock;
-    create: jest.Mock;
-    update: jest.Mock;
-    softDelete: jest.Mock;
-    bulkSoftDelete: jest.Mock;
-    restore: jest.Mock;
-  };
-  let accountsRepository: { findById: jest.Mock };
-  let categoriesRepository: { findById: jest.Mock };
-  let tagsRepository: { findById: jest.Mock };
-  let balanceService: {
-    getBalance: jest.Mock;
-    getTotalBalance: jest.Mock;
-    invalidate: jest.Mock;
-  };
-  let balanceGuardService: { assertSufficient: jest.Mock };
+const USER = 'user-1';
+const ACC = '11111111-1111-1111-1111-111111111111';
+const ACC2 = '22222222-2222-2222-2222-222222222222';
+const CAT = '33333333-3333-3333-3333-333333333333';
 
-  const mockTx: TransactionWithRelations = {
+function row(overrides: Partial<Transaction> = {}): TransactionWithRelations {
+  const base: Transaction = {
     id: 'tx-1',
-    userId: 'user-1',
-    accountId: 'acc-1',
+    userId: USER,
+    accountId: ACC,
     type: 'EXPENSE',
-    amount: 50000n,
+    amount: 50_000n,
     amountBase: null,
-    categoryId: 'cat-1',
+    categoryId: CAT,
     debtId: null,
     transferGroupId: null,
     recurringRuleId: null,
-    date: new Date('2026-08-15'),
-    note: 'Kofe',
-    createdAt: new Date('2026-08-15T10:00:00.000Z'),
-    updatedAt: new Date('2026-08-15T10:00:00.000Z'),
+    date: new Date('2026-09-01T00:00:00Z'),
+    note: 'Non',
+    createdAt: new Date('2026-09-01T10:00:00Z'),
+    updatedAt: new Date('2026-09-01T10:00:00Z'),
     deletedAt: null,
-    account: { id: 'acc-1', name: 'Karta', icon: '💳' },
-    category: { id: 'cat-1', name: 'Kafe', icon: '☕', color: '#6366f1' },
+    ...overrides,
+  };
+  return {
+    ...base,
+    account: { id: base.accountId, name: 'Karta', icon: '💳' },
+    category: base.categoryId ? { id: CAT, name: 'Oziq-ovqat', icon: '🍔', color: '#ef4444' } : null,
     tags: [],
   };
+}
 
-  beforeEach(async () => {
-    repository = {
-      findMany: jest.fn(),
-      calculateSums: jest.fn(),
-      findById: jest.fn(),
-      findDeletedById: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      softDelete: jest.fn(),
-      bulkSoftDelete: jest.fn(),
-      restore: jest.fn(),
-    };
-    accountsRepository = { findById: jest.fn() };
-    categoriesRepository = { findById: jest.fn() };
-    tagsRepository = { findById: jest.fn() };
-    balanceService = {
-      getBalance: jest.fn(),
-      getTotalBalance: jest.fn(),
-      invalidate: jest.fn(),
-    };
-    balanceGuardService = { assertSufficient: jest.fn() };
+function setup() {
+  const repository = {
+    findMany: jest.fn(),
+    calculateSums: jest.fn(),
+    findById: jest.fn(),
+    findDeletedById: jest.fn(),
+    findLiveByIds: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    softDelete: jest.fn(),
+    restore: jest.fn(),
+  };
+  const accountAccess = { assertWritable: jest.fn().mockResolvedValue(undefined) };
+  const categories = {
+    findById: jest.fn().mockResolvedValue({ id: CAT, type: 'EXPENSE', parentId: null }),
+  };
+  const tags = { countOwned: jest.fn() };
+  const balanceService = {
+    invalidate: jest.fn(),
+    getBalance: jest.fn().mockResolvedValue(950_000n),
+    getTotalBalance: jest.fn().mockResolvedValue(1_950_000n),
+  };
+  const guard = { assertCanDebit: jest.fn(), assertDeltas: jest.fn() };
+  const budgets = { checkAndNotify: jest.fn().mockResolvedValue(null) };
+  const clock = clockStub();
+  const prisma = prismaStub();
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        TransactionsService,
-        { provide: TransactionsRepository, useValue: repository },
-        { provide: AccountsRepository, useValue: accountsRepository },
-        { provide: CategoriesRepository, useValue: categoriesRepository },
-        { provide: TagsRepository, useValue: tagsRepository },
-        { provide: BalanceService, useValue: balanceService },
-        { provide: BalanceGuardService, useValue: balanceGuardService },
-        {
-          provide: BudgetsService,
-          useValue: { checkAndNotify: jest.fn().mockResolvedValue(null) },
-        },
-      ],
-    }).compile();
+  const service = new TransactionsService(
+    repository as unknown as TransactionsRepository,
+    accountAccess as unknown as AccountAccessService,
+    categories as unknown as CategoriesRepository,
+    tags as unknown as TagsRepository,
+    balanceService as unknown as BalanceService,
+    guard as unknown as BalanceGuardService,
+    budgets as unknown as BudgetsService,
+    clock as unknown as ClockService,
+    prisma,
+  );
+  return { service, repository, accountAccess, categories, tags, balanceService, guard, budgets, clock, prisma };
+}
 
-    service = module.get<TransactionsService>(TransactionsService);
-  });
+const validDto = {
+  type: 'EXPENSE' as const,
+  accountId: ACC,
+  amount: '50000',
+  categoryId: CAT,
+  date: '2026-09-01',
+};
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
-  describe('list', () => {
-    it('returns paginated transactions with filtered sums', async () => {
-      repository.findMany.mockResolvedValue({
-        transactions: [mockTx],
-        total: 1,
-      });
-      repository.calculateSums.mockResolvedValue({
-        income: '0',
-        expense: '50000',
-      });
-
-      const res = await service.list('user-1', {
-        page: 1,
-        limit: 20,
-        sort: 'date:desc',
-      });
-
-      expect(res.data).toHaveLength(1);
-      expect(res.data[0].id).toBe('tx-1');
-      expect(res.meta.total).toBe(1);
-      expect(res.meta.sums).toEqual({ income: '0', expense: '50000' });
-    });
-  });
-
+describe('TransactionsService', () => {
   describe('create', () => {
-    const validDto = {
-      type: 'EXPENSE' as const,
-      accountId: 'acc-1',
-      amount: '50000',
-      categoryId: 'cat-1',
-      date: '2026-08-15',
-      note: 'Kofe',
-    };
+    it('checks strict mode inside the write transaction and invalidates balances after commit', async () => {
+      const t = setup();
+      t.repository.create.mockResolvedValue(row());
 
-    it('creates expense transaction and invalidates balance cache', async () => {
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-1' });
-      categoriesRepository.findById.mockResolvedValue({ id: 'cat-1', type: 'EXPENSE' });
-      balanceGuardService.assertSufficient.mockResolvedValue(undefined);
-      repository.create.mockResolvedValue(mockTx);
-      balanceService.getBalance.mockResolvedValue(950000n);
-      balanceService.getTotalBalance.mockResolvedValue(950000n);
+      const res = await t.service.create(USER, validDto);
 
-      const res = await service.create('user-1', validDto);
-
-      expect(res.transaction.id).toBe('tx-1');
-      expect(res.accountBalance).toBe('950000');
-      expect(res.totalBalance).toBe('950000');
-      expect(balanceGuardService.assertSufficient).toHaveBeenCalledWith('user-1', 'acc-1', 50000n);
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
+      expect(t.prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(t.guard.assertCanDebit).toHaveBeenCalledWith(t.prisma.tx, USER, ACC, 50_000n);
+      expect(t.repository.create).toHaveBeenCalledWith(
+        t.prisma.tx,
+        USER,
+        expect.objectContaining({ type: 'EXPENSE', amount: 50_000n }),
+        [],
+      );
+      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER, expect.any(Array));
+      expect(t.budgets.checkAndNotify).toHaveBeenCalledWith(USER, CAT, expect.any(Date));
+      expect(res).toMatchObject({ accountBalance: '950000', totalBalance: '1950000' });
+      expect(res.transaction.date).toBe('2026-09-01');
     });
 
-    it('throws 422 FUTURE_DATE when transaction date is in the future', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 5);
-      const futureDateStr = futureDate.toISOString().split('T')[0];
+    it('does not debit-check income', async () => {
+      const t = setup();
+      t.categories.findById.mockResolvedValue({ id: CAT, type: 'INCOME' });
+      t.repository.create.mockResolvedValue(row({ type: 'INCOME' }));
 
+      await t.service.create(USER, { ...validDto, type: 'INCOME' });
+      expect(t.guard.assertCanDebit).not.toHaveBeenCalled();
+      expect(t.budgets.checkAndNotify).not.toHaveBeenCalled();
+    });
+
+    it('propagates INSUFFICIENT_BALANCE and does not invalidate anything', async () => {
+      const t = setup();
+      t.guard.assertCanDebit.mockRejectedValue(new InsufficientBalanceException());
+
+      await expect(t.service.create(USER, validDto)).rejects.toBeInstanceOf(InsufficientBalanceException);
+      expect(t.repository.create).not.toHaveBeenCalled();
+      expect(t.balanceService.invalidate).not.toHaveBeenCalled();
+    });
+
+    it('rejects loan/transfer types with INVALID_TRANSACTION_TYPE', async () => {
+      const t = setup();
       await expect(
-        service.create('user-1', {
-          ...validDto,
-          date: futureDateStr,
-        }),
-      ).rejects.toThrow(FutureDateException);
+        t.service.create(USER, { ...validDto, type: 'LOAN_GIVEN' as unknown as 'EXPENSE' }),
+      ).rejects.toBeInstanceOf(InvalidTransactionTypeException);
     });
 
-    it('throws 404 when account does not exist or does not belong to user', async () => {
-      accountsRepository.findById.mockResolvedValue(null);
-
-      await expect(service.create('user-1', validDto)).rejects.toThrow(NotFoundDomainException);
-    });
-
-    it('throws 422 INVALID_CATEGORY_TYPE when category type does not match transaction type', async () => {
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-1' });
-      categoriesRepository.findById.mockResolvedValue({ id: 'cat-1', type: 'INCOME' });
-
-      await expect(service.create('user-1', validDto)).rejects.toThrow(InvalidCategoryTypeException);
-    });
-
-    it('throws 422 INSUFFICIENT_BALANCE and does NOT create transaction when strictMode rejects', async () => {
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-1' });
-      categoriesRepository.findById.mockResolvedValue({ id: 'cat-1', type: 'EXPENSE' });
-      balanceGuardService.assertSufficient.mockRejectedValue(
-        new InsufficientBalanceException('Balansingiz yetarli emas'),
+    it('rejects a date after the user’s today', async () => {
+      const t = setup();
+      await expect(t.service.create(USER, { ...validDto, date: '2999-01-01' })).rejects.toBeInstanceOf(
+        FutureDateException,
       );
-
-      await expect(service.create('user-1', validDto)).rejects.toThrow(InsufficientBalanceException);
-      expect(repository.create).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('getById', () => {
-    it('returns transaction by id', async () => {
-      repository.findById.mockResolvedValue(mockTx);
-
-      const res = await service.getById('user-1', 'tx-1');
-
-      expect(res.id).toBe('tx-1');
-      expect(repository.findById).toHaveBeenCalledWith('user-1', 'tx-1');
+      expect(t.clock.assertNotFuture).toHaveBeenCalledWith(USER, '2999-01-01');
     });
 
-    it('throws NotFoundDomainException if transaction does not exist', async () => {
-      repository.findById.mockResolvedValue(null);
+    it('requires a category of the same type', async () => {
+      const t = setup();
+      t.categories.findById.mockResolvedValue({ id: CAT, type: 'INCOME' });
+      await expect(t.service.create(USER, validDto)).rejects.toBeInstanceOf(InvalidCategoryTypeException);
+    });
 
-      await expect(service.getById('user-1', 'tx-404')).rejects.toThrow(
-        NotFoundDomainException,
-      );
+    it('returns 404 when a tag is not the user’s', async () => {
+      const t = setup();
+      t.tags.countOwned.mockResolvedValue(0);
+      await expect(
+        t.service.create(USER, { ...validDto, tagIds: ['44444444-4444-4444-4444-444444444444'] }),
+      ).rejects.toBeInstanceOf(NotFoundDomainException);
     });
   });
 
   describe('update', () => {
-    it('updates transaction and invalidates balance cache', async () => {
-      repository.findById.mockResolvedValue(mockTx);
-      categoriesRepository.findById.mockResolvedValue({ id: 'cat-2', type: 'EXPENSE' });
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-2' });
-      repository.update.mockResolvedValue({
-        ...mockTx,
-        accountId: 'acc-2',
-        amount: 60000n,
-        note: 'Yangi kofe',
-      });
+    it('moving an expense to another account debit-checks the new account for the full amount', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(row());
+      t.repository.update.mockResolvedValue(row({ accountId: ACC2 }));
 
-      const res = await service.update('user-1', 'tx-1', {
-        accountId: 'acc-2',
-        amount: '60000',
-        categoryId: 'cat-2',
-        note: 'Yangi kofe',
-      });
+      await t.service.update(USER, 'tx-1', { accountId: ACC2 });
 
-      expect(res.amount).toBe('60000');
-      expect(repository.update).toHaveBeenCalled();
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
-    });
-
-    it('throws NotFoundDomainException if transaction not found', async () => {
-      repository.findById.mockResolvedValue(null);
-
-      await expect(
-        service.update('user-1', 'tx-404', { note: 'test' }),
-      ).rejects.toThrow(NotFoundDomainException);
-    });
-
-    it('throws FutureDateException if update date is in the future', async () => {
-      repository.findById.mockResolvedValue(mockTx);
-      const future = new Date();
-      future.setDate(future.getDate() + 10);
-      const futureStr = future.toISOString().split('T')[0];
-
-      await expect(
-        service.update('user-1', 'tx-1', { date: futureStr }),
-      ).rejects.toThrow(FutureDateException);
-    });
-
-    it('throws InvalidCategoryTypeException if category type does not match transaction', async () => {
-      repository.findById.mockResolvedValue(mockTx);
-      categoriesRepository.findById.mockResolvedValue({ id: 'cat-inc', type: 'INCOME' });
-
-      await expect(
-        service.update('user-1', 'tx-1', { categoryId: 'cat-inc' }),
-      ).rejects.toThrow(InvalidCategoryTypeException);
-    });
-  });
-
-  describe('delete and restore', () => {
-    it('soft deletes transaction and invalidates cache', async () => {
-      repository.findById.mockResolvedValue(mockTx);
-
-      await service.delete('user-1', 'tx-1');
-
-      expect(repository.softDelete).toHaveBeenCalledWith('user-1', mockTx);
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
-    });
-
-    it('throws NotFoundDomainException if deleting non-existent transaction', async () => {
-      repository.findById.mockResolvedValue(null);
-
-      await expect(service.delete('user-1', 'tx-404')).rejects.toThrow(
-        NotFoundDomainException,
+      expect(t.guard.assertDeltas).toHaveBeenCalledWith(
+        t.prisma.tx,
+        USER,
+        new Map([
+          [ACC, 50_000n],
+          [ACC2, -50_000n],
+        ]),
       );
     });
 
-    it('restores transaction and invalidates cache', async () => {
-      repository.findDeletedById.mockResolvedValue(mockTx);
-      repository.findById.mockResolvedValue(mockTx);
+    it('lowering an income is a debit on its account', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(row({ type: 'INCOME', amount: 100_000n }));
+      t.repository.update.mockResolvedValue(row({ type: 'INCOME', amount: 40_000n }));
 
-      const res = await service.restore('user-1', 'tx-1');
+      await t.service.update(USER, 'tx-1', { amount: '40000' });
 
-      expect(res.id).toBe('tx-1');
-      expect(repository.restore).toHaveBeenCalledWith('user-1', mockTx);
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
+      expect(t.guard.assertDeltas).toHaveBeenCalledWith(t.prisma.tx, USER, new Map([[ACC, -60_000n]]));
     });
 
-    it('throws NotFoundDomainException if restoring non-existent transaction', async () => {
-      repository.findDeletedById.mockResolvedValue(null);
+    it.each([
+      ['TRANSFER_OUT', { transferGroupId: 'tg_1' }],
+      ['LOAN_REPAY_IN', { debtId: 'd1' }],
+    ] as const)('refuses to edit a %s row (MANAGED_TRANSACTION)', async (type, refs) => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(row({ type, categoryId: null, ...refs }));
 
-      await expect(service.restore('user-1', 'tx-404')).rejects.toThrow(
+      const error = await t.service.update(USER, 'tx-1', { amount: '1' }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ManagedTransactionException);
+      expect(error).toMatchObject({ details: expect.objectContaining(refs) });
+      expect(t.repository.update).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 for another user’s transaction', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(null);
+      await expect(t.service.update(USER, 'tx-x', { note: 'x' })).rejects.toBeInstanceOf(
         NotFoundDomainException,
       );
     });
   });
 
-  describe('bulkDelete', () => {
-    it('soft deletes multiple transactions and invalidates cache', async () => {
-      repository.bulkSoftDelete.mockResolvedValue(3);
+  describe('delete / bulkDelete / restore', () => {
+    it('deleting an income is a guarded debit', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(row({ type: 'INCOME', amount: 70_000n }));
 
-      await service.bulkDelete('user-1', { ids: ['tx-1', 'tx-2', 'tx-3'] });
+      await t.service.delete(USER, 'tx-1');
 
-      expect(repository.bulkSoftDelete).toHaveBeenCalledWith('user-1', ['tx-1', 'tx-2', 'tx-3']);
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
+      expect(t.guard.assertDeltas).toHaveBeenCalledWith(t.prisma.tx, USER, new Map([[ACC, -70_000n]]));
+      expect(t.repository.softDelete).toHaveBeenCalledWith(t.prisma.tx, USER, ['tx-1']);
+      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER, expect.any(Array));
+    });
+
+    it('refuses to delete a loan row', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(row({ type: 'LOAN_GIVEN', debtId: 'd1', categoryId: null }));
+      await expect(t.service.delete(USER, 'tx-1')).rejects.toBeInstanceOf(ManagedTransactionException);
+      expect(t.repository.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('bulk delete rejects the whole batch if any managed row is included', async () => {
+      const t = setup();
+      t.repository.findLiveByIds.mockResolvedValue([
+        row({ id: 'a' }),
+        row({ id: 'b', type: 'TRANSFER_IN', transferGroupId: 'tg', categoryId: null }),
+      ]);
+
+      await expect(t.service.bulkDelete(USER, { ids: ['a', 'b'] })).rejects.toMatchObject({
+        code: 'MANAGED_TRANSACTION',
+        details: { transactionIds: ['b'] },
+      });
+      expect(t.repository.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('bulk delete sums the balance effect per account', async () => {
+      const t = setup();
+      t.repository.findLiveByIds.mockResolvedValue([
+        row({ id: 'a', type: 'INCOME', amount: 100n }),
+        row({ id: 'b', type: 'EXPENSE', amount: 30n }),
+      ]);
+
+      await t.service.bulkDelete(USER, { ids: ['a', 'b'] });
+
+      expect(t.guard.assertDeltas).toHaveBeenCalledWith(t.prisma.tx, USER, new Map([[ACC, -70n]]));
+      expect(t.repository.softDelete).toHaveBeenCalledWith(t.prisma.tx, USER, ['a', 'b']);
+    });
+
+    it('restoring an expense is a guarded debit and re-checks the budget', async () => {
+      const t = setup();
+      t.repository.findDeletedById.mockResolvedValue(row({ deletedAt: new Date() }));
+      t.repository.findById.mockResolvedValue(row());
+
+      await t.service.restore(USER, 'tx-1');
+
+      expect(t.guard.assertDeltas).toHaveBeenCalledWith(t.prisma.tx, USER, new Map([[ACC, -50_000n]]));
+      expect(t.repository.restore).toHaveBeenCalledWith(t.prisma.tx, USER, 'tx-1');
+      expect(t.budgets.checkAndNotify).toHaveBeenCalled();
     });
   });
 });

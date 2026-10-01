@@ -1,12 +1,28 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../stores/authStore';
+import { resetSessionCache } from './queryClient';
+import {
+  exchangeInitData,
+  isMiniAppSession,
+  miniAppAccessToken,
+  miniAppStatusFor,
+} from './miniAppAuth';
+import { useMiniAppStore } from '../stores/miniAppStore';
 
 export const api = axios.create({
   baseURL: '/api/v1',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
+    // Required by the API's CSRF guard on every state-changing request.
+    'X-Requested-With': 'XMLHttpRequest',
   },
+});
+
+api.interceptors.request.use((config) => {
+  const token = miniAppAccessToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 let isRefreshing = false;
@@ -26,6 +42,23 @@ const processQueue = (error: unknown) => {
   failedQueue = [];
 };
 
+function errorCode(error: unknown): string | undefined {
+  if (!axios.isAxiosError(error)) return undefined;
+  return (error.response?.data as { error?: { code?: string } } | undefined)?.error?.code;
+}
+
+/**
+ * Another tab may rotate the refresh token a moment before this one (REFRESH_RACE). Its new
+ * cookie is already shared with us, so the original request can simply be retried.
+ */
+async function refreshSession(): Promise<void> {
+  try {
+    await api.post('/auth/refresh');
+  } catch (err) {
+    if (errorCode(err) !== 'REFRESH_RACE') throw err;
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -38,9 +71,25 @@ api.interceptors.response.use(
     }
 
     const isAuthEndpoint =
-      originalRequest.url?.includes('/auth/login') ||
-      originalRequest.url?.includes('/auth/register') ||
+      originalRequest.url?.includes('/auth/telegram/') ||
       originalRequest.url?.includes('/auth/refresh');
+
+    // Inside Telegram an expired token is renewed with the launch's initData, not a cookie.
+    if (
+      isMiniAppSession() &&
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
+      originalRequest._retry = true;
+      try {
+        await exchangeInitData();
+      } catch (exchangeError) {
+        useMiniAppStore.getState().setStatus(miniAppStatusFor(exchangeError));
+        return Promise.reject(exchangeError);
+      }
+      return api(originalRequest);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
@@ -55,16 +104,14 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await api.post('/auth/refresh');
+        await refreshSession();
         processQueue(null);
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
+        resetSessionCache();
         useAuthStore.getState().setUser(null);
-        if (
-          !window.location.pathname.startsWith('/login') &&
-          !window.location.pathname.startsWith('/register')
-        ) {
+        if (!window.location.pathname.startsWith('/login')) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);

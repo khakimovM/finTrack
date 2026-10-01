@@ -1,200 +1,173 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Account } from '@prisma/client';
 import { AccountsService } from '../accounts.service';
 import { AccountsRepository, AccountWithCount } from '../accounts.repository';
 import { BalanceService } from '../balance.service';
 import {
-  NotFoundDomainException,
   ConflictDomainException,
+  NotFoundDomainException,
 } from '../../../common/exceptions/domain.exception';
 
-describe('AccountsService', () => {
-  let service: AccountsService;
-  let repository: {
-    findAll: jest.Mock;
-    findById: jest.Mock;
-    findByName: jest.Mock;
-    create: jest.Mock;
-    update: jest.Mock;
-    softDelete: jest.Mock;
-    archive: jest.Mock;
-    reorder: jest.Mock;
-  };
-  let balanceService: {
-    getAccountBalances: jest.Mock;
-    getBalance: jest.Mock;
-    invalidate: jest.Mock;
-  };
+const USER = 'user-1';
+const ID = '11111111-1111-1111-1111-111111111111';
 
-  const mockAccount: AccountWithCount = {
-    id: 'acc-1',
-    userId: 'user-1',
-    name: 'Asosiy hisob',
-    type: 'CASH',
+function account(overrides: Partial<Account> = {}): AccountWithCount {
+  return {
+    id: ID,
+    userId: USER,
+    name: 'Humo karta',
+    type: 'CARD',
     currency: 'UZS',
-    openingBalance: 100000n,
-    icon: '💵',
-    color: '#10b981',
+    openingBalance: 0n,
+    icon: '💳',
+    color: '#6366f1',
     isDefault: true,
     sortOrder: 0,
     archivedAt: null,
-    createdAt: new Date('2026-08-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-08-01T00:00:00.000Z'),
+    createdAt: new Date('2026-08-01T00:00:00Z'),
+    updatedAt: new Date('2026-08-01T00:00:00Z'),
     deletedAt: null,
-    _count: { transactions: 5 },
+    _count: { transactions: 3 },
+    ...overrides,
   };
+}
 
-  beforeEach(async () => {
-    repository = {
-      findAll: jest.fn(),
-      findById: jest.fn(),
-      findByName: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      softDelete: jest.fn(),
-      archive: jest.fn(),
-      reorder: jest.fn(),
-    };
-    balanceService = {
-      getAccountBalances: jest.fn(),
-      getBalance: jest.fn(),
-      invalidate: jest.fn(),
-    };
+function setup() {
+  const repository = {
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findByName: jest.fn().mockResolvedValue(null),
+    countActive: jest.fn().mockResolvedValue(2),
+    hasHistory: jest.fn().mockResolvedValue(false),
+    create: jest.fn(),
+    update: jest.fn(),
+    hardDelete: jest.fn(),
+    setArchived: jest.fn(),
+    reorder: jest.fn(),
+  };
+  const balanceService = {
+    getAccountBalances: jest.fn(),
+    getBalance: jest.fn().mockResolvedValue(12_550_000n),
+    invalidate: jest.fn(),
+  };
+  const service = new AccountsService(
+    repository as unknown as AccountsRepository,
+    balanceService as unknown as BalanceService,
+  );
+  return { service, repository, balanceService };
+}
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AccountsService,
-        { provide: AccountsRepository, useValue: repository },
-        { provide: BalanceService, useValue: balanceService },
-      ],
-    }).compile();
-
-    service = module.get<AccountsService>(AccountsService);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
-  describe('list', () => {
-    it('returns accounts with computed balance and meta.totalBalance', async () => {
-      repository.findAll.mockResolvedValue([mockAccount]);
-      balanceService.getAccountBalances.mockResolvedValue({
-        balances: new Map([['acc-1', 150000n]]),
-        total: 150000n,
-      });
-
-      const res = await service.list('user-1');
-
-      expect(res.data).toHaveLength(1);
-      expect(res.data[0].balance).toBe('150000');
-      expect(res.data[0].openingBalance).toBe('100000');
-      expect(res.data[0].transactionCount).toBe(5);
-      expect(res.meta.totalBalance).toBe('150000');
-    });
-  });
-
-  describe('getById', () => {
-    it('returns account by ID with balance', async () => {
-      repository.findById.mockResolvedValue(mockAccount);
-      balanceService.getBalance.mockResolvedValue(150000n);
-
-      const res = await service.getById('user-1', 'acc-1');
-
-      expect(res.id).toBe('acc-1');
-      expect(res.balance).toBe('150000');
+describe('AccountsService', () => {
+  it('lists accounts with ledger-derived balances and meta.totalBalance', async () => {
+    const t = setup();
+    t.repository.findAll.mockResolvedValue([account()]);
+    t.balanceService.getAccountBalances.mockResolvedValue({
+      balances: new Map([[ID, 12_550_000n]]),
+      total: 18_900_000n,
     });
 
-    it('throws NotFoundDomainException (404) if account not found or not owner', async () => {
-      repository.findById.mockResolvedValue(null);
+    const res = await t.service.list(USER);
 
-      await expect(service.getById('user-1', 'other-acc')).rejects.toThrow(NotFoundDomainException);
-    });
+    expect(res.data[0]).toMatchObject({ balance: '12550000', openingBalance: '0', transactionCount: 3 });
+    expect(res.meta.totalBalance).toBe('18900000');
   });
 
-  describe('create', () => {
-    it('creates account and invalidates balance cache', async () => {
-      repository.findByName.mockResolvedValue(null);
-      repository.create.mockResolvedValue({
-        ...mockAccount,
-        id: 'acc-new',
-        name: 'Humo',
-        openingBalance: 50000n,
-      });
+  it('creates an account and invalidates the balance cache', async () => {
+    const t = setup();
+    t.repository.create.mockResolvedValue(account({ openingBalance: 500n }));
 
-      const res = await service.create('user-1', {
-        name: 'Humo',
+    const res = await t.service.create(USER, {
+      name: 'Humo karta',
+      type: 'CARD',
+      currency: 'UZS',
+      openingBalance: '500',
+      icon: '💳',
+      color: '#6366f1',
+      isDefault: false,
+    });
+
+    expect(res.balance).toBe('500');
+    expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER);
+  });
+
+  it('rejects a duplicate name with 409 ACCOUNT_EXISTS', async () => {
+    const t = setup();
+    t.repository.findByName.mockResolvedValue(account({ id: 'other' }));
+    await expect(
+      t.service.create(USER, {
+        name: 'humo karta',
         type: 'CARD',
-        openingBalance: '50000',
-        color: '#6366f1',
-        icon: '💳',
         currency: 'UZS',
+        openingBalance: '0',
+        icon: '💳',
+        color: '#6366f1',
         isDefault: false,
-      });
-
-      expect(res.name).toBe('Humo');
-      expect(res.balance).toBe('50000');
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
-    });
-
-    it('throws ConflictDomainException (409) if name already taken', async () => {
-      repository.findByName.mockResolvedValue(mockAccount);
-
-      await expect(
-        service.create('user-1', {
-          name: 'Asosiy hisob',
-          type: 'CASH',
-          currency: 'UZS',
-          openingBalance: '0',
-          color: '#6366f1',
-          icon: '💳',
-          isDefault: false,
-        }),
-      ).rejects.toThrow(ConflictDomainException);
-    });
+      }),
+    ).rejects.toMatchObject({ code: 'ACCOUNT_EXISTS' });
   });
 
-  describe('update', () => {
-    it('updates account and invalidates cache if openingBalance changed', async () => {
-      repository.findById.mockResolvedValue(mockAccount);
-      repository.update.mockResolvedValue({
-        ...mockAccount,
-        openingBalance: 200000n,
-      });
-      balanceService.getBalance.mockResolvedValue(250000n);
+  it('returns 404 for someone else’s account', async () => {
+    const t = setup();
+    t.repository.findById.mockResolvedValue(null);
+    await expect(t.service.getById(USER, ID)).rejects.toBeInstanceOf(NotFoundDomainException);
+  });
 
-      const res = await service.update('user-1', 'acc-1', {
-        openingBalance: '200000',
-      });
+  describe('delete', () => {
+    it('refuses to delete an account with history (409 ACCOUNT_HAS_HISTORY)', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(account());
+      t.repository.hasHistory.mockResolvedValue(true);
 
-      expect(res.balance).toBe('250000');
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
+      await expect(t.service.delete(USER, ID)).rejects.toBeInstanceOf(ConflictDomainException);
+      expect(t.repository.hardDelete).not.toHaveBeenCalled();
+    });
+
+    it('refuses to delete the last active account', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(account());
+      t.repository.countActive.mockResolvedValue(1);
+
+      await expect(t.service.delete(USER, ID)).rejects.toMatchObject({ code: 'LAST_ACCOUNT' });
+    });
+
+    it('hard-deletes an empty account', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(account({ _count: { transactions: 0 } } as Partial<Account>));
+
+      await t.service.delete(USER, ID);
+
+      expect(t.repository.hardDelete).toHaveBeenCalledWith(USER, ID);
+      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER);
     });
   });
 
   describe('toggleArchive', () => {
-    it('toggles archive status', async () => {
-      repository.findById.mockResolvedValue(mockAccount);
-      const archivedDate = new Date();
-      repository.archive.mockResolvedValue({
-        ...mockAccount,
-        archivedAt: archivedDate,
-      });
-      balanceService.getBalance.mockResolvedValue(100000n);
+    it('archives an active account', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(account());
+      t.repository.setArchived.mockResolvedValue(account({ archivedAt: new Date(), isDefault: false }));
 
-      const res = await service.toggleArchive('user-1', 'acc-1');
-      expect(res.archivedAt).toBe(archivedDate.toISOString());
+      const res = await t.service.toggleArchive(USER, ID);
+
+      expect(t.repository.setArchived).toHaveBeenCalledWith(USER, ID, expect.any(Date));
+      expect(res.archivedAt).not.toBeNull();
     });
-  });
 
-  describe('delete', () => {
-    it('soft deletes account and invalidates balance cache', async () => {
-      repository.findById.mockResolvedValue(mockAccount);
-      repository.softDelete.mockResolvedValue(mockAccount);
+    it('refuses to archive the last active account', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(account());
+      t.repository.countActive.mockResolvedValue(1);
 
-      await service.delete('user-1', 'acc-1');
+      await expect(t.service.toggleArchive(USER, ID)).rejects.toMatchObject({ code: 'LAST_ACCOUNT' });
+    });
 
-      expect(repository.softDelete).toHaveBeenCalledWith('user-1', 'acc-1');
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
+    it('unarchives without the last-account check', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(account({ archivedAt: new Date() }));
+      t.repository.countActive.mockResolvedValue(0);
+      t.repository.setArchived.mockResolvedValue(account());
+
+      await t.service.toggleArchive(USER, ID);
+      expect(t.repository.setArchived).toHaveBeenCalledWith(USER, ID, null);
     });
   });
 });

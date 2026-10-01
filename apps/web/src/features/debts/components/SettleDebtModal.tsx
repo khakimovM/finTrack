@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -5,7 +6,7 @@ import {
   SettleDebtInput,
   DebtResponse,
   formatMoney,
-  formatIsoDate,
+  todayLocalIso,
 } from '@fintrack/shared';
 import { useSettleDebt } from '../hooks/useDebts';
 import { useAccounts } from '../../accounts/hooks/useAccounts';
@@ -36,14 +37,19 @@ export function SettleDebtModal({ debt, isOpen, onClose }: SettleDebtModalProps)
     resolver: zodResolver(SettleDebtInputSchema),
     defaultValues: {
       accountId: accounts[0]?.id ?? '',
-      paidAt: formatIsoDate(new Date()),
+      paidAt: todayLocalIso(),
       note: 'Qarz to‘liq yopildi',
     },
   });
 
-  if (!debt) return null;
-
   const accountIdValue = watch('accountId');
+  // The select shows the default account before the user touches it; the form must hold it too.
+  const defaultAccountId = (accounts.find((a) => a.isDefault) ?? accounts[0])?.id;
+  useEffect(() => {
+    if (isOpen && !accountIdValue && defaultAccountId) setValue('accountId', defaultAccountId);
+  }, [isOpen, accountIdValue, defaultAccountId, setValue]);
+
+  if (!debt) return null;
 
   const onSubmit = async (data: SettleDebtInput) => {
     try {
@@ -63,29 +69,26 @@ export function SettleDebtModal({ debt, isOpen, onClose }: SettleDebtModalProps)
       description={`"${debt.personName}" qoldiq summasi: ${formatMoney(debt.remainingAmount)}. To‘lov amalga oshirilgach qarz statusi "To‘langan" ga o‘tadi.`}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-foreground">Hisob *</label>
-          <Select
-            value={accountIdValue || accounts[0]?.id || ''}
-            onChange={(e) => setValue('accountId', e.target.value)}
-            options={accounts.map((a) => ({
-              value: a.id,
-              label: `${a.icon} ${a.name}`,
-            }))}
-            error={errors.accountId?.message}
-          />
-        </div>
+        <Select
+          label="Hisob *"
+          value={accountIdValue || defaultAccountId || ''}
+          onChange={(e) => setValue('accountId', e.target.value)}
+          options={accounts.map((a) => ({
+            value: a.id,
+            label: `${a.icon} ${a.name}`,
+          }))}
+          error={errors.accountId?.message}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Sana *</label>
-            <Input type="date" {...register('paidAt')} error={errors.paidAt?.message} />
-          </div>
+          <Input
+            label="Sana *"
+            type="date"
+            {...register('paidAt')}
+            error={errors.paidAt?.message}
+          />
 
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Izoh</label>
-            <Input {...register('note')} error={errors.note?.message} />
-          </div>
+          <Input label="Izoh" {...register('note')} error={errors.note?.message} />
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/40">

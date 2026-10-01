@@ -12,10 +12,14 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { CategoryType } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CategoriesService } from './categories.service';
-import { CreateCategoryDto, UpdateCategoryDto, ReorderCategoriesDto } from './dto/category.dto';
+import {
+  CreateCategoryDto,
+  UpdateCategoryDto,
+  ReorderCategoriesDto,
+  ListCategoriesQueryDto,
+} from './dto/category.dto';
 
 @ApiTags('categories')
 @ApiBearerAuth()
@@ -27,9 +31,9 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Kategoriyalar daraxtini olish (INCOME / EXPENSE)' })
   async list(
     @CurrentUser('id') userId: string,
-    @Query('type') type?: CategoryType,
+    @Query() query: ListCategoriesQueryDto,
   ) {
-    return this.service.list(userId, type);
+    return this.service.list(userId, query.type);
   }
 
   @Post()

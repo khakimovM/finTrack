@@ -1,66 +1,80 @@
 import { z } from 'zod';
 
-export const RegisterSchema = z
+// ------------------------------------------------------------------
+// Telegram sign-in (web → bot deep link → one-time code → web)
+// ------------------------------------------------------------------
+
+export const TelegramLoginStatusSchema = z.enum([
+  'PENDING',
+  'AWAITING_CONTACT',
+  'CODE_SENT',
+  'CONSUMED',
+  'CANCELLED',
+  'EXPIRED',
+]);
+export type TelegramLoginStatus = z.infer<typeof TelegramLoginStatusSchema>;
+
+export const TelegramLoginStartResponseSchema = z.object({
+  requestId: z.string().uuid(),
+  /** https://t.me/<bot>?start=login_<nonce> — opens the bot with the request attached. */
+  deepLink: z.string().url(),
+  botUsername: z.string(),
+  expiresAt: z.string(),
+});
+export type TelegramLoginStartResponse = z.infer<typeof TelegramLoginStartResponseSchema>;
+
+export const TelegramLoginStatusResponseSchema = z.object({
+  status: TelegramLoginStatusSchema,
+  expiresAt: z.string(),
+  codeExpiresAt: z.string().nullable(),
+  attemptsLeft: z.number(),
+});
+export type TelegramLoginStatusResponse = z.infer<typeof TelegramLoginStatusResponseSchema>;
+
+export const VerifyTelegramLoginSchema = z
   .object({
-    name: z.string().trim().min(2, 'Ism kamida 2 ta belgidan iborat bo‘lishi kerak').max(100),
-    email: z.string().trim().email('Yaroqli email kiriting').toLowerCase(),
-    password: z.string().min(8, 'Parol kamida 8 ta belgidan iborat bo‘lishi kerak').max(100),
+    requestId: z.string().uuid('Yaroqsiz so‘rov'),
+    code: z.string().trim().regex(/^\d{6}$/, 'Kod 6 ta raqamdan iborat bo‘lishi kerak'),
   })
   .strict();
+export type VerifyTelegramLoginInput = z.infer<typeof VerifyTelegramLoginSchema>;
 
-export type RegisterInput = z.infer<typeof RegisterSchema>;
-
-export const LoginSchema = z
+export const TelegramRequestRefSchema = z
   .object({
-    email: z.string().trim().email('Yaroqli email kiriting').toLowerCase(),
-    password: z.string().min(1, 'Parol kiritilishi shart'),
+    requestId: z.string().uuid('Yaroqsiz so‘rov'),
   })
   .strict();
+export type TelegramRequestRef = z.infer<typeof TelegramRequestRefSchema>;
 
-export type LoginInput = z.infer<typeof LoginSchema>;
+// ------------------------------------------------------------------
+// Current user & sessions
+// ------------------------------------------------------------------
 
-export const ForgotPasswordSchema = z
-  .object({
-    email: z.string().trim().email('Yaroqli email kiriting').toLowerCase(),
-  })
-  .strict();
-
-export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
-
-export const ResetPasswordSchema = z
-  .object({
-    token: z.string().min(1, 'Token kiritilishi shart'),
-    password: z.string().min(8, 'Yangi parol kamida 8 ta belgidan iborat bo‘lishi kerak').max(100),
-  })
-  .strict();
-
-export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
-
-export const VerifyEmailSchema = z
-  .object({
-    token: z.string().min(1, 'Token kiritilishi shart'),
-  })
-  .strict();
-
-export type VerifyEmailInput = z.infer<typeof VerifyEmailSchema>;
+export const LocaleSchema = z.enum(['uz', 'ru', 'en']);
+export type Locale = z.infer<typeof LocaleSchema>;
 
 export const UserResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
-  email: z.string().email(),
+  email: z.string().nullable(),
+  telegramUsername: z.string().nullable(),
+  telegramLinked: z.boolean(),
+  /** Masked, e.g. +99890***4567 — the full number never leaves the server. */
+  phone: z.string().nullable(),
+  avatarUrl: z.string().nullable().optional(),
   baseCurrency: z.string(),
   locale: z.string(),
+  timezone: z.string(),
   strictMode: z.boolean(),
-  avatarUrl: z.string().nullable().optional(),
+  notifyTelegram: z.boolean(),
+  dailyDigest: z.boolean(),
   createdAt: z.string(),
 });
-
 export type UserResponse = z.infer<typeof UserResponseSchema>;
 
 export const AuthResponseSchema = z.object({
   user: UserResponseSchema,
 });
-
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
 export const SessionResponseSchema = z.object({
@@ -68,8 +82,32 @@ export const SessionResponseSchema = z.object({
   userAgent: z.string().nullable().optional(),
   ipAddress: z.string().nullable().optional(),
   createdAt: z.string(),
+  lastUsedAt: z.string(),
   expiresAt: z.string(),
-  isCurrent: z.boolean().optional(),
+  isCurrent: z.boolean(),
 });
-
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
+
+// ------------------------------------------------------------------
+// Telegram Mini App
+// ------------------------------------------------------------------
+
+/** `Telegram.WebApp.initData` exactly as Telegram passed it (a signed query string). */
+export const TelegramWebAppAuthSchema = z
+  .object({
+    initData: z.string().min(1, 'initData bo‘sh').max(4096, 'initData juda uzun'),
+  })
+  .strict();
+export type TelegramWebAppAuthInput = z.infer<typeof TelegramWebAppAuthSchema>;
+
+/**
+ * Mini Apps run in Telegram's webview (an iframe on Telegram Web) where cookies are unreliable:
+ * the access token is returned in the body and kept in memory. When it expires the app
+ * exchanges the same initData again; there is no refresh token.
+ */
+export const TelegramWebAppAuthResponseSchema = z.object({
+  user: UserResponseSchema,
+  accessToken: z.string(),
+  accessTokenExpiresIn: z.number().int(),
+});
+export type TelegramWebAppAuthResponse = z.infer<typeof TelegramWebAppAuthResponseSchema>;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { todayLocalIso } from '@fintrack/shared';
 import { toast } from '../../../stores/toastStore';
 import { transactionsApi, triggerDownload } from '../api/transactions.api';
 
@@ -11,7 +12,7 @@ export function useExportTransactions() {
   ) => {
     try {
       setIsExporting(true);
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = todayLocalIso();
 
       if (format === 'csv') {
         const blob = await transactionsApi.exportCsv(query);

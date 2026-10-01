@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { redisConnectionOptions } from './redis-connection';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -11,16 +12,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
-    this.client = new Redis(redisUrl, {
+    this.client = new Redis({
+      ...redisConnectionOptions(redisUrl),
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
-      retryStrategy(times) {
-        if (times > 3) {
-          return null;
-        }
-        return Math.min(times * 1000, 3000);
-      },
+      // Keep reconnecting forever: giving up would leave the cache permanently disabled
+      // after a short Redis restart on the hosting platform.
+      retryStrategy: (times) => Math.min(times * 500, 5000),
     });
 
     this.client.on('error', (err) => {
@@ -63,6 +62,57 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Redis SET error for key ${key}: ${message}`);
+      return null;
+    }
+  }
+
+  /** SET NX EX: true only for the first caller (idempotency guards for jobs). Fails closed. */
+  async setIfAbsent(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+    if (!this.client) return false;
+    try {
+      return (await this.client.set(key, value, 'EX', ttlSeconds, 'NX')) === 'OK';
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Redis SETNX error for key ${key}: ${message}`);
+      return false;
+    }
+  }
+
+  /** GETDEL: reads and removes in one step (one-shot conversation state). */
+  async take(key: string): Promise<string | null> {
+    if (!this.client) return null;
+    try {
+      return await this.client.getdel(key);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Redis GETDEL error for key ${key}: ${message}`);
+      return null;
+    }
+  }
+
+  async incr(key: string): Promise<number | null> {
+    if (!this.client) return null;
+    try {
+      return await this.client.incr(key);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Redis INCR error for key ${key}: ${message}`);
+      return null;
+    }
+  }
+
+  /** Atomically increments a counter and sets its TTL on first use (rate limits, quotas). */
+  async incrWithTtl(key: string, ttlSeconds: number): Promise<number | null> {
+    if (!this.client) return null;
+    try {
+      const [[, count]] = (await this.client.multi().incr(key).expire(key, ttlSeconds, 'NX').exec()) as [
+        [Error | null, number],
+        [Error | null, number],
+      ];
+      return count;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Redis INCR/EXPIRE error for key ${key}: ${message}`);
       return null;
     }
   }

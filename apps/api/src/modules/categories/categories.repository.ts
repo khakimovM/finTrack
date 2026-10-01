@@ -76,6 +76,29 @@ export class CategoriesRepository {
     });
   }
 
+  /** A soft-deleted twin still owns the (userId, name, type, parentId) unique key. */
+  async findDeletedByNameAndParent(
+    userId: string,
+    name: string,
+    type: CategoryType,
+    parentId: string | null,
+  ): Promise<Category | null> {
+    return this.prisma.category.findFirst({
+      where: { userId, name, type, parentId, deletedAt: { not: null } },
+    });
+  }
+
+  async restore(userId: string, id: string, data: { icon: string; color: string }): Promise<Category> {
+    return this.prisma.category.update({
+      where: { id, userId },
+      data: { ...data, deletedAt: null },
+    });
+  }
+
+  async hasChildren(userId: string, id: string): Promise<boolean> {
+    return (await this.prisma.category.count({ where: { userId, parentId: id, deletedAt: null } })) > 0;
+  }
+
   async create(userId: string, data: CreateCategoryData): Promise<Category> {
     return this.prisma.category.create({
       data: {
@@ -91,7 +114,7 @@ export class CategoriesRepository {
 
   async update(userId: string, id: string, data: UpdateCategoryData): Promise<Category> {
     return this.prisma.category.update({
-      where: { id },
+      where: { id, userId, deletedAt: null },
       data,
     });
   }
@@ -109,14 +132,19 @@ export class CategoriesRepository {
         });
       }
 
-      // 2. Soft delete the category
       await tx.category.update({
-        where: { id },
+        where: { id, userId },
         data: { deletedAt: now },
       });
 
-      // 3. Set categoryId = null for all associated transactions (acceptance criterion)
+      // Transactions survive with no category (acceptance criterion); budgets for a category
+      // that no longer exists are meaningless; recurring rules keep running uncategorised.
       await tx.transaction.updateMany({
+        where: { categoryId: { in: allIds }, userId },
+        data: { categoryId: null },
+      });
+      await tx.budget.deleteMany({ where: { categoryId: { in: allIds }, userId } });
+      await tx.recurringRule.updateMany({
         where: { categoryId: { in: allIds }, userId },
         data: { categoryId: null },
       });

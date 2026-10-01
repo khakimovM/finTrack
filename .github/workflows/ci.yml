@@ -4,55 +4,104 @@ on:
   push: { branches: [main] }
   pull_request:
 
+env:
+  # The e2e harnesses refuse any database whose name does not end in _test.
+  DATABASE_URL: postgresql://fintrack:fintrack@localhost:5432/fintrack_test?schema=public
+  REDIS_URL: redis://localhost:6379
+  JWT_ACCESS_SECRET: ci_access_secret_that_is_long_enough_32chars
+  JWT_REFRESH_SECRET: ci_refresh_secret_that_is_long_enough_32ch
+  CLIENT_URL: http://localhost:5173
+
 jobs:
   verify:
+    name: Lint, typecheck, unit tests, build
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16-alpine
-        env:
-          POSTGRES_USER: fintrack
-          POSTGRES_PASSWORD: fintrack
-          POSTGRES_DB: fintrack_test
+        env: { POSTGRES_USER: fintrack, POSTGRES_PASSWORD: fintrack, POSTGRES_DB: fintrack_test }
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U fintrack"
-          --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U fintrack" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - run: npm run db:generate
+      - name: Migrations apply to an empty database
+        run: npm run db:deploy
+      - name: Schema and migrations are in sync
+        run: npm --workspace=api exec -- prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Unit tests (API Jest + web Vitest)
+        run: npm run test
+      - run: npm run build
+
+  api-e2e:
+    name: API e2e (Postgres + Redis)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: fintrack, POSTGRES_PASSWORD: fintrack, POSTGRES_DB: fintrack_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fintrack" --health-interval 5s --health-timeout 5s --health-retries 10
       redis:
         image: redis:7-alpine
         ports: ["6379:6379"]
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s --health-timeout 3s --health-retries 10
-
-    env:
-      DATABASE_URL: postgresql://fintrack:fintrack@localhost:5432/fintrack_test?schema=public
-      REDIS_URL: redis://localhost:6379
-      JWT_ACCESS_SECRET: ci_access_secret_that_is_long_enough_32chars
-      JWT_REFRESH_SECRET: ci_refresh_secret_that_is_long_enough_32ch
-      CLIENT_URL: http://localhost:5173
-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm --workspace=@fintrack/shared run build
+      - run: npm --workspace=api run test:e2e
+
+  web-e2e:
+    name: Browser e2e (Playwright, mock Telegram)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: fintrack, POSTGRES_PASSWORD: fintrack, POSTGRES_DB: fintrack_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fintrack" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - run: npm run db:generate
+      - name: Build (the API serves the built web app, as in production)
+        run: npm run build
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm --workspace=web run test:e2e
+      - name: Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 20
-          cache: npm
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Deploy database migrations (separate step)
-        run: npm --workspace=api run db:deploy
-
-      - name: Generate Prisma client
-        run: npm --workspace=api run db:generate
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Run unit & service tests
-        run: npm run test
+  docker:
+    name: Production image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t fintrack:ci .

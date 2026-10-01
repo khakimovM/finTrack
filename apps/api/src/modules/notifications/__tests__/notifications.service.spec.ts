@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getQueueToken } from '@nestjs/bullmq';
+import { QUEUES } from '../../../infra/queue/queues';
 import { NotificationsService } from '../notifications.service';
 import { NotificationsRepository } from '../notifications.repository';
 import { NotFoundDomainException } from '../../../common/exceptions/domain.exception';
@@ -16,9 +18,13 @@ describe('NotificationsService', () => {
     title: 'Byudjet ogohlantirishi',
     body: 'Oziq-ovqat byudjeti 80% ga yetdi',
     meta: { categoryId: 'cat-1', percent: 85 },
+    dedupeKey: null,
+    telegramSentAt: null,
     readAt: null,
     createdAt: new Date('2026-09-01T12:00:00Z'),
   };
+
+  const outbox = { add: jest.fn().mockResolvedValue({}) };
 
   beforeEach(async () => {
     const mockRepo = {
@@ -34,6 +40,7 @@ describe('NotificationsService', () => {
       providers: [
         NotificationsService,
         { provide: NotificationsRepository, useValue: mockRepo },
+        { provide: getQueueToken(QUEUES.TELEGRAM_OUTBOX), useValue: outbox },
       ],
     }).compile();
 
@@ -139,6 +146,47 @@ describe('NotificationsService', () => {
       });
 
       expect(result).toBeNull();
+    });
+  });
+});
+
+describe('NotificationsService.createSafe idempotency', () => {
+  it('treats a duplicate dedupeKey as already delivered (returns null, never throws)', async () => {
+    const { Prisma } = await import('@prisma/client');
+    const repo = {
+      create: jest.fn().mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: '5.22.0' }),
+      ),
+    };
+    const service = new NotificationsService(repo as unknown as NotificationsRepository, { add: jest.fn() } as never);
+    await expect(
+      service.createSafe('u1', { type: 'DEBT_OVERDUE', title: 't', body: 'b', dedupeKey: 'k' }),
+    ).resolves.toBeNull();
+  });
+});
+
+describe('NotificationsService Telegram outbox', () => {
+  it('queues Telegram delivery for every stored notification, keyed by its id', async () => {
+    const outbox = { add: jest.fn().mockResolvedValue({}) };
+    const repo = { create: jest.fn().mockResolvedValue({ id: 'n-1' }) };
+    const service = new NotificationsService(repo as unknown as NotificationsRepository, outbox as never);
+
+    await service.createSafe('u1', { type: 'BUDGET_WARNING', title: 't', body: 'b' });
+
+    expect(outbox.add).toHaveBeenCalledWith(
+      'deliver-notification',
+      { notificationId: 'n-1' },
+      expect.objectContaining({ jobId: 'n-1' }),
+    );
+  });
+
+  it('keeps the in-app notification even if the queue is unavailable', async () => {
+    const outbox = { add: jest.fn().mockRejectedValue(new Error('redis down')) };
+    const repo = { create: jest.fn().mockResolvedValue({ id: 'n-2' }) };
+    const service = new NotificationsService(repo as unknown as NotificationsRepository, outbox as never);
+
+    await expect(service.createSafe('u1', { type: 'BUDGET_WARNING', title: 't', body: 'b' })).resolves.toEqual({
+      id: 'n-2',
     });
   });
 });

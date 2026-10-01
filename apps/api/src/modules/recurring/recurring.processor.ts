@@ -1,25 +1,21 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
-import { RecurringService } from './recurring.service';
+import { RecurringRunnerService, ProcessSummary } from './recurring-runner.service';
+import { JOBS, QUEUES } from '../../infra/queue/queues';
 
-export const RECURRING_QUEUE_NAME = 'recurring';
-
-@Processor(RECURRING_QUEUE_NAME)
+@Processor(QUEUES.RECURRING)
 export class RecurringProcessor extends WorkerHost {
   private readonly logger = new Logger(RecurringProcessor.name);
 
-  constructor(private readonly recurringService: RecurringService) {
+  constructor(private readonly runner: RecurringRunnerService) {
     super();
   }
 
-  async process(job: Job): Promise<{ processed: number; skipped: number; errors: number }> {
-    this.logger.log(`Processing job ${job.name} (id: ${job.id})`);
-    if (job.name === 'process-due-rules') {
-      const result = await this.recurringService.processDueRules();
-      this.logger.log(`Recurring rules processed: ${JSON.stringify(result)}`);
-      return result;
-    }
-    return { processed: 0, skipped: 0, errors: 0 };
+  async process(job: Job): Promise<ProcessSummary | null> {
+    if (job.name !== JOBS.PROCESS_DUE_RULES) return null;
+    const summary = await this.runner.processDueRules();
+    this.logger.log(`Recurring run: ${JSON.stringify(summary)}`);
+    return summary;
   }
 }

@@ -1,19 +1,24 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { FastifyRequest } from 'fastify';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { SessionStateService } from '../../modules/auth/session-state.service';
 
-interface JwtPayload {
+export interface AccessTokenPayload {
   sub: string;
-  email: string;
+  /** Session (refresh-token family) id: lets one session be revoked without the others. */
+  sid?: string;
 }
+
+export interface AuthenticatedUser {
+  id: string;
+  sessionId?: string;
+}
+
+const unauthenticated = (message = 'Autentifikatsiyadan o‘tilmagan') =>
+  new UnauthorizedException({ code: 'UNAUTHENTICATED', message });
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -21,6 +26,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly sessions: SessionStateService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -28,55 +34,40 @@ export class JwtAuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-
-    if (isPublic) {
-      return true;
-    }
+    if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest<FastifyRequest>();
     const token = this.extractToken(request);
+    if (!token) throw unauthenticated();
 
-    if (!token) {
-      throw new UnauthorizedException({
-        code: 'UNAUTHENTICATED',
-        message: 'Autentifikatsiyadan o‘tilmagan',
-      });
-    }
-
+    let payload: AccessTokenPayload;
     try {
-      const secret = this.configService.get<string>('JWT_ACCESS_SECRET');
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret,
+      payload = await this.jwtService.verifyAsync<AccessTokenPayload>(token, {
+        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
       });
-
-      // Attach user identity to request
-      (request as unknown as { user: { id: string; email: string } }).user = {
-        id: payload.sub,
-        email: payload.email,
-      };
-
-      return true;
     } catch {
-      throw new UnauthorizedException({
-        code: 'UNAUTHENTICATED',
-        message: 'Token yaroqsiz yoki muddati tugagan',
-      });
+      throw unauthenticated('Token yaroqsiz yoki muddati tugagan');
     }
+
+    if (await this.sessions.isSessionRevoked(payload.sid)) {
+      throw unauthenticated('Sessiya yakunlangan. Qaytadan kiring');
+    }
+    if (!(await this.sessions.isUserActive(payload.sub))) {
+      throw unauthenticated('Hisob topilmadi');
+    }
+
+    const user: AuthenticatedUser = { id: payload.sub, sessionId: payload.sid };
+    (request as unknown as { user: AuthenticatedUser }).user = user;
+    return true;
   }
 
   private extractToken(request: FastifyRequest): string | null {
-    // 1. Check httpOnly cookie
-    const cookies = (request as unknown as { cookies?: Record<string, string> }).cookies;
-    if (cookies && cookies.accessToken) {
-      return cookies.accessToken;
-    }
-
-    // 2. Check Authorization Bearer header
+    // The Telegram Mini App sends a Bearer token (cookies are unreliable in Telegram's webview).
+    // An explicit header wins: a leftover web-session cookie of another account must not.
     const authHeader = request.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      return authHeader.slice(7);
-    }
+    if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7);
 
-    return null;
+    const cookies = (request as unknown as { cookies?: Record<string, string> }).cookies;
+    return cookies?.accessToken ?? null;
   }
 }

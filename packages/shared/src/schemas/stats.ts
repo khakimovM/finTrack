@@ -1,16 +1,27 @@
 import { z } from 'zod';
+import { isoDateSchema, refineDateRange } from './common';
 
-const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-const dateString = z.string().regex(ISO_DATE_REGEX, 'Sana YYYY-MM-DD formatida bo\'lishi kerak');
+const dateString = isoDateSchema;
+
+/** Hard caps keep zero-filled series bounded (a century of daily buckets is a DoS vector). */
+export const STATS_MAX_RANGE_DAYS = {
+  day: 400,
+  week: 3 * 366,
+  month: 50 * 366,
+  year: 100 * 366,
+  any: 100 * 366,
+} as const;
 
 // ==========================================
 // 1. STATS SUMMARY
 // ==========================================
 
-export const StatsSummaryQuerySchema = z.object({
-  from: dateString.optional(),
-  to: dateString.optional(),
-});
+export const StatsSummaryQuerySchema = z
+  .object({
+    from: dateString.optional(),
+    to: dateString.optional(),
+  })
+  .superRefine((v, ctx) => refineDateRange(v, ctx, STATS_MAX_RANGE_DAYS.any));
 
 export type StatsSummaryQuery = z.infer<typeof StatsSummaryQuerySchema>;
 
@@ -58,11 +69,13 @@ export type StatsSummaryResponse = z.infer<typeof StatsSummaryResponseSchema>;
 export const TimeseriesGroupBySchema = z.enum(['day', 'week', 'month', 'year']);
 export type TimeseriesGroupBy = z.infer<typeof TimeseriesGroupBySchema>;
 
-export const StatsTimeseriesQuerySchema = z.object({
-  groupBy: TimeseriesGroupBySchema.optional().default('day'),
-  from: dateString,
-  to: dateString,
-});
+export const StatsTimeseriesQuerySchema = z
+  .object({
+    groupBy: TimeseriesGroupBySchema.optional().default('day'),
+    from: dateString,
+    to: dateString,
+  })
+  .superRefine((v, ctx) => refineDateRange(v, ctx, STATS_MAX_RANGE_DAYS[v.groupBy]));
 
 export type StatsTimeseriesQuery = z.infer<typeof StatsTimeseriesQuerySchema>;
 
@@ -94,11 +107,13 @@ export type StatsTimeseriesResponse = z.infer<typeof StatsTimeseriesResponseSche
 export const StatsCategoryTypeSchema = z.enum(['EXPENSE', 'INCOME']);
 export type StatsCategoryType = z.infer<typeof StatsCategoryTypeSchema>;
 
-export const StatsByCategoryQuerySchema = z.object({
-  type: StatsCategoryTypeSchema.optional().default('EXPENSE'),
-  from: dateString,
-  to: dateString,
-});
+export const StatsByCategoryQuerySchema = z
+  .object({
+    type: StatsCategoryTypeSchema.optional().default('EXPENSE'),
+    from: dateString,
+    to: dateString,
+  })
+  .superRefine((v, ctx) => refineDateRange(v, ctx, STATS_MAX_RANGE_DAYS.any));
 
 export type StatsByCategoryQuery = z.infer<typeof StatsByCategoryQuerySchema>;
 
@@ -135,10 +150,12 @@ export type StatsByCategoryResponse = z.infer<typeof StatsByCategoryResponseSche
 // 4. STATS BY ACCOUNT
 // ==========================================
 
-export const StatsByAccountQuerySchema = z.object({
-  from: dateString,
-  to: dateString,
-});
+export const StatsByAccountQuerySchema = z
+  .object({
+    from: dateString,
+    to: dateString,
+  })
+  .superRefine((v, ctx) => refineDateRange(v, ctx, STATS_MAX_RANGE_DAYS.any));
 
 export type StatsByAccountQuery = z.infer<typeof StatsByAccountQuerySchema>;
 
@@ -164,10 +181,13 @@ export type StatsByAccountResponse = z.infer<typeof StatsByAccountResponseSchema
 // 5. STATS BALANCE TREND
 // ==========================================
 
-export const StatsBalanceTrendQuerySchema = z.object({
-  from: dateString,
-  to: dateString,
-});
+export const StatsBalanceTrendQuerySchema = z
+  .object({
+    from: dateString,
+    to: dateString,
+  })
+  // The trend is always daily, so it shares the daily bucket cap.
+  .superRefine((v, ctx) => refineDateRange(v, ctx, STATS_MAX_RANGE_DAYS.day));
 
 export type StatsBalanceTrendQuery = z.infer<typeof StatsBalanceTrendQuerySchema>;
 
@@ -212,12 +232,17 @@ export type StatsDebtsResponse = z.infer<typeof StatsDebtsResponseSchema>;
 // 7. STATS COMPARE
 // ==========================================
 
-export const StatsCompareQuerySchema = z.object({
-  currentFrom: dateString,
-  currentTo: dateString,
-  previousFrom: dateString,
-  previousTo: dateString,
-});
+export const StatsCompareQuerySchema = z
+  .object({
+    currentFrom: dateString,
+    currentTo: dateString,
+    previousFrom: dateString,
+    previousTo: dateString,
+  })
+  .superRefine((v, ctx) => {
+    refineDateRange({ from: v.currentFrom, to: v.currentTo }, ctx, STATS_MAX_RANGE_DAYS.any);
+    refineDateRange({ from: v.previousFrom, to: v.previousTo }, ctx, STATS_MAX_RANGE_DAYS.any);
+  });
 
 export type StatsCompareQuery = z.infer<typeof StatsCompareQuerySchema>;
 

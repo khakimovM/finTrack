@@ -1,15 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { TransactionType } from '@prisma/client';
 import * as ExcelJS from 'exceljs';
-import {
-  ExportTransactionsQuery,
-  formatIsoDate,
-  tiyinToSom,
-} from '@fintrack/shared';
+import { ExportTransactionsQuery, formatIsoDate, tiyinToSom } from '@fintrack/shared';
 import {
   TransactionsRepository,
   TransactionWithRelations,
 } from '../transactions/transactions.repository';
+import { DomainException } from '../../common/exceptions/domain.exception';
+
+/** Keeps a single export bounded in memory; larger ranges must be split by date. */
+export const EXPORT_MAX_ROWS = 50_000;
 
 const TYPE_LABELS: Record<TransactionType, string> = {
   INCOME: 'Kirim',
@@ -23,11 +23,20 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   ADJUSTMENT: 'Tuzatish',
 };
 
+/**
+ * Spreadsheet apps execute cells starting with = + - @ (CSV/formula injection). A leading
+ * apostrophe makes Excel and LibreOffice treat the cell as plain text.
+ */
+export function neutralizeFormula(field: string): string {
+  return /^[=+\-@\t\r]/.test(field) ? `'${field}` : field;
+}
+
 function escapeCsvField(field: string): string {
-  if (/[",\n\r]/.test(field)) {
-    return `"${field.replace(/"/g, '""')}"`;
+  const safe = neutralizeFormula(field);
+  if (/[",\n\r]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return field;
+  return safe;
 }
 
 @Injectable()
@@ -35,19 +44,18 @@ export class ExportService {
   constructor(private readonly transactionsRepository: TransactionsRepository) {}
 
   async generateCsv(userId: string, query: ExportTransactionsQuery): Promise<string> {
-    const transactions = await this.transactionsRepository.findForExport(userId, query);
+    const transactions = await this.load(userId, query);
 
     const headers = ['Sana', 'Tur', 'Hisob', 'Kategoriya', 'Summa (so‘m)', 'Teglar', 'Izoh'];
     const rows = transactions.map((t) => this.mapToCsvRow(t));
-
     const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\r\n');
 
-    // Prepend UTF-8 BOM (\uFEFF) for Excel compatibility
+    // UTF-8 BOM so Excel detects the encoding of Uzbek text.
     return `\uFEFF${csvContent}`;
   }
 
   async generateXlsx(userId: string, query: ExportTransactionsQuery): Promise<Buffer> {
-    const transactions = await this.transactionsRepository.findForExport(userId, query);
+    const transactions = await this.load(userId, query);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'FinTrack';
@@ -67,34 +75,27 @@ export class ExportService {
       { header: 'Izoh', key: 'note', width: 35 },
     ];
 
-    // Header styling
     const headerRow = worksheet.getRow(1);
     headerRow.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF1E293B' },
-    };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
     headerRow.height = 28;
 
     for (const t of transactions) {
-      const somValue = Number(t.amount) / 100;
       const row = worksheet.addRow({
         date: formatIsoDate(t.date),
         type: TYPE_LABELS[t.type] || t.type,
-        account: t.account.name,
-        category: t.category?.name ?? '—',
-        amount: somValue,
-        tags: t.tags.map((tagRel) => tagRel.tag.name).join(', '),
-        note: t.note ?? '',
+        account: neutralizeFormula(t.account.name),
+        category: neutralizeFormula(t.category?.name ?? '—'),
+        // Excel stores numbers as doubles: exact to the tiyin below 2^53 tiyin (~90 trillion so'm).
+        amount: Number(tiyinToSom(t.amount)),
+        tags: neutralizeFormula(t.tags.map((tagRel) => tagRel.tag.name).join(', ')),
+        note: neutralizeFormula(t.note ?? ''),
       });
 
-      // Number formatting for amount
       const amountCell = row.getCell('amount');
       amountCell.numFmt = '#,##0.00';
       amountCell.alignment = { horizontal: 'right' };
-
       if (t.type === 'INCOME') {
         amountCell.font = { color: { argb: 'FF16A34A' } };
       } else if (t.type === 'EXPENSE') {
@@ -106,15 +107,28 @@ export class ExportService {
     return Buffer.from(uint8Array);
   }
 
-  private mapToCsvRow(t: TransactionWithRelations): string[] {
-    const date = formatIsoDate(t.date);
-    const type = TYPE_LABELS[t.type] || t.type;
-    const account = escapeCsvField(t.account.name);
-    const category = escapeCsvField(t.category?.name ?? '—');
-    const amount = tiyinToSom(t.amount);
-    const tags = escapeCsvField(t.tags.map((tr) => tr.tag.name).join('; '));
-    const note = escapeCsvField(t.note ?? '');
+  private async load(userId: string, query: ExportTransactionsQuery): Promise<TransactionWithRelations[]> {
+    const count = await this.transactionsRepository.countForExport(userId, query);
+    if (count > EXPORT_MAX_ROWS) {
+      throw new DomainException(
+        `Eksport ${EXPORT_MAX_ROWS} ta yozuvdan oshmasligi kerak. Sana oralig‘ini qisqartiring`,
+        'EXPORT_TOO_LARGE',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        { count, max: EXPORT_MAX_ROWS },
+      );
+    }
+    return this.transactionsRepository.findForExport(userId, query);
+  }
 
-    return [date, type, account, category, amount, tags, note];
+  private mapToCsvRow(t: TransactionWithRelations): string[] {
+    return [
+      formatIsoDate(t.date),
+      TYPE_LABELS[t.type] || t.type,
+      escapeCsvField(t.account.name),
+      escapeCsvField(t.category?.name ?? '—'),
+      tiyinToSom(t.amount),
+      escapeCsvField(t.tags.map((tr) => tr.tag.name).join('; ')),
+      escapeCsvField(t.note ?? ''),
+    ];
   }
 }

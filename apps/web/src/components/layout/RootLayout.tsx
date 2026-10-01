@@ -16,6 +16,7 @@ import {
   Wallet,
   ShieldCheck,
   ShieldAlert,
+  Repeat,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useUiStore } from '../../stores/uiStore';
@@ -23,6 +24,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { cn } from '../../lib/utils';
 import { NotificationBell } from '../../features/notifications/components/NotificationBell';
+import { useTelegramBackButton } from '../../features/miniapp/useTelegramBackButton';
 
 const NAV_ITEMS = [
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -30,6 +32,7 @@ const NAV_ITEMS = [
   { to: '/app/accounts', label: 'Hisoblar', icon: CreditCard },
   { to: '/app/debts', label: 'Qarzlar', icon: HandCoins },
   { to: '/app/budgets', label: 'Byudjetlar', icon: PiggyBank },
+  { to: '/app/recurring', label: 'Takroriy to‘lovlar', icon: Repeat },
   { to: '/app/categories', label: 'Kategoriyalar', icon: FolderTree },
   { to: '/app/reports', label: 'Hisobotlar', icon: BarChart3 },
   { to: '/app/settings', label: 'Sozlamalar', icon: Settings },
@@ -38,7 +41,11 @@ const NAV_ITEMS = [
 export function RootLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { theme, setTheme, sidebarOpen, toggleSidebar, setSidebarOpen } = useUiStore();
+  const { theme, setTheme, telegramTheme, sidebarOpen, toggleSidebar, setSidebarOpen } =
+    useUiStore();
+  // Inside Telegram the account is the Telegram account: no sign-out, theme follows Telegram.
+  const inTelegram = telegramTheme;
+  useTelegramBackButton();
 
   const handleLogout = async () => {
     await logout();
@@ -54,7 +61,7 @@ export function RootLayout() {
       {/* Mobile Drawer Backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -62,7 +69,7 @@ export function RootLayout() {
       {/* Sidebar (Desktop & Mobile Drawer) */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-72 flex-col justify-between border-r border-border bg-surface px-4 py-6 transition-transform duration-300 md:static md:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-72 flex-col justify-between border-r border-border bg-surface px-4 py-6 transition-transform duration-300 lg:static lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -78,7 +85,7 @@ export function RootLayout() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="lg:hidden"
               onClick={toggleSidebar}
               aria-label="Menyuni yopish"
             >
@@ -102,7 +109,6 @@ export function RootLayout() {
                       isActive
                         ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-
                     )
                   }
                 >
@@ -123,13 +129,18 @@ export function RootLayout() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-foreground">{user?.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {user?.telegramUsername ? `@${user.telegramUsername}` : (user?.email ?? '')}
+                </p>
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-between px-2 pt-1">
-            <Badge variant={user?.strictMode ? 'warning' : 'secondary'} className="text-[11px] gap-1">
+            <Badge
+              variant={user?.strictMode ? 'warning' : 'secondary'}
+              className="text-[11px] gap-1"
+            >
               {user?.strictMode ? (
                 <>
                   <ShieldAlert className="h-3 w-3" /> Qatʼiy rejim
@@ -141,16 +152,18 @@ export function RootLayout() {
               )}
             </Badge>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
-              title="Tizimdan chiqish"
-              aria-label="Chiqish"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+            {!inTelegram && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
+                title="Tizimdan chiqish"
+                aria-label="Chiqish"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </aside>
@@ -159,13 +172,8 @@ export function RootLayout() {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar for mobile */}
         <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-4 md:px-8">
-          <div className="flex items-center space-x-3 md:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              aria-label="Menyuni ochish"
-            >
+          <div className="flex items-center space-x-3 lg:hidden">
+            <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Menyuni ochish">
               <Menu className="h-5 w-5" />
             </Button>
             <div className="flex items-center space-x-2">
@@ -174,7 +182,7 @@ export function RootLayout() {
             </div>
           </div>
 
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <h1 className="text-sm font-medium text-muted-foreground">
               Xush kelibsiz, <span className="font-bold text-foreground">{user?.name}</span>!
             </h1>
@@ -182,19 +190,21 @@ export function RootLayout() {
 
           <div className="flex items-center space-x-2">
             <NotificationBell />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="rounded-full"
-              aria-label="Mavzuni almashtirish"
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-5 w-5 text-warning" />
-              ) : (
-                <Moon className="h-5 w-5 text-muted-foreground" />
-              )}
-            </Button>
+            {!inTelegram && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="rounded-full"
+                aria-label="Mavzuni almashtirish"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-5 w-5 text-warning" />
+                ) : (
+                  <Moon className="h-5 w-5 text-muted-foreground" />
+                )}
+              </Button>
+            )}
           </div>
         </header>
 

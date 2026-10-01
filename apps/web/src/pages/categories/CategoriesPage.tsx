@@ -8,8 +8,11 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { CategoryModal } from '../../features/categories/components/CategoryModal';
 import { useCategories, useDeleteCategory } from '../../features/categories/hooks/useCategories';
 import { cn } from '../../lib/utils';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { toast } from '../../stores/toastStore';
 
 export function CategoriesPage() {
+  const [confirmDialog, confirm] = useConfirm();
   const [activeTab, setActiveTab] = useState<CategoryType>('EXPENSE');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalParentId, setModalParentId] = useState<string | null>(null);
@@ -32,13 +35,15 @@ export function CategoriesPage() {
 
   const handleDelete = async (cat: CategoryResponse) => {
     if (cat.isSystem) {
-      alert('Tizim kategoriyalarini o‘chirib bo‘lmaydi');
+      toast.error('Tizim kategoriyalarini o‘chirib bo‘lmaydi');
       return;
     }
     if (
-      window.confirm(
-        `"${cat.name}" kategoriyasini o‘chirishni tasdiqlaysizmi?`,
-      )
+      await confirm({
+        title: `"${cat.name}" kategoriyasi o‘chirilsinmi?`,
+        confirmLabel: 'O‘chirish',
+        destructive: true,
+      })
     ) {
       await deleteCategory.mutateAsync(cat.id);
     }
@@ -106,9 +111,7 @@ export function CategoriesPage() {
         <EmptyState
           title="Kategoriyalar mavjud emas"
           description="Ushbu turdagi birinchi kategoriyangizni yarating."
-          action={
-            <Button onClick={handleOpenAddParent}>Kategoriya yaratish</Button>
-          }
+          action={<Button onClick={handleOpenAddParent}>Kategoriya yaratish</Button>}
         />
       ) : (
         <div className="space-y-4">
@@ -215,6 +218,7 @@ export function CategoriesPage() {
         defaultType={activeTab}
         defaultParentId={modalParentId}
       />
+      {confirmDialog}
     </div>
   );
 }

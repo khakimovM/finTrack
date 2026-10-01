@@ -18,6 +18,6 @@ export function formatMoneyUi(tiyinAmount: string | bigint | number): string {
     const tiyin = typeof tiyinAmount === 'bigint' ? tiyinAmount : BigInt(tiyinAmount);
     return formatMoney(tiyin);
   } catch {
-    return '0,00 so\'m';
+    return "0,00 so'm";
   }
 }

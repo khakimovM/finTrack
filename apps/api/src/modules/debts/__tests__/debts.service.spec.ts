@@ -1,418 +1,329 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Debt, DebtPayment, Transaction } from '@prisma/client';
 import { DebtsService } from '../debts.service';
+import { DebtPaymentsService } from '../debt-payments.service';
 import { DebtsRepository, DebtWithPayments } from '../debts.repository';
-import { AccountsRepository } from '../../accounts/accounts.repository';
+import { AccountAccessService } from '../../accounts/account-access.service';
 import { BalanceService } from '../../accounts/balance.service';
 import { BalanceGuardService } from '../../accounts/balance-guard.service';
+import { ClockService } from '../../../infra/clock/clock.service';
+import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
+import { prismaStub } from '../../../infra/prisma/__tests__/prisma.stub';
 import {
-  NotFoundDomainException,
-  DebtOverpaymentException,
   ConflictDomainException,
-  InsufficientBalanceException,
+  DebtOverpaymentException,
+  FutureDateException,
+  NotFoundDomainException,
 } from '../../../common/exceptions/domain.exception';
 
-describe('DebtsService', () => {
-  let service: DebtsService;
-  let repository: {
-    findMany: jest.Mock;
-    calculateSummary: jest.Mock;
-    findById: jest.Mock;
-    createDebt: jest.Mock;
-    update: jest.Mock;
-    createPayment: jest.Mock;
-    softDelete: jest.Mock;
-    findPayments: jest.Mock;
-  };
-  let accountsRepository: { findById: jest.Mock };
-  let balanceService: {
-    getBalance: jest.Mock;
-    getTotalBalance: jest.Mock;
-    invalidate: jest.Mock;
-  };
-  let balanceGuardService: { assertSufficient: jest.Mock };
+const USER = 'user-1';
+const DEBT_ID = '11111111-1111-1111-1111-111111111111';
+const ACCOUNT = '22222222-2222-2222-2222-222222222222';
+const created = new Date('2026-09-01T10:00:00Z');
 
-  const mockDebt: DebtWithPayments = {
-    id: 'debt-1',
-    userId: 'user-1',
+function debt(overrides: Partial<Debt> = {}): Debt {
+  return {
+    id: DEBT_ID,
+    userId: USER,
     direction: 'I_LENT',
     personName: 'Jasur',
-    personPhone: '+998901234567',
-    amount: 50000000n,
-    dueDate: new Date('2026-09-01'),
+    personPhone: null,
+    amount: 1_000_000n,
+    dueDate: null,
     status: 'ACTIVE',
     paidAt: null,
-    note: 'To‘yga',
-    createdAt: new Date('2026-08-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-08-01T00:00:00.000Z'),
+    note: null,
+    createdAt: created,
+    updatedAt: created,
     deletedAt: null,
-    payments: [],
+    ...overrides,
   };
+}
 
-  beforeEach(async () => {
-    repository = {
-      findMany: jest.fn(),
-      calculateSummary: jest.fn(),
-      findById: jest.fn(),
-      createDebt: jest.fn(),
-      update: jest.fn(),
-      createPayment: jest.fn(),
-      softDelete: jest.fn(),
-      findPayments: jest.fn(),
-    };
-    accountsRepository = { findById: jest.fn() };
-    balanceService = {
-      getBalance: jest.fn(),
-      getTotalBalance: jest.fn(),
-      invalidate: jest.fn(),
-    };
-    balanceGuardService = { assertSufficient: jest.fn() };
+function withPayments(d: Debt, payments: bigint[] = []): DebtWithPayments {
+  return {
+    ...d,
+    payments: payments.map((amount, i) => ({
+      id: `p${i}`,
+      debtId: d.id,
+      transactionId: `t${i}`,
+      amount,
+      paidAt: new Date('2026-09-10T00:00:00Z'),
+      note: null,
+      createdAt: created,
+    })),
+  };
+}
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DebtsService,
-        { provide: DebtsRepository, useValue: repository },
-        { provide: AccountsRepository, useValue: accountsRepository },
-        { provide: BalanceService, useValue: balanceService },
-        { provide: BalanceGuardService, useValue: balanceGuardService },
-      ],
-    }).compile();
+function ledgerRow(overrides: Partial<Transaction>): Transaction {
+  return {
+    id: 'tx',
+    userId: USER,
+    accountId: ACCOUNT,
+    type: 'LOAN_GIVEN',
+    amount: 1_000_000n,
+    amountBase: null,
+    categoryId: null,
+    debtId: DEBT_ID,
+    transferGroupId: null,
+    recurringRuleId: null,
+    date: new Date('2026-09-01T00:00:00Z'),
+    note: null,
+    createdAt: created,
+    updatedAt: created,
+    deletedAt: null,
+    ...overrides,
+  };
+}
 
-    service = module.get<DebtsService>(DebtsService);
-  });
+function setup() {
+  const repository = {
+    findMany: jest.fn(),
+    summary: jest.fn(),
+    findById: jest.fn(),
+    lock: jest.fn(),
+    paidAmount: jest.fn(),
+    createDebt: jest.fn(),
+    update: jest.fn(),
+    createPayment: jest.fn(),
+    setStatus: jest.fn(),
+    findPayment: jest.fn(),
+    deletePayment: jest.fn(),
+    liveLedgerRows: jest.fn(),
+    softDelete: jest.fn(),
+    findPayments: jest.fn(),
+  };
+  const accountAccess = { assertWritable: jest.fn().mockResolvedValue(undefined) };
+  const balanceService = { invalidate: jest.fn(), getTotalBalance: jest.fn().mockResolvedValue(0n) };
+  const guard = { assertCanDebit: jest.fn(), assertDeltas: jest.fn() };
+  const clock = clockStub();
+  const prisma = prismaStub();
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
+  const deps = [
+    repository as unknown as DebtsRepository,
+    accountAccess as unknown as AccountAccessService,
+    balanceService as unknown as BalanceService,
+    guard as unknown as BalanceGuardService,
+    clock as unknown as ClockService,
+    prisma,
+  ] as const;
 
-  describe('list and getById', () => {
-    it('returns list of debts with summary meta', async () => {
-      repository.findMany.mockResolvedValue({ debts: [mockDebt], total: 1 });
-      repository.calculateSummary.mockResolvedValue({
-        owedToMe: 50000000n,
-        iOwe: 0n,
-        net: 50000000n,
-        overdueCount: 0,
-      });
+  return {
+    repository,
+    accountAccess,
+    balanceService,
+    guard,
+    clock,
+    prisma,
+    debts: new DebtsService(...deps),
+    payments: new DebtPaymentsService(...deps),
+  };
+}
 
-      const res = await service.list('user-1', { page: 1, limit: 10 });
-
-      expect(res.data).toHaveLength(1);
-      expect(res.data[0].id).toBe('debt-1');
-      expect(res.meta.summary.owedToMe).toBe('50000000');
-    });
-
-    it('returns single debt by id', async () => {
-      repository.findById.mockResolvedValue(mockDebt);
-
-      const res = await service.getById('user-1', 'debt-1');
-
-      expect(res.id).toBe('debt-1');
-      expect(repository.findById).toHaveBeenCalledWith('user-1', 'debt-1');
-    });
-
-    it('throws NotFoundDomainException when debt not found', async () => {
-      repository.findById.mockResolvedValue(null);
-
-      await expect(service.getById('user-1', 'debt-404')).rejects.toThrow(NotFoundDomainException);
-    });
-  });
-
-  describe('update', () => {
-    it('updates debt details', async () => {
-      repository.findById.mockResolvedValue(mockDebt);
-      repository.update.mockResolvedValue({
-        ...mockDebt,
-        personName: 'Jasur Yangi',
-        note: 'Yangi izoh',
-      });
-
-      const res = await service.update('user-1', 'debt-1', {
-        personName: 'Jasur Yangi',
-        note: 'Yangi izoh',
-      });
-
-      expect(res.personName).toBe('Jasur Yangi');
-      expect(repository.update).toHaveBeenCalled();
-    });
-
-    it('throws NotFoundDomainException when updating non-existent debt', async () => {
-      repository.findById.mockResolvedValue(null);
-
-      await expect(
-        service.update('user-1', 'debt-404', { personName: 'Ali' }),
-      ).rejects.toThrow(NotFoundDomainException);
-    });
-  });
-
-  describe('listPayments', () => {
-    it('returns payment list for a debt', async () => {
-      repository.findById.mockResolvedValue(mockDebt);
-      const mockPayment = {
-        id: 'pm-1',
-        debtId: 'debt-1',
-        transactionId: 'tx-1',
-        amount: 10000000n,
-        paidAt: new Date('2026-08-15'),
-        note: 'Birinchi to‘lov',
-        createdAt: new Date('2026-08-15'),
-      };
-      repository.findPayments.mockResolvedValue([mockPayment]);
-
-      const res = await service.listPayments('user-1', 'debt-1');
-
-      expect(res).toHaveLength(1);
-      expect(res[0].id).toBe('pm-1');
-      expect(res[0].amount).toBe('10000000');
-    });
-
-    it('throws NotFoundDomainException when listing payments of non-existent debt', async () => {
-      repository.findById.mockResolvedValue(null);
-
-      await expect(service.listPayments('user-1', 'debt-404')).rejects.toThrow(NotFoundDomainException);
-    });
-  });
-
+describe('DebtsService', () => {
   describe('create', () => {
-    const validDto = {
-      direction: 'I_LENT' as const,
-      personName: 'Jasur',
-      accountId: 'acc-1',
-      amount: '50000000',
-      dueDate: '2026-09-01',
-      note: 'To‘yga',
-    };
-
-    it('creates debt and ledger transaction atomically and checks strictMode', async () => {
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-1' });
-      balanceGuardService.assertSufficient.mockResolvedValue(undefined);
-      repository.createDebt.mockResolvedValue({
-        debt: mockDebt,
-        transaction: {
-          id: 'tx-loan-1',
-          type: 'LOAN_GIVEN',
-          amount: 50000000n,
-        },
+    it('writes debt + LOAN_GIVEN atomically and applies strict mode when lending', async () => {
+      const t = setup();
+      t.repository.createDebt.mockResolvedValue({
+        debt: withPayments(debt()),
+        transaction: ledgerRow({ id: 'tx-1' }),
       });
-      balanceService.getTotalBalance.mockResolvedValue(9400000n);
 
-      const res = await service.create('user-1', validDto);
+      const result = await t.debts.create(USER, {
+        direction: 'I_LENT',
+        personName: 'Jasur',
+        accountId: ACCOUNT,
+        amount: '1000000',
+      });
 
-      expect(res.debt.id).toBe('debt-1');
-      expect(res.transaction.type).toBe('LOAN_GIVEN');
-      expect(res.transaction.amount).toBe('50000000');
-      expect(res.totalBalance).toBe('9400000');
-      expect(balanceGuardService.assertSufficient).toHaveBeenCalledWith('user-1', 'acc-1', 50000000n);
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
+      expect(t.prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(t.guard.assertCanDebit).toHaveBeenCalledWith(t.prisma.tx, USER, ACCOUNT, 1_000_000n);
+      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER, expect.any(Array));
+      expect(result.debt.remainingAmount).toBe('1000000');
+      expect(result.transaction.id).toBe('tx-1');
     });
 
-    it('throws 422 INSUFFICIENT_BALANCE when lending and strictMode rejects', async () => {
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-1' });
-      balanceGuardService.assertSufficient.mockRejectedValue(
-        new InsufficientBalanceException('Balansingiz yetarli emas'),
-      );
-
-      await expect(service.create('user-1', validDto)).rejects.toThrow(InsufficientBalanceException);
-      expect(repository.createDebt).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('createPayment', () => {
-    it('records partial payment and updates debt status to PARTIALLY_PAID', async () => {
-      repository.findById.mockResolvedValue(mockDebt);
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-1' });
-      balanceGuardService.assertSufficient.mockResolvedValue(undefined);
-
-      const updatedDebtWithPayment: DebtWithPayments = {
-        ...mockDebt,
-        status: 'PARTIALLY_PAID',
-        payments: [
-          {
-            id: 'p-1',
-            debtId: 'debt-1',
-            transactionId: 'tx-repay-1',
-            amount: 20000000n,
-            paidAt: new Date('2026-08-20'),
-            note: '1-qism',
-            createdAt: new Date(),
-          },
-        ],
-      };
-
-      repository.createPayment.mockResolvedValue({
-        payment: updatedDebtWithPayment.payments[0],
-        updatedDebt: updatedDebtWithPayment,
-        transaction: { id: 'tx-repay-1', type: 'LOAN_REPAY_IN', amount: 20000000n },
-      });
-      balanceService.getTotalBalance.mockResolvedValue(11400000n);
-
-      const res = await service.createPayment('user-1', 'debt-1', {
-        amount: '20000000',
-        accountId: 'acc-1',
-        paidAt: '2026-08-20',
-        note: '1-qism',
+    it('does not debit-check when borrowing (money comes in)', async () => {
+      const t = setup();
+      t.repository.createDebt.mockResolvedValue({
+        debt: withPayments(debt({ direction: 'I_BORROWED' })),
+        transaction: ledgerRow({ type: 'LOAN_TAKEN' }),
       });
 
-      expect(res.payment.amount).toBe('20000000');
-      expect(res.debt.paidAmount).toBe('20000000');
-      expect(res.debt.remainingAmount).toBe('30000000');
-      expect(res.debt.status).toBe('PARTIALLY_PAID');
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
+      await t.debts.create(USER, {
+        direction: 'I_BORROWED',
+        personName: 'Bank',
+        accountId: ACCOUNT,
+        amount: '1000000',
+      });
+
+      expect(t.guard.assertCanDebit).not.toHaveBeenCalled();
     });
 
-    it('records full payment, updates status to PAID and sets paidAt', async () => {
-      repository.findById.mockResolvedValue(mockDebt);
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-1' });
-
-      const fullyPaidDebt: DebtWithPayments = {
-        ...mockDebt,
-        status: 'PAID',
-        paidAt: new Date(),
-        payments: [
-          {
-            id: 'p-1',
-            debtId: 'debt-1',
-            transactionId: 'tx-repay-1',
-            amount: 50000000n,
-            paidAt: new Date(),
-            note: 'To‘liq',
-            createdAt: new Date(),
-          },
-        ],
-      };
-
-      repository.createPayment.mockResolvedValue({
-        payment: fullyPaidDebt.payments[0],
-        updatedDebt: fullyPaidDebt,
-        transaction: { id: 'tx-repay-1', type: 'LOAN_REPAY_IN', amount: 50000000n },
-      });
-      balanceService.getTotalBalance.mockResolvedValue(14400000n);
-
-      const res = await service.createPayment('user-1', 'debt-1', {
-        amount: '50000000',
-        accountId: 'acc-1',
-      });
-
-      expect(res.debt.remainingAmount).toBe('0');
-      expect(res.debt.status).toBe('PAID');
-      expect(repository.createPayment).toHaveBeenCalledWith(
-        'user-1',
-        'debt-1',
-        expect.any(Object),
-        'PAID',
-        expect.any(Date),
-      );
-    });
-
-    it('throws 422 DEBT_OVERPAYMENT when payment exceeds remaining amount and does not modify database', async () => {
-      repository.findById.mockResolvedValue(mockDebt); // remaining = 50000000n
-
+    it('rejects a future ledger date before writing anything', async () => {
+      const t = setup();
       await expect(
-        service.createPayment('user-1', 'debt-1', {
-          amount: '60000000', // exceeds 50000000
-          accountId: 'acc-1',
+        t.debts.create(USER, {
+          direction: 'I_LENT',
+          personName: 'Jasur',
+          accountId: ACCOUNT,
+          amount: '1',
+          date: '2999-01-01',
         }),
-      ).rejects.toThrow(DebtOverpaymentException);
-
-      expect(repository.createPayment).not.toHaveBeenCalled();
-    });
-
-    it('throws 409 DEBT_ALREADY_PAID when attempting payment on an already fully paid debt', async () => {
-      const fullyPaidDebt: DebtWithPayments = {
-        ...mockDebt,
-        status: 'PAID',
-        payments: [
-          {
-            id: 'p-1',
-            debtId: 'debt-1',
-            transactionId: 'tx-1',
-            amount: 50000000n,
-            paidAt: new Date(),
-            note: null,
-            createdAt: new Date(),
-          },
-        ],
-      };
-      repository.findById.mockResolvedValue(fullyPaidDebt);
-
-      await expect(
-        service.createPayment('user-1', 'debt-1', {
-          amount: '5000',
-          accountId: 'acc-1',
-        }),
-      ).rejects.toThrow(ConflictDomainException);
-    });
-  });
-
-  describe('settle', () => {
-    it('settles debt with full remaining amount', async () => {
-      repository.findById.mockResolvedValue(mockDebt);
-      accountsRepository.findById.mockResolvedValue({ id: 'acc-1' });
-
-      const settledDebt: DebtWithPayments = {
-        ...mockDebt,
-        status: 'PAID',
-        paidAt: new Date(),
-        payments: [
-          {
-            id: 'p-settle',
-            debtId: 'debt-1',
-            transactionId: 'tx-settle',
-            amount: 50000000n,
-            paidAt: new Date(),
-            note: 'To‘liq yopildi',
-            createdAt: new Date(),
-          },
-        ],
-      };
-
-      repository.createPayment.mockResolvedValue({
-        payment: settledDebt.payments[0],
-        updatedDebt: settledDebt,
-        transaction: { id: 'tx-settle', type: 'LOAN_REPAY_IN', amount: 50000000n },
-      });
-      balanceService.getTotalBalance.mockResolvedValue(15000000n);
-
-      const res = await service.settle('user-1', 'debt-1', {
-        accountId: 'acc-1',
-      });
-
-      expect(res.debt.status).toBe('PAID');
-      expect(res.debt.remainingAmount).toBe('0');
-      expect(repository.createPayment).toHaveBeenCalledWith(
-        'user-1',
-        'debt-1',
-        expect.objectContaining({ amount: 50000000n }),
-        'PAID',
-        expect.any(Date),
-      );
+      ).rejects.toBeInstanceOf(FutureDateException);
+      expect(t.prisma.$transaction).not.toHaveBeenCalled();
     });
   });
 
   describe('delete', () => {
-    it('soft deletes debt and linked ledger rows', async () => {
-      repository.findById.mockResolvedValue(mockDebt);
+    it('reverses every live ledger row through the strict-mode guard', async () => {
+      const t = setup();
+      t.repository.lock.mockResolvedValue(debt({ direction: 'I_BORROWED' }));
+      t.repository.liveLedgerRows.mockResolvedValue([
+        ledgerRow({ type: 'LOAN_TAKEN', amount: 1_000_000n }),
+        ledgerRow({ id: 'r', type: 'LOAN_REPAY_OUT', amount: 400_000n }),
+      ]);
 
-      await service.delete('user-1', 'debt-1');
+      await t.debts.delete(USER, DEBT_ID);
 
-      expect(repository.softDelete).toHaveBeenCalledWith('user-1', 'debt-1');
-      expect(balanceService.invalidate).toHaveBeenCalledWith('user-1');
+      // Removing +1 000 000 and −400 000 leaves the account 600 000 lower.
+      expect(t.guard.assertDeltas).toHaveBeenCalledWith(
+        t.prisma.tx,
+        USER,
+        new Map([[ACCOUNT, -600_000n]]),
+      );
+      expect(t.repository.softDelete).toHaveBeenCalledWith(t.prisma.tx, USER, DEBT_ID);
+      expect(t.balanceService.invalidate).toHaveBeenCalledWith(USER, expect.any(Array));
     });
 
-    it('throws 404 when debt not found', async () => {
-      repository.findById.mockResolvedValue(null);
-
-      await expect(service.delete('user-1', 'unknown')).rejects.toThrow(NotFoundDomainException);
+    it('returns 404 for someone else’s debt', async () => {
+      const t = setup();
+      t.repository.lock.mockResolvedValue(null);
+      await expect(t.debts.delete(USER, DEBT_ID)).rejects.toBeInstanceOf(NotFoundDomainException);
+      expect(t.repository.softDelete).not.toHaveBeenCalled();
     });
   });
 
-  describe('domain invariant: debts are not expenses', () => {
-    it('verifies loan transactions must never count as expense or income stats', () => {
-      const statsAllowedTypes = ['INCOME', 'EXPENSE'];
-      const debtTypes = ['LOAN_GIVEN', 'LOAN_TAKEN', 'LOAN_REPAY_IN', 'LOAN_REPAY_OUT'];
+  describe('responses', () => {
+    it('computes isOverdue and daysLeft against the user’s today', async () => {
+      const t = setup();
+      t.clock.todayFor.mockResolvedValue('2026-09-27');
+      t.repository.findById.mockResolvedValue(
+        withPayments(debt({ dueDate: new Date('2026-09-20T00:00:00Z') }), [100_000n]),
+      );
 
-      for (const dType of debtTypes) {
-        expect(statsAllowedTypes.includes(dType)).toBe(false);
-      }
+      const res = await t.debts.getById(USER, DEBT_ID);
+      expect(res).toMatchObject({ isOverdue: true, daysLeft: -7, paidAmount: '100000', remainingAmount: '900000' });
     });
+  });
+});
+
+describe('DebtPaymentsService', () => {
+  function paymentResult(amount: bigint): { payment: DebtPayment; transaction: Transaction } {
+    return {
+      payment: {
+        id: 'p1',
+        debtId: DEBT_ID,
+        transactionId: 't1',
+        amount,
+        paidAt: new Date('2026-09-26T00:00:00Z'),
+        note: null,
+        createdAt: created,
+      },
+      transaction: ledgerRow({ id: 't1', type: 'LOAN_REPAY_IN', amount }),
+    };
+  }
+
+  it('partial payment keeps the debt PARTIALLY_PAID inside the locked transaction', async () => {
+    const t = setup();
+    t.repository.lock.mockResolvedValue(debt());
+    t.repository.paidAmount.mockResolvedValue(0n);
+    t.repository.createPayment.mockResolvedValue(paymentResult(400_000n));
+    t.repository.setStatus.mockResolvedValue(withPayments(debt({ status: 'PARTIALLY_PAID' }), [400_000n]));
+
+    const res = await t.payments.createPayment(USER, DEBT_ID, { amount: '400000', accountId: ACCOUNT });
+
+    expect(t.repository.lock).toHaveBeenCalledWith(t.prisma.tx, USER, DEBT_ID);
+    expect(t.repository.setStatus).toHaveBeenCalledWith(t.prisma.tx, USER, DEBT_ID, 'PARTIALLY_PAID', null);
+    expect(t.guard.assertCanDebit).not.toHaveBeenCalled();
+    expect(res.debt.remainingAmount).toBe('600000');
+  });
+
+  it('final payment flips status to PAID and stamps paidAt in the same transaction', async () => {
+    const t = setup();
+    t.repository.lock.mockResolvedValue(debt());
+    t.repository.paidAmount.mockResolvedValue(600_000n);
+    t.repository.createPayment.mockResolvedValue(paymentResult(400_000n));
+    t.repository.setStatus.mockResolvedValue(withPayments(debt({ status: 'PAID' }), [600_000n, 400_000n]));
+
+    await t.payments.createPayment(USER, DEBT_ID, { amount: '400000', accountId: ACCOUNT });
+
+    const [, , , status, paidAt] = t.repository.setStatus.mock.calls[0];
+    expect(status).toBe('PAID');
+    expect(paidAt).toBeInstanceOf(Date);
+  });
+
+  it('rejects overpayment with 422 DEBT_OVERPAYMENT and writes nothing', async () => {
+    const t = setup();
+    t.repository.lock.mockResolvedValue(debt());
+    t.repository.paidAmount.mockResolvedValue(900_000n);
+
+    const error = await t.payments
+      .createPayment(USER, DEBT_ID, { amount: '200000', accountId: ACCOUNT })
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(DebtOverpaymentException);
+    expect(error).toMatchObject({ details: { remainingAmount: '100000', requested: '200000' } });
+    expect(t.repository.createPayment).not.toHaveBeenCalled();
+  });
+
+  it('rejects any payment on a fully paid debt with DEBT_ALREADY_PAID', async () => {
+    const t = setup();
+    t.repository.lock.mockResolvedValue(debt({ status: 'PAID' }));
+    t.repository.paidAmount.mockResolvedValue(1_000_000n);
+
+    await expect(
+      t.payments.createPayment(USER, DEBT_ID, { amount: '1', accountId: ACCOUNT }),
+    ).rejects.toBeInstanceOf(ConflictDomainException);
+  });
+
+  it('repaying a borrowed debt goes through the strict-mode guard', async () => {
+    const t = setup();
+    t.repository.lock.mockResolvedValue(debt({ direction: 'I_BORROWED' }));
+    t.repository.paidAmount.mockResolvedValue(0n);
+    t.repository.createPayment.mockResolvedValue(paymentResult(300_000n));
+    t.repository.setStatus.mockResolvedValue(withPayments(debt({ direction: 'I_BORROWED' }), [300_000n]));
+
+    await t.payments.createPayment(USER, DEBT_ID, { amount: '300000', accountId: ACCOUNT });
+
+    expect(t.guard.assertCanDebit).toHaveBeenCalledWith(t.prisma.tx, USER, ACCOUNT, 300_000n);
+    expect(t.repository.createPayment.mock.calls[0][3]).toMatchObject({ type: 'LOAN_REPAY_OUT' });
+  });
+
+  it('settle pays exactly the remaining amount', async () => {
+    const t = setup();
+    t.repository.lock.mockResolvedValue(debt());
+    t.repository.paidAmount.mockResolvedValue(250_000n);
+    t.repository.createPayment.mockResolvedValue(paymentResult(750_000n));
+    t.repository.setStatus.mockResolvedValue(withPayments(debt({ status: 'PAID' }), [250_000n, 750_000n]));
+
+    await t.payments.settle(USER, DEBT_ID, { accountId: ACCOUNT });
+
+    expect(t.repository.createPayment.mock.calls[0][3]).toMatchObject({ amount: 750_000n });
+  });
+
+  it('deleting a payment reverses its ledger row and recomputes the status', async () => {
+    const t = setup();
+    t.repository.lock.mockResolvedValue(debt({ status: 'PAID' }));
+    t.repository.findPayment.mockResolvedValue({
+      ...paymentResult(1_000_000n).payment,
+      transaction: ledgerRow({ type: 'LOAN_REPAY_IN', amount: 1_000_000n }),
+    });
+    t.repository.paidAmount.mockResolvedValue(0n);
+    t.repository.setStatus.mockResolvedValue(withPayments(debt()));
+
+    await t.payments.deletePayment(USER, DEBT_ID, 'p1');
+
+    expect(t.guard.assertDeltas).toHaveBeenCalledWith(t.prisma.tx, USER, new Map([[ACCOUNT, -1_000_000n]]));
+    expect(t.repository.setStatus).toHaveBeenCalledWith(t.prisma.tx, USER, DEBT_ID, 'ACTIVE', null);
   });
 });

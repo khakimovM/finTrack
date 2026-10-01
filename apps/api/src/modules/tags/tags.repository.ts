@@ -27,7 +27,7 @@ export class TagsRepository {
       where: { userId },
       include: {
         _count: {
-          select: { transactions: true },
+          select: { transactions: { where: { transaction: { deletedAt: null } } } },
         },
       },
       orderBy: [{ name: 'asc' }],
@@ -39,7 +39,7 @@ export class TagsRepository {
       where: { id, userId },
       include: {
         _count: {
-          select: { transactions: true },
+          select: { transactions: { where: { transaction: { deletedAt: null } } } },
         },
       },
     });
@@ -47,8 +47,12 @@ export class TagsRepository {
 
   async findByName(userId: string, name: string): Promise<Tag | null> {
     return this.prisma.tag.findFirst({
-      where: { userId, name },
+      where: { userId, name: { equals: name, mode: 'insensitive' } },
     });
+  }
+
+  async countOwned(userId: string, ids: string[]): Promise<number> {
+    return this.prisma.tag.count({ where: { userId, id: { in: ids } } });
   }
 
   async create(userId: string, data: CreateTagData): Promise<Tag> {
@@ -63,14 +67,14 @@ export class TagsRepository {
 
   async update(userId: string, id: string, data: UpdateTagData): Promise<Tag> {
     return this.prisma.tag.update({
-      where: { id },
+      where: { id, userId },
       data,
     });
   }
 
   async delete(userId: string, id: string): Promise<void> {
     await this.prisma.tag.delete({
-      where: { id },
+      where: { id, userId },
     });
   }
 }

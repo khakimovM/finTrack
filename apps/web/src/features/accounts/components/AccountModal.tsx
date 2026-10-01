@@ -67,7 +67,7 @@ export function AccountModal({ isOpen, onClose, initialAccount }: AccountModalPr
         reset({
           name: initialAccount.name,
           type: initialAccount.type,
-          currency: initialAccount.currency,
+          currency: 'UZS',
           openingBalance: initialAccount.openingBalance,
           icon: initialAccount.icon,
           color: initialAccount.color,

@@ -1,4 +1,11 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  "compilerOptions": {
+    "rootDir": "./src",
+    // Build output is wiped by `nest build` (deleteOutDir); an incremental cache kept outside
+    // dist would make tsc skip "unchanged" files and ship an incomplete bundle.
+    "incremental": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "test", "dist", "prisma", "**/*spec.ts", "**/__tests__/**"]
 }

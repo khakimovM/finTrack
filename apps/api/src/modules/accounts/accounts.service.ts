@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { AccountType } from '@prisma/client';
 import { AccountResponse, AccountListMeta } from '@fintrack/shared';
 import { AccountsRepository, AccountWithCount } from './accounts.repository';
@@ -7,6 +7,7 @@ import { CreateAccountDto, UpdateAccountDto, ReorderAccountsDto } from './dto/ac
 import {
   NotFoundDomainException,
   ConflictDomainException,
+  DomainException,
 } from '../../common/exceptions/domain.exception';
 
 @Injectable()
@@ -25,33 +26,20 @@ export class AccountsService {
       this.balanceService.getAccountBalances(userId),
     ]);
 
-    const data: AccountResponse[] = accounts.map((acc) =>
-      this.mapToResponse(acc, balances.get(acc.id) ?? acc.openingBalance),
-    );
-
     return {
-      data,
-      meta: {
-        totalBalance: total.toString(),
-      },
+      data: accounts.map((acc) => this.mapToResponse(acc, balances.get(acc.id) ?? acc.openingBalance)),
+      meta: { totalBalance: total.toString() },
     };
   }
 
   async getById(userId: string, id: string): Promise<AccountResponse> {
-    const account = await this.repository.findById(userId, id);
-    if (!account) {
-      throw new NotFoundDomainException('Hisob topilmadi');
-    }
-
+    const account = await this.requireAccount(userId, id);
     const balance = await this.balanceService.getBalance(userId, id);
     return this.mapToResponse(account, balance);
   }
 
   async create(userId: string, dto: CreateAccountDto): Promise<AccountResponse> {
-    const existing = await this.repository.findByName(userId, dto.name);
-    if (existing) {
-      throw new ConflictDomainException('ACCOUNT_EXISTS', 'Ushbu nomdagi hisob allaqachon mavjud');
-    }
+    await this.assertNameFree(userId, dto.name);
 
     const openingBalance = BigInt(dto.openingBalance ?? '0');
     const account = await this.repository.create(userId, {
@@ -65,27 +53,14 @@ export class AccountsService {
     });
 
     await this.balanceService.invalidate(userId);
-
-    return this.mapToResponse(
-      {
-        ...account,
-        _count: { transactions: 0 },
-      },
-      openingBalance,
-    );
+    return this.mapToResponse({ ...account, _count: { transactions: 0 } }, openingBalance);
   }
 
   async update(userId: string, id: string, dto: UpdateAccountDto): Promise<AccountResponse> {
-    const account = await this.repository.findById(userId, id);
-    if (!account) {
-      throw new NotFoundDomainException('Hisob topilmadi');
-    }
+    const account = await this.requireAccount(userId, id);
 
-    if (dto.name && dto.name !== account.name) {
-      const duplicate = await this.repository.findByName(userId, dto.name);
-      if (duplicate && duplicate.id !== id) {
-        throw new ConflictDomainException('ACCOUNT_EXISTS', 'Ushbu nomdagi hisob allaqachon mavjud');
-      }
+    if (dto.name && dto.name.toLowerCase() !== account.name.toLowerCase()) {
+      await this.assertNameFree(userId, dto.name, id);
     }
 
     const updated = await this.repository.update(userId, id, {
@@ -98,51 +73,68 @@ export class AccountsService {
       isDefault: dto.isDefault,
     });
 
-    if (dto.openingBalance !== undefined) {
-      await this.balanceService.invalidate(userId);
-    }
-
+    await this.balanceService.invalidate(userId);
     const balance = await this.balanceService.getBalance(userId, id);
-    return this.mapToResponse(
-      {
-        ...updated,
-        _count: account._count,
-      },
-      balance,
-    );
+    return this.mapToResponse({ ...updated, _count: account._count }, balance);
   }
 
   async toggleArchive(userId: string, id: string): Promise<AccountResponse> {
-    const account = await this.repository.findById(userId, id);
-    if (!account) {
-      throw new NotFoundDomainException('Hisob topilmadi');
-    }
+    const account = await this.requireAccount(userId, id);
+    const archiving = account.archivedAt === null;
 
-    const newArchivedAt = account.archivedAt ? null : new Date();
-    const updated = await this.repository.archive(userId, id, newArchivedAt);
+    if (archiving) await this.assertNotLastActive(userId);
+
+    const updated = await this.repository.setArchived(userId, id, archiving ? new Date() : null);
+    await this.balanceService.invalidate(userId);
     const balance = await this.balanceService.getBalance(userId, id);
-
-    return this.mapToResponse(
-      {
-        ...updated,
-        _count: account._count,
-      },
-      balance,
-    );
+    return this.mapToResponse({ ...updated, _count: account._count }, balance);
   }
 
+  /**
+   * Accounts with history are archived, never deleted: removing one would orphan transfers and
+   * debt payments and silently change historical statistics.
+   */
   async delete(userId: string, id: string): Promise<void> {
-    const account = await this.repository.findById(userId, id);
-    if (!account) {
-      throw new NotFoundDomainException('Hisob topilmadi');
-    }
+    const account = await this.requireAccount(userId, id);
 
-    await this.repository.softDelete(userId, id);
+    if (await this.repository.hasHistory(userId, id)) {
+      throw new ConflictDomainException(
+        'ACCOUNT_HAS_HISTORY',
+        'Bu hisobda tranzaksiyalar bor. O‘chirish o‘rniga arxivlang',
+        { accountId: id },
+      );
+    }
+    if (account.archivedAt === null) await this.assertNotLastActive(userId);
+
+    await this.repository.hardDelete(userId, id);
     await this.balanceService.invalidate(userId);
   }
 
   async reorder(userId: string, dto: ReorderAccountsDto): Promise<void> {
     await this.repository.reorder(userId, dto.items);
+  }
+
+  private async requireAccount(userId: string, id: string): Promise<AccountWithCount> {
+    const account = await this.repository.findById(userId, id);
+    if (!account) throw new NotFoundDomainException('Hisob topilmadi');
+    return account;
+  }
+
+  private async assertNameFree(userId: string, name: string, exceptId?: string): Promise<void> {
+    const existing = await this.repository.findByName(userId, name);
+    if (existing && existing.id !== exceptId) {
+      throw new ConflictDomainException('ACCOUNT_EXISTS', 'Ushbu nomdagi hisob allaqachon mavjud');
+    }
+  }
+
+  private async assertNotLastActive(userId: string): Promise<void> {
+    if ((await this.repository.countActive(userId)) <= 1) {
+      throw new DomainException(
+        'Kamida bitta faol hisob qolishi kerak',
+        'LAST_ACCOUNT',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
   }
 
   private mapToResponse(account: AccountWithCount, balance: bigint): AccountResponse {

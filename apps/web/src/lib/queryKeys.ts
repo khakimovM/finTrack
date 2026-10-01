@@ -2,6 +2,7 @@ export const queryKeys = {
   auth: {
     me: () => ['auth', 'me'] as const,
     sessions: () => ['auth', 'sessions'] as const,
+    telegramLogin: (requestId: string) => ['auth', 'telegram-login', requestId] as const,
   },
   accounts: {
     all: () => ['accounts'] as const,
@@ -30,20 +31,14 @@ export const queryKeys = {
     byCategory: (type?: string, from?: string, to?: string) =>
       ['stats', 'by-category', { type, from, to }] as const,
     byAccount: (from?: string, to?: string) => ['stats', 'by-account', { from, to }] as const,
-    balanceTrend: (from?: string, to?: string) =>
-      ['stats', 'balance-trend', { from, to }] as const,
+    balanceTrend: (from?: string, to?: string) => ['stats', 'balance-trend', { from, to }] as const,
     debts: () => ['stats', 'debts'] as const,
     compare: (
       currentFrom?: string,
       currentTo?: string,
       previousFrom?: string,
       previousTo?: string,
-    ) =>
-      [
-        'stats',
-        'compare',
-        { currentFrom, currentTo, previousFrom, previousTo },
-      ] as const,
+    ) => ['stats', 'compare', { currentFrom, currentTo, previousFrom, previousTo }] as const,
   },
   budgets: {
     list: (month?: string) => ['budgets', 'list', { month }] as const,

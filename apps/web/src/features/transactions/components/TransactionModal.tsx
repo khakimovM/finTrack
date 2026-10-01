@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useInitOnOpen } from '../../../lib/useInitOnOpen';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   CreateTransactionInput,
   CreateTransactionInputSchema,
-  formatIsoDate,
+  todayLocalIso,
 } from '@fintrack/shared';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -14,8 +15,8 @@ import { MoneyInput } from '../../../components/ui/MoneyInput';
 import { useAccounts } from '../../accounts/hooks/useAccounts';
 import { useCategories } from '../../categories/hooks/useCategories';
 import { useCreateTransaction } from '../hooks/useTransactions';
-import { cn } from '../../../lib/utils';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { categoryOptions } from '../../categories/categoryOptions';
+import { EntryTypeToggle } from './EntryTypeToggle';
 
 export interface TransactionModalProps {
   isOpen: boolean;
@@ -36,21 +37,7 @@ export function TransactionModal({
   const accounts = accountsData?.data ?? [];
   const allCategories = categoriesData ?? [];
 
-  // Filter categories by activeType
-  const filteredCategories: Array<{ id: string; name: string }> = [];
-  allCategories
-    .filter((c) => c.type === activeType)
-    .forEach((parent) => {
-      filteredCategories.push({ id: parent.id, name: `${parent.icon} ${parent.name}` });
-      if (parent.children && parent.children.length > 0) {
-        parent.children.forEach((child) => {
-          filteredCategories.push({
-            id: child.id,
-            name: `  ↳ ${child.icon} ${child.name}`,
-          });
-        });
-      }
-    });
+  const filteredCategories = categoryOptions(allCategories, activeType);
 
   const {
     register,
@@ -66,24 +53,22 @@ export function TransactionModal({
       accountId: '',
       amount: '',
       categoryId: '',
-      date: formatIsoDate(new Date()),
+      date: todayLocalIso(),
       note: '',
     },
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      setActiveType(defaultType);
-      setValue('type', defaultType);
-      if (accounts.length > 0) {
-        const defaultAcc = accounts.find((a) => a.isDefault) ?? accounts[0];
-        setValue('accountId', defaultAcc.id);
-      }
-      if (filteredCategories.length > 0) {
-        setValue('categoryId', filteredCategories[0].id);
-      }
+  useInitOnOpen(isOpen, accountsData !== undefined && categoriesData !== undefined, () => {
+    setActiveType(defaultType);
+    setValue('type', defaultType);
+    if (accounts.length > 0) {
+      const defaultAcc = accounts.find((a) => a.isDefault) ?? accounts[0];
+      setValue('accountId', defaultAcc.id);
     }
-  }, [isOpen, defaultType, accounts.length]);
+    // From defaultType, not activeType: the state still holds the previous opening's type
+    // here, and an income category on an expense is rejected by the API.
+    setValue('categoryId', categoryOptions(allCategories, defaultType)[0]?.id ?? '');
+  });
 
   const handleTypeChange = (type: 'INCOME' | 'EXPENSE') => {
     setActiveType(type);
@@ -110,36 +95,7 @@ export function TransactionModal({
       description="Kirim yoki chiqim operatsiyasini qayd etish"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* Type Toggle Tabs */}
-        <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-muted/20">
-          <button
-            type="button"
-            onClick={() => handleTypeChange('EXPENSE')}
-            className={cn(
-              'flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all duration-150',
-              activeType === 'EXPENSE'
-                ? 'bg-destructive text-destructive-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <ArrowDownLeft className="h-4 w-4" />
-            <span>Chiqim (Xarajat)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTypeChange('INCOME')}
-            className={cn(
-              'flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all duration-150',
-              activeType === 'INCOME'
-                ? 'bg-success text-success-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <ArrowUpRight className="h-4 w-4" />
-            <span>Kirim (Daromad)</span>
-          </button>
-        </div>
+        <EntryTypeToggle value={activeType} onChange={handleTypeChange} />
 
         {/* Amount Input */}
         <Controller
@@ -157,11 +113,7 @@ export function TransactionModal({
 
         {/* Account and Category selectors */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Select
-            label="Hisob"
-            error={errors.accountId?.message}
-            {...register('accountId')}
-          >
+          <Select label="Hisob" error={errors.accountId?.message} {...register('accountId')}>
             {accounts.map((acc) => (
               <option key={acc.id} value={acc.id}>
                 {acc.icon} {acc.name}
@@ -169,11 +121,7 @@ export function TransactionModal({
             ))}
           </Select>
 
-          <Select
-            label="Kategoriya"
-            error={errors.categoryId?.message}
-            {...register('categoryId')}
-          >
+          <Select label="Kategoriya" error={errors.categoryId?.message} {...register('categoryId')}>
             {filteredCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
@@ -184,12 +132,7 @@ export function TransactionModal({
 
         {/* Date and Note */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input
-            type="date"
-            label="Sana"
-            error={errors.date?.message}
-            {...register('date')}
-          />
+          <Input type="date" label="Sana" error={errors.date?.message} {...register('date')} />
           <Input
             type="text"
             label="Izoh (ixtiyoriy)"

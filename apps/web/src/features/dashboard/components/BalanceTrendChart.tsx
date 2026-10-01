@@ -9,7 +9,13 @@ import {
   Tooltip,
 } from 'recharts';
 import { StatsBalanceTrendResponse, formatMoney } from '@fintrack/shared';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/Card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { Amount } from '../../../components/ui/Amount';
@@ -21,17 +27,18 @@ interface BalanceTrendChartProps {
 }
 
 export function BalanceTrendChart({ trendData, isLoading }: BalanceTrendChartProps) {
-  const data = trendData?.data ?? [];
   const meta = trendData?.meta;
 
-  const chartData = useMemo(() => {
-    return data.map((d) => ({
-      date: d.date,
-      balanceSom: Number(BigInt(d.balance) / 100n),
-      balanceTiyin: d.balance,
-      changeTiyin: d.change,
-    }));
-  }, [data]);
+  const chartData = useMemo(
+    () =>
+      (trendData?.data ?? []).map((d) => ({
+        date: d.date,
+        balanceSom: Number(BigInt(d.balance) / 100n),
+        balanceTiyin: d.balance,
+        changeTiyin: d.change,
+      })),
+    [trendData],
+  );
 
   const hasData = chartData.length > 0;
 

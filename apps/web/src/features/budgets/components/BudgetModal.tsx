@@ -1,11 +1,7 @@
-import { useEffect } from 'react';
+import { useInitOnOpen } from '../../../lib/useInitOnOpen';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  CreateBudgetInputSchema,
-  CreateBudgetInput,
-  BudgetStatusItem,
-} from '@fintrack/shared';
+import { CreateBudgetInputSchema, CreateBudgetInput, BudgetStatusItem } from '@fintrack/shared';
 import { useCreateBudget, useUpdateBudget } from '../hooks/useBudgets';
 import { useCategories } from '../../categories/hooks/useCategories';
 import { Modal } from '../../../components/ui/Modal';
@@ -21,8 +17,8 @@ interface BudgetModalProps {
 }
 
 export function BudgetModal({ isOpen, onClose, month, editItem }: BudgetModalProps) {
-  const { data: categories = [] } = useCategories();
-  const expenseCategories = categories.filter((c) => c.type === 'EXPENSE');
+  const { data: categoriesData } = useCategories();
+  const expenseCategories = (categoriesData ?? []).filter((c) => c.type === 'EXPENSE');
 
   const createBudget = useCreateBudget();
   const updateBudget = useUpdateBudget();
@@ -44,21 +40,16 @@ export function BudgetModal({ isOpen, onClose, month, editItem }: BudgetModalPro
     },
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      if (editItem) {
-        setValue('categoryId', editItem.category.id);
-        setValue('month', month);
-        setValue('limitAmount', editItem.limitAmount);
-      } else {
-        reset({
-          categoryId: expenseCategories[0]?.id ?? '',
-          month,
-          limitAmount: '',
-        });
-      }
+  // Waits for the categories so a new budget starts on the first expense category.
+  useInitOnOpen(isOpen, editItem != null || categoriesData !== undefined, () => {
+    if (editItem) {
+      setValue('categoryId', editItem.category.id);
+      setValue('month', month);
+      setValue('limitAmount', editItem.limitAmount);
+    } else {
+      reset({ categoryId: expenseCategories[0]?.id ?? '', month, limitAmount: '' });
     }
-  }, [isOpen, editItem, month]);
+  });
 
   const categoryIdValue = watch('categoryId');
   const limitAmountValue = watch('limitAmount');
@@ -111,7 +102,9 @@ export function BudgetModal({ isOpen, onClose, month, editItem }: BudgetModalPro
               <span className="text-xs font-bold text-foreground block">
                 {editItem?.category.name}
               </span>
-              <span className="text-[11px] text-muted-foreground">Kategoriya limitini tahrirlash</span>
+              <span className="text-[11px] text-muted-foreground">
+                Kategoriya limitini tahrirlash
+              </span>
             </div>
           </div>
         )}

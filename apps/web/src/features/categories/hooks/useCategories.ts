@@ -3,6 +3,7 @@ import { categoriesApi } from '../api/categories.api';
 import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
+import { invalidateAfter } from '../../../lib/invalidation';
 
 export function useCategories() {
   return useQuery({
@@ -17,7 +18,7 @@ export function useCreateCategory() {
   return useMutation({
     mutationFn: categoriesApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all() });
+      void invalidateAfter(queryClient, 'category');
       toast.success('Yangi kategoriya muvaffaqiyatli qo‘shildi');
     },
     onError: (err) => {
@@ -33,7 +34,7 @@ export function useUpdateCategory() {
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof categoriesApi.update>[1] }) =>
       categoriesApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all() });
+      void invalidateAfter(queryClient, 'category');
       toast.success('Kategoriya yangilandi');
     },
     onError: (err) => {
@@ -48,7 +49,7 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: categoriesApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all() });
+      void invalidateAfter(queryClient, 'category');
       toast.success('Kategoriya o‘chirildi');
     },
     onError: (err) => {

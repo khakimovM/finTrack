@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -5,7 +6,7 @@ import {
   CreateDebtPaymentInput,
   DebtResponse,
   formatMoney,
-  formatIsoDate,
+  todayLocalIso,
 } from '@fintrack/shared';
 import { useCreateDebtPayment } from '../hooks/useDebts';
 import { useAccounts } from '../../accounts/hooks/useAccounts';
@@ -38,15 +39,20 @@ export function DebtPaymentModal({ debt, isOpen, onClose }: DebtPaymentModalProp
     defaultValues: {
       accountId: accounts[0]?.id ?? '',
       amount: '',
-      paidAt: formatIsoDate(new Date()),
+      paidAt: todayLocalIso(),
       note: '',
     },
   });
 
-  if (!debt) return null;
-
   const amountValue = watch('amount');
   const accountIdValue = watch('accountId');
+  // The select shows the default account before the user touches it; the form must hold it too.
+  const defaultAccountId = (accounts.find((a) => a.isDefault) ?? accounts[0])?.id;
+  useEffect(() => {
+    if (isOpen && !accountIdValue && defaultAccountId) setValue('accountId', defaultAccountId);
+  }, [isOpen, accountIdValue, defaultAccountId, setValue]);
+
+  if (!debt) return null;
 
   const onSubmit = async (data: CreateDebtPaymentInput) => {
     try {
@@ -66,39 +72,39 @@ export function DebtPaymentModal({ debt, isOpen, onClose }: DebtPaymentModalProp
       description={`"${debt.personName}" qarzi bo‘yicha to‘lov summasini kiriting. Joriy qoldiq: ${formatMoney(debt.remainingAmount)}`}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-foreground">Hisob *</label>
-          <Select
-            value={accountIdValue || accounts[0]?.id || ''}
-            onChange={(e) => setValue('accountId', e.target.value)}
-            options={accounts.map((a) => ({
-              value: a.id,
-              label: `${a.icon} ${a.name}`,
-            }))}
-            error={errors.accountId?.message}
-          />
-        </div>
+        <Select
+          label="Hisob *"
+          value={accountIdValue || defaultAccountId || ''}
+          onChange={(e) => setValue('accountId', e.target.value)}
+          options={accounts.map((a) => ({
+            value: a.id,
+            label: `${a.icon} ${a.name}`,
+          }))}
+          error={errors.accountId?.message}
+        />
 
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-foreground">To‘lov summasi *</label>
-          <MoneyInput
-            value={amountValue}
-            onChange={(tiyinStr: string) => setValue('amount', tiyinStr)}
-            placeholder="0"
-            error={errors.amount?.message}
-          />
-        </div>
+        <MoneyInput
+          label="To‘lov summasi *"
+          value={amountValue}
+          onChange={(tiyinStr: string) => setValue('amount', tiyinStr)}
+          placeholder="0"
+          error={errors.amount?.message}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">To‘langan sana *</label>
-            <Input type="date" {...register('paidAt')} error={errors.paidAt?.message} />
-          </div>
+          <Input
+            label="To‘langan sana *"
+            type="date"
+            {...register('paidAt')}
+            error={errors.paidAt?.message}
+          />
 
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Izoh</label>
-            <Input {...register('note')} placeholder="Ixtiyoriy izoh..." error={errors.note?.message} />
-          </div>
+          <Input
+            label="Izoh"
+            {...register('note')}
+            placeholder="Ixtiyoriy izoh..."
+            error={errors.note?.message}
+          />
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/40">

@@ -65,6 +65,7 @@ enum NotificationType {
   DEBT_OVERDUE
   NEGATIVE_BALANCE
   RECURRING_CREATED
+  RECURRING_SKIPPED // strict mode refused an occurrence, or its account was archived
 }
 
 // ============================================================
@@ -72,32 +73,86 @@ enum NotificationType {
 // ============================================================
 
 model User {
-  id              String    @id @default(uuid())
-  email           String    @unique
-  passwordHash    String    @map("password_hash")
-  name            String
-  avatarUrl       String?   @map("avatar_url")
-  baseCurrency    String    @default("UZS") @map("base_currency") @db.VarChar(3)
-  locale          String    @default("uz") @db.VarChar(5)
-  timezone        String    @default("Asia/Tashkent")
-  strictMode      Boolean   @default(false) @map("strict_mode")
-  emailVerifiedAt DateTime? @map("email_verified_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  deletedAt       DateTime? @map("deleted_at")
+  id                String    @id @default(uuid())
+  /// Legacy email/password accounts only; sign-in is Telegram OTP since 0004_telegram_auth.
+  email             String?   @unique
+  passwordHash      String?   @map("password_hash")
+  /// Telegram user id (exceeds 2^31, hence BigInt). The identity used for sign-in.
+  telegramId        BigInt?   @unique @map("telegram_id")
+  telegramUsername  String?   @map("telegram_username")
+  /// Verified: only accepted from a contact the Telegram user shared about themselves.
+  phone             String?   @unique
+  notifyTelegram    Boolean   @default(true) @map("notify_telegram")
+  dailyDigest       Boolean   @default(false) @map("daily_digest")
+  /// Set when Telegram answers 403 (user blocked the bot); outbound messages stop until cleared.
+  telegramBlockedAt DateTime? @map("telegram_blocked_at")
+  name              String
+  avatarUrl         String?   @map("avatar_url")
+  baseCurrency      String    @default("UZS") @map("base_currency") @db.VarChar(3)
+  locale            String    @default("uz") @db.VarChar(5)
+  timezone          String    @default("Asia/Tashkent")
+  strictMode        Boolean   @default(false) @map("strict_mode")
+  emailVerifiedAt   DateTime? @map("email_verified_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
 
-  refreshTokens  RefreshToken[]
-  accounts       Account[]
-  categories     Category[]
-  tags           Tag[]
-  transactions   Transaction[]
-  debts          Debt[]
-  budgets        Budget[]
-  recurringRules RecurringRule[]
-  notifications  Notification[]
+  refreshTokens         RefreshToken[]
+  accounts              Account[]
+  categories            Category[]
+  tags                  Tag[]
+  transactions          Transaction[]
+  debts                 Debt[]
+  budgets               Budget[]
+  recurringRules        RecurringRule[]
+  notifications         Notification[]
+  telegramLoginRequests TelegramLoginRequest[]
 
   @@index([email])
   @@map("users")
+}
+
+enum TelegramLoginPurpose {
+  LOGIN // web sign-in: the bot sends a one-time code
+  LINK // attach Telegram to an existing (legacy) account from Settings
+}
+
+enum TelegramLoginStatus {
+  PENDING // waiting for the user to open the deep link in Telegram
+  AWAITING_CONTACT // new Telegram user: must share their phone contact first
+  CODE_SENT
+  CONSUMED
+  CANCELLED
+  EXPIRED
+}
+
+/// One web sign-in attempt. The OTP is bound to this row, so it can only be redeemed for the
+/// session that asked for it (5 attempts, 3-minute code lifetime, single use).
+model TelegramLoginRequest {
+  id            String               @id @default(uuid())
+  purpose       TelegramLoginPurpose @default(LOGIN)
+  /// SHA-256 of the deep-link nonce; the nonce itself is never stored.
+  nonceHash     String               @unique @map("nonce_hash")
+  status        TelegramLoginStatus  @default(PENDING)
+  /// LOGIN: the account that will be signed in. LINK: the account requesting the link.
+  userId        String?              @map("user_id")
+  telegramId    BigInt?              @map("telegram_id")
+  /// HMAC-SHA256(requestId:code, OTP_SECRET).
+  codeHash      String?              @map("code_hash")
+  codeExpiresAt DateTime?            @map("code_expires_at")
+  attempts      Int                  @default(0)
+  codesSent     Int                  @default(0) @map("codes_sent")
+  ipAddress     String?              @map("ip_address")
+  userAgent     String?              @map("user_agent")
+  expiresAt     DateTime             @map("expires_at")
+  consumedAt    DateTime?            @map("consumed_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([telegramId, createdAt])
+  @@index([expiresAt])
+  @@map("telegram_login_requests")
 }
 
 /// Refresh tokens are stored hashed and rotated on every use.
@@ -213,24 +268,24 @@ model TransactionTag {
 // ============================================================
 
 model Transaction {
-  id         String          @id @default(uuid())
-  userId     String          @map("user_id")
-  accountId  String          @map("account_id")
-  type       TransactionType
+  id              String          @id @default(uuid())
+  userId          String          @map("user_id")
+  accountId       String          @map("account_id")
+  type            TransactionType
   /// Amount in tiyin, always positive. The sign comes from `type`.
-  amount     BigInt
+  amount          BigInt
   /// Amount converted to the user's base currency at the transaction date (Phase 8).
-  amountBase BigInt?         @map("amount_base")
-  categoryId String?         @map("category_id")
-  debtId     String?         @map("debt_id")
+  amountBase      BigInt?         @map("amount_base")
+  categoryId      String?         @map("category_id")
+  debtId          String?         @map("debt_id")
   /// Links the two rows of a single transfer.
-  transferGroupId String?    @map("transfer_group_id")
-  recurringRuleId String?    @map("recurring_rule_id")
-  date       DateTime        @db.Date
-  note       String?         @db.VarChar(500)
-  createdAt  DateTime        @default(now()) @map("created_at")
-  updatedAt  DateTime        @updatedAt @map("updated_at")
-  deletedAt  DateTime?       @map("deleted_at")
+  transferGroupId String?         @map("transfer_group_id")
+  recurringRuleId String?         @map("recurring_rule_id")
+  date            DateTime        @db.Date
+  note            String?         @db.VarChar(500)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  deletedAt       DateTime?       @map("deleted_at")
 
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   account       Account          @relation(fields: [accountId], references: [id], onDelete: Restrict)
@@ -300,16 +355,16 @@ model DebtPayment {
 // ============================================================
 
 model Budget {
-  id           String    @id @default(uuid())
-  userId       String    @map("user_id")
-  categoryId   String    @map("category_id")
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  categoryId  String   @map("category_id")
   /// First day of the budgeted month, e.g. 2026-08-01.
-  month        DateTime  @db.Date
-  limitAmount  BigInt    @map("limit_amount")
+  month       DateTime @db.Date
+  limitAmount BigInt   @map("limit_amount")
   /// Highest threshold already notified (0, 80 or 100) — keeps alerts idempotent.
-  notifiedAt   Int       @default(0) @map("notified_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  notifiedAt  Int      @default(0) @map("notified_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -356,18 +411,24 @@ model RecurringRule {
 // ============================================================
 
 model Notification {
-  id        String           @id @default(uuid())
-  userId    String           @map("user_id")
-  type      NotificationType
-  title     String
-  body      String           @db.VarChar(500)
+  id             String           @id @default(uuid())
+  userId         String           @map("user_id")
+  type           NotificationType
+  title          String
+  body           String           @db.VarChar(500)
   /// Free-form payload: { budgetId, debtId, percent, ... }
-  meta      Json?
-  readAt    DateTime?        @map("read_at")
-  createdAt DateTime         @default(now()) @map("created_at")
+  meta           Json?
+  /// Idempotency key for system-generated alerts (e.g. "debt-overdue:{id}:{week}").
+  /// Unique per user, so a retried job or a double click can never notify twice.
+  dedupeKey      String?          @map("dedupe_key") @db.VarChar(200)
+  /// Set once the alert was delivered to Telegram (outbox bookkeeping).
+  telegramSentAt DateTime?        @map("telegram_sent_at")
+  readAt         DateTime?        @map("read_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, dedupeKey])
   @@index([userId, readAt, createdAt])
   @@map("notifications")
 }
@@ -377,12 +438,12 @@ model Notification {
 // ============================================================
 
 model ExchangeRate {
-  id       String   @id @default(uuid())
-  base     String   @db.VarChar(3)
-  quote    String   @db.VarChar(3)
+  id        String   @id @default(uuid())
+  base      String   @db.VarChar(3)
+  quote     String   @db.VarChar(3)
   /// Rate scaled by 1e6 to stay integral: 1 USD = 12 650,25 UZS -> 12650250000
-  rate     BigInt
-  date     DateTime @db.Date
+  rate      BigInt
+  date      DateTime @db.Date
   createdAt DateTime @default(now()) @map("created_at")
 
   @@unique([base, quote, date])

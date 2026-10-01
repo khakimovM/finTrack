@@ -4,6 +4,7 @@ import { CreateBudgetInput, UpdateBudgetInput } from '@fintrack/shared';
 import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
+import { invalidateAfter } from '../../../lib/invalidation';
 
 export function useBudgetsStatus(month?: string) {
   return useQuery({
@@ -19,8 +20,7 @@ export function useCreateBudget() {
   return useMutation({
     mutationFn: (data: CreateBudgetInput) => budgetsApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'budget');
       toast.success('Byudjet muvaffaqiyatli belgilandi');
     },
     onError: (err) => {
@@ -36,8 +36,7 @@ export function useUpdateBudget() {
     mutationFn: ({ id, data }: { id: string; data: UpdateBudgetInput }) =>
       budgetsApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'budget');
       toast.success('Byudjet limiti yangilandi');
     },
     onError: (err) => {
@@ -52,8 +51,7 @@ export function useDeleteBudget() {
   return useMutation({
     mutationFn: (id: string) => budgetsApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      void invalidateAfter(queryClient, 'budget');
       toast.success('Byudjet o‘chirildi');
     },
     onError: (err) => {

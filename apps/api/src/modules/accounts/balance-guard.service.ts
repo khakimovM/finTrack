@@ -1,41 +1,45 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../infra/prisma/prisma.service';
-import { BalanceService } from './balance.service';
-import { InsufficientBalanceException } from '../../common/exceptions/domain.exception';
+import { Db } from '../../infra/prisma/prisma.types';
+import {
+  InsufficientBalanceException,
+  NotFoundDomainException,
+} from '../../common/exceptions/domain.exception';
+import { BalanceRepository } from './balance.repository';
 
+/**
+ * The single place that enforces strict mode (40-domain-money.md §5).
+ * Must be called inside the `$transaction` that performs the write so the account lock taken
+ * here is held until commit.
+ */
 @Injectable()
 export class BalanceGuardService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly balanceService: BalanceService,
-  ) {}
+  constructor(private readonly repository: BalanceRepository) {}
 
-  /**
-   * Enforces strictMode for outgoing operations.
-   * If User.strictMode is false: allows balance to go negative.
-   * If User.strictMode is true: throws 422 INSUFFICIENT_BALANCE when currentBalance < requestedAmount.
-   */
-  async assertSufficient(
-    userId: string,
-    accountId: string,
-    requestedAmount: bigint,
-  ): Promise<void> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { strictMode: true },
-    });
+  async assertCanDebit(db: Db, userId: string, accountId: string, amount: bigint): Promise<void> {
+    if (amount <= 0n) return;
+    if (!(await this.repository.isStrictMode(db, userId))) return;
 
-    if (!user?.strictMode) {
-      return;
+    const balance = await this.repository.lockAndGetBalance(db, userId, accountId);
+    if (balance === null) {
+      throw new NotFoundDomainException('Hisob topilmadi');
     }
-
-    const currentBalance = await this.balanceService.getBalance(userId, accountId);
-    if (currentBalance < requestedAmount) {
+    if (balance < amount) {
       throw new InsufficientBalanceException('Balansingiz yetarli emas', {
         accountId,
-        currentBalance: currentBalance.toString(),
-        requested: requestedAmount.toString(),
+        currentBalance: balance.toString(),
+        requested: amount.toString(),
       });
+    }
+  }
+
+  /** Applies strict mode to every account whose balance would decrease (`delta < 0`). */
+  async assertDeltas(db: Db, userId: string, deltas: Map<string, bigint>): Promise<void> {
+    // Lock in a stable order so two multi-account operations cannot deadlock each other.
+    const debits = [...deltas.entries()]
+      .filter(([, delta]) => delta < 0n)
+      .sort(([a], [b]) => a.localeCompare(b));
+    for (const [accountId, delta] of debits) {
+      await this.assertCanDebit(db, userId, accountId, -delta);
     }
   }
 }

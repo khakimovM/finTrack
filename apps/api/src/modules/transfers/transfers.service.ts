@@ -1,22 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import { TransferResponse, CreateTransferInput } from '@fintrack/shared';
+import { TransferResponse, CreateTransferInput, parseIsoDate } from '@fintrack/shared';
 import { TransfersRepository } from './transfers.repository';
-import { AccountsRepository } from '../accounts/accounts.repository';
+import { AccountAccessService } from '../accounts/account-access.service';
 import { BalanceService } from '../accounts/balance.service';
 import { BalanceGuardService } from '../accounts/balance-guard.service';
+import { balanceDeltas } from '../accounts/ledger-effect';
+import { PrismaService } from '../../infra/prisma/prisma.service';
+import { ClockService } from '../../infra/clock/clock.service';
 import {
   NotFoundDomainException,
   SameAccountTransferException,
-  FutureDateException,
 } from '../../common/exceptions/domain.exception';
 
 @Injectable()
 export class TransfersService {
   constructor(
     private readonly repository: TransfersRepository,
-    private readonly accountsRepository: AccountsRepository,
+    private readonly accountAccess: AccountAccessService,
     private readonly balanceService: BalanceService,
-    private readonly balanceGuardService: BalanceGuardService,
+    private readonly balanceGuard: BalanceGuardService,
+    private readonly clock: ClockService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async create(userId: string, dto: CreateTransferInput): Promise<TransferResponse> {
@@ -24,74 +28,55 @@ export class TransfersService {
       throw new SameAccountTransferException();
     }
 
-    const txDate = new Date(dto.date);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    if (txDate > today) {
-      throw new FutureDateException();
-    }
-
-    const [fromAccount, toAccount] = await Promise.all([
-      this.accountsRepository.findById(userId, dto.fromAccountId),
-      this.accountsRepository.findById(userId, dto.toAccountId),
+    await this.clock.assertNotFuture(userId, dto.date);
+    await Promise.all([
+      this.accountAccess.assertWritable(userId, dto.fromAccountId, 'Chiqim hisobi topilmadi'),
+      this.accountAccess.assertWritable(userId, dto.toAccountId, 'Kirim hisobi topilmadi'),
     ]);
-
-    if (!fromAccount) {
-      throw new NotFoundDomainException('Chiqim hisobi topilmadi');
-    }
-    if (!toAccount) {
-      throw new NotFoundDomainException('Kirim hisobi topilmadi');
-    }
 
     const amount = BigInt(dto.amount);
-
-    // Enforce strictMode on source account
-    await this.balanceGuardService.assertSufficient(userId, dto.fromAccountId, amount);
-
-    const { transferGroupId, outTx, inTx } = await this.repository.createTransfer(userId, {
-      fromAccountId: dto.fromAccountId,
-      toAccountId: dto.toAccountId,
-      amount,
-      date: txDate,
-      note: dto.note,
+    const { transferGroupId, outTx, inTx } = await this.prisma.$transaction(async (db) => {
+      await this.balanceGuard.assertCanDebit(db, userId, dto.fromAccountId, amount);
+      return this.repository.createTransfer(db, userId, {
+        fromAccountId: dto.fromAccountId,
+        toAccountId: dto.toAccountId,
+        amount,
+        date: parseIsoDate(dto.date),
+        note: dto.note,
+      });
     });
 
-    await this.balanceService.invalidate(userId);
-
-    const [fromBalance, toBalance, totalBalance] = await Promise.all([
-      this.balanceService.getBalance(userId, dto.fromAccountId),
-      this.balanceService.getBalance(userId, dto.toAccountId),
-      this.balanceService.getTotalBalance(userId),
-    ]);
+    await this.balanceService.invalidate(userId, [dto.fromAccountId]);
+    const { balances, total } = await this.balanceService.getAccountBalances(userId);
 
     return {
       transferGroupId,
-      out: {
-        id: outTx.id,
-        type: 'TRANSFER_OUT',
-        accountId: outTx.accountId,
-        amount: outTx.amount.toString(),
-      },
-      in: {
-        id: inTx.id,
-        type: 'TRANSFER_IN',
-        accountId: inTx.accountId,
-        amount: inTx.amount.toString(),
-      },
+      out: { id: outTx.id, type: 'TRANSFER_OUT', accountId: outTx.accountId, amount: outTx.amount.toString() },
+      in: { id: inTx.id, type: 'TRANSFER_IN', accountId: inTx.accountId, amount: inTx.amount.toString() },
       balances: {
-        [dto.fromAccountId]: fromBalance.toString(),
-        [dto.toAccountId]: toBalance.toString(),
-        total: totalBalance.toString(),
+        [dto.fromAccountId]: (balances.get(dto.fromAccountId) ?? 0n).toString(),
+        [dto.toAccountId]: (balances.get(dto.toAccountId) ?? 0n).toString(),
+        total: total.toString(),
       },
     };
   }
 
+  /** Deleting takes the money back out of the destination account, so strict mode applies there. */
   async delete(userId: string, transferGroupId: string): Promise<void> {
-    const deletedCount = await this.repository.deleteTransfer(userId, transferGroupId);
-    if (deletedCount === 0) {
+    const legs = await this.repository.findLiveLegs(userId, transferGroupId);
+    if (legs.length === 0) {
       throw new NotFoundDomainException('O‘tkazma topilmadi');
     }
 
-    await this.balanceService.invalidate(userId);
+    const deltas = balanceDeltas(legs, []);
+    await this.prisma.$transaction(async (db) => {
+      await this.balanceGuard.assertDeltas(db, userId, deltas);
+      await this.repository.softDeleteGroup(db, userId, transferGroupId);
+    });
+
+    await this.balanceService.invalidate(
+      userId,
+      legs.map((l) => l.accountId),
+    );
   }
 }

@@ -9,10 +9,14 @@ import {
   SystemCategoryException,
   DomainException,
 } from '../../common/exceptions/domain.exception';
+import { UserCacheService } from '../../infra/redis/user-cache.service';
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly repository: CategoriesRepository) {}
+  constructor(
+    private readonly repository: CategoriesRepository,
+    private readonly cache: UserCacheService,
+  ) {}
 
   async list(userId: string, type?: CategoryType): Promise<CategoryResponse[]> {
     const categories = await this.repository.findAll(userId, type);
@@ -55,14 +59,14 @@ export class CategoriesService {
       throw new ConflictDomainException('CATEGORY_EXISTS', 'Ushbu nomdagi kategoriya allaqachon mavjud');
     }
 
-    const created = await this.repository.create(userId, {
-      name: dto.name,
-      type,
-      icon: dto.icon ?? '💰',
-      color: dto.color ?? '#6366f1',
-      parentId,
-    });
+    const icon = dto.icon ?? '💰';
+    const color = dto.color ?? '#6366f1';
+    const deletedTwin = await this.repository.findDeletedByNameAndParent(userId, dto.name, type, parentId);
+    const created = deletedTwin
+      ? await this.repository.restore(userId, deletedTwin.id, { icon, color })
+      : await this.repository.create(userId, { name: dto.name, type, icon, color, parentId });
 
+    await this.cache.invalidate(userId);
     return this.mapToResponse(created);
   }
 
@@ -95,6 +99,13 @@ export class CategoriesService {
             'INVALID_CATEGORY_TYPE',
           );
         }
+        // Moving a category that has its own subcategories would create a third level.
+        if ((category.children?.length ?? 0) > 0 || (await this.repository.hasChildren(userId, id))) {
+          throw new DomainException(
+            'Subkategoriyalari bor kategoriyani boshqa kategoriya ichiga ko‘chirib bo‘lmaydi',
+            'INVALID_CATEGORY_DEPTH',
+          );
+        }
       }
     }
 
@@ -118,6 +129,7 @@ export class CategoriesService {
       parentId: dto.parentId,
     });
 
+    await this.cache.invalidate(userId);
     return this.mapToResponse({
       ...updated,
       children: category.children,
@@ -136,6 +148,7 @@ export class CategoriesService {
 
     const childIds = category.children?.map((c) => c.id) ?? [];
     await this.repository.delete(userId, id, childIds);
+    await this.cache.invalidate(userId);
   }
 
   async reorder(userId: string, dto: ReorderCategoriesDto): Promise<void> {

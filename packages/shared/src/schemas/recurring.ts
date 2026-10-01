@@ -1,31 +1,68 @@
 import { z } from 'zod';
-
-const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+import { emptyToNull, isoDateSchema, noteSchema, positiveTiyinSchema } from './common';
 
 export const RecurrenceFrequencySchema = z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']);
 export type RecurrenceFrequency = z.infer<typeof RecurrenceFrequencySchema>;
 
-export const CreateRecurringRuleInputSchema = z.object({
-  accountId: z.string().uuid('Yaroqsiz hisob ID si'),
-  categoryId: z.string().uuid('Yaroqsiz kategoriya ID si').optional().nullable(),
-  type: z.enum(['INCOME', 'EXPENSE']),
-  amount: z.string().regex(/^[1-9]\d*$/, 'Summa 0 dan katta butun tiyin bo‘lishi kerak'),
-  frequency: RecurrenceFrequencySchema,
-  dayOfCycle: z.number().int().min(1).max(31).optional().nullable(),
-  startsAt: z.string().regex(ISO_DATE_REGEX, 'Boshlanish sanasi YYYY-MM-DD formatida bo‘lishi kerak'),
-  endsAt: z.string().regex(ISO_DATE_REGEX, 'Tugash sanasi YYYY-MM-DD formatida bo‘lishi kerak').optional().nullable(),
-  note: z.string().max(500, 'Izoh 500 belgidan oshmasligi kerak').optional().nullable(),
-});
+const dayOfCycleSchema = z.number().int().min(1).max(31);
+
+function refineRule(
+  value: { frequency?: RecurrenceFrequency; dayOfCycle?: number | null; startsAt?: string; endsAt?: string | null },
+  ctx: z.RefinementCtx,
+): void {
+  if (value.frequency === 'WEEKLY' && value.dayOfCycle != null && value.dayOfCycle > 7) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['dayOfCycle'],
+      message: 'Haftalik qoida uchun kun 1 (dushanba) dan 7 (yakshanba) gacha bo‘lishi kerak',
+    });
+  }
+  if (value.startsAt && value.endsAt && value.endsAt < value.startsAt) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['endsAt'],
+      message: 'Tugash sanasi boshlanish sanasidan oldin bo‘lishi mumkin emas',
+    });
+  }
+}
+
+export const CreateRecurringRuleInputSchema = z
+  .object({
+    accountId: z.string().uuid('Yaroqsiz hisob ID si'),
+    categoryId: emptyToNull(z.string().uuid('Yaroqsiz kategoriya ID si')),
+    type: z.enum(['INCOME', 'EXPENSE']),
+    amount: positiveTiyinSchema,
+    frequency: RecurrenceFrequencySchema,
+    dayOfCycle: dayOfCycleSchema.optional().nullable(),
+    startsAt: isoDateSchema,
+    endsAt: emptyToNull(isoDateSchema),
+    note: noteSchema.optional().nullable(),
+  })
+  .strict()
+  .superRefine(refineRule);
 export type CreateRecurringRuleInput = z.infer<typeof CreateRecurringRuleInputSchema>;
 
-export const UpdateRecurringRuleInputSchema = z.object({
-  amount: z.string().regex(/^[1-9]\d*$/, 'Summa 0 dan katta butun tiyin bo‘lishi kerak').optional(),
-  note: z.string().max(500).optional().nullable(),
-  isActive: z.boolean().optional(),
-  dayOfCycle: z.number().int().min(1).max(31).optional().nullable(),
-  endsAt: z.string().regex(ISO_DATE_REGEX).optional().nullable(),
-});
+export const UpdateRecurringRuleInputSchema = z
+  .object({
+    amount: positiveTiyinSchema.optional(),
+    note: noteSchema.optional().nullable(),
+    isActive: z.boolean().optional(),
+    dayOfCycle: dayOfCycleSchema.optional().nullable(),
+    endsAt: emptyToNull(isoDateSchema),
+  })
+  .strict();
 export type UpdateRecurringRuleInput = z.infer<typeof UpdateRecurringRuleInputSchema>;
+
+export const ListRecurringRulesQuerySchema = z.object({
+  isActive: z
+    .preprocess((val) => {
+      if (val === 'true' || val === true) return true;
+      if (val === 'false' || val === false) return false;
+      return undefined;
+    }, z.boolean().optional())
+    .optional(),
+});
+export type ListRecurringRulesQuery = z.infer<typeof ListRecurringRulesQuerySchema>;
 
 export const RecurringRuleResponseSchema = z.object({
   id: z.string().uuid(),
@@ -39,6 +76,7 @@ export const RecurringRuleResponseSchema = z.object({
   endsAt: z.string().nullable(),
   nextRunAt: z.string(),
   isActive: z.boolean(),
+  note: z.string().nullable(),
   account: z.object({
     id: z.string().uuid(),
     name: z.string(),

@@ -2,6 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { Notification, NotificationType, Prisma } from '@prisma/client';
 
+export interface NewNotification {
+  type: NotificationType;
+  title: string;
+  body: string;
+  meta?: Prisma.InputJsonValue;
+  /** Same key for the same user → stored once (see Notification.dedupeKey). */
+  dedupeKey?: string;
+}
+
 @Injectable()
 export class NotificationsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -35,21 +44,27 @@ export class NotificationsRepository {
     return [items, total, unreadCount];
   }
 
+  /** For the Telegram outbox job (system context: the id comes from our own queue). */
+  async findForDelivery(id: string) {
+    return this.prisma.notification.findUnique({
+      where: { id },
+      include: {
+        user: { select: { telegramId: true, notifyTelegram: true, telegramBlockedAt: true, deletedAt: true } },
+      },
+    });
+  }
+
+  async markTelegramSent(id: string): Promise<void> {
+    await this.prisma.notification.updateMany({ where: { id, telegramSentAt: null }, data: { telegramSentAt: new Date() } });
+  }
+
   async findById(userId: string, id: string): Promise<Notification | null> {
     return this.prisma.notification.findFirst({
       where: { id, userId },
     });
   }
 
-  async create(
-    userId: string,
-    data: {
-      type: NotificationType;
-      title: string;
-      body: string;
-      meta?: Prisma.InputJsonValue;
-    },
-  ): Promise<Notification> {
+  async create(userId: string, data: NewNotification): Promise<Notification> {
     return this.prisma.notification.create({
       data: {
         userId,
@@ -57,6 +72,7 @@ export class NotificationsRepository {
         title: data.title,
         body: data.body,
         meta: data.meta,
+        dedupeKey: data.dedupeKey,
       },
     });
   }
@@ -66,7 +82,7 @@ export class NotificationsRepository {
     if (!existing) return null;
 
     return this.prisma.notification.update({
-      where: { id },
+      where: { id, userId },
       data: { readAt: new Date() },
     });
   }
@@ -84,7 +100,7 @@ export class NotificationsRepository {
     if (!existing) return false;
 
     await this.prisma.notification.delete({
-      where: { id },
+      where: { id, userId },
     });
     return true;
   }

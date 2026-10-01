@@ -1,84 +1,84 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { BalanceGuardService } from '../balance-guard.service';
-import { PrismaService } from '../../../infra/prisma/prisma.service';
-import { BalanceService } from '../balance.service';
-import { InsufficientBalanceException } from '../../../common/exceptions/domain.exception';
+import { BalanceRepository } from '../balance.repository';
+import { Db } from '../../../infra/prisma/prisma.types';
+import {
+  InsufficientBalanceException,
+  NotFoundDomainException,
+} from '../../../common/exceptions/domain.exception';
 
 describe('BalanceGuardService', () => {
-  let service: BalanceGuardService;
-  let prisma: { user: { findUnique: jest.Mock } };
-  let balanceService: { getBalance: jest.Mock };
+  const db = {} as Db;
+  let repository: jest.Mocked<Pick<BalanceRepository, 'isStrictMode' | 'lockAndGetBalance'>>;
+  let guard: BalanceGuardService;
 
-  beforeEach(async () => {
-    prisma = {
-      user: {
-        findUnique: jest.fn(),
-      },
+  beforeEach(() => {
+    repository = {
+      isStrictMode: jest.fn(),
+      lockAndGetBalance: jest.fn(),
     };
-    balanceService = {
-      getBalance: jest.fn(),
-    };
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        BalanceGuardService,
-        { provide: PrismaService, useValue: prisma },
-        { provide: BalanceService, useValue: balanceService },
-      ],
-    }).compile();
-
-    service = module.get<BalanceGuardService>(BalanceGuardService);
+    guard = new BalanceGuardService(repository as unknown as BalanceRepository);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  describe('assertCanDebit', () => {
+    it('allows any debit when strict mode is off, without taking a lock', async () => {
+      repository.isStrictMode.mockResolvedValue(false);
+
+      await expect(guard.assertCanDebit(db, 'u1', 'a1', 500_000n)).resolves.toBeUndefined();
+      expect(repository.lockAndGetBalance).not.toHaveBeenCalled();
+    });
+
+    it('allows the debit when the locked balance covers it exactly', async () => {
+      repository.isStrictMode.mockResolvedValue(true);
+      repository.lockAndGetBalance.mockResolvedValue(500_000n);
+
+      await expect(guard.assertCanDebit(db, 'u1', 'a1', 500_000n)).resolves.toBeUndefined();
+      expect(repository.lockAndGetBalance).toHaveBeenCalledWith(db, 'u1', 'a1');
+    });
+
+    it('rejects with INSUFFICIENT_BALANCE and the documented details', async () => {
+      repository.isStrictMode.mockResolvedValue(true);
+      repository.lockAndGetBalance.mockResolvedValue(300_000n);
+
+      const error = await guard.assertCanDebit(db, 'u1', 'a1', 500_000n).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(InsufficientBalanceException);
+      expect(error).toMatchObject({
+        code: 'INSUFFICIENT_BALANCE',
+        status: 422,
+        details: { accountId: 'a1', currentBalance: '300000', requested: '500000' },
+      });
+    });
+
+    it('returns 404 when the account is not the user’s', async () => {
+      repository.isStrictMode.mockResolvedValue(true);
+      repository.lockAndGetBalance.mockResolvedValue(null);
+
+      await expect(guard.assertCanDebit(db, 'u1', 'a1', 1n)).rejects.toBeInstanceOf(
+        NotFoundDomainException,
+      );
+    });
+
+    it('ignores zero and negative amounts', async () => {
+      await guard.assertCanDebit(db, 'u1', 'a1', 0n);
+      expect(repository.isStrictMode).not.toHaveBeenCalled();
+    });
   });
 
-  describe('assertSufficient', () => {
-    const userId = 'user-1';
-    const accountId = 'acc-1';
+  describe('assertDeltas', () => {
+    it('checks only decreasing accounts, in a stable lock order', async () => {
+      repository.isStrictMode.mockResolvedValue(true);
+      repository.lockAndGetBalance.mockResolvedValue(10_000n);
 
-    it('allows negative balance when strictMode is false', async () => {
-      prisma.user.findUnique.mockResolvedValue({ strictMode: false });
+      await guard.assertDeltas(
+        db,
+        'u1',
+        new Map([
+          ['b-acc', -100n],
+          ['a-acc', -200n],
+          ['c-acc', 500n],
+        ]),
+      );
 
-      await expect(
-        service.assertSufficient(userId, accountId, 500000n),
-      ).resolves.toBeUndefined();
-
-      expect(balanceService.getBalance).not.toHaveBeenCalled();
-    });
-
-    it('allows transaction when strictMode is true and balance is sufficient', async () => {
-      prisma.user.findUnique.mockResolvedValue({ strictMode: true });
-      balanceService.getBalance.mockResolvedValue(1000000n);
-
-      await expect(
-        service.assertSufficient(userId, accountId, 500000n),
-      ).resolves.toBeUndefined();
-
-      expect(balanceService.getBalance).toHaveBeenCalledWith(userId, accountId);
-    });
-
-    it('throws 422 INSUFFICIENT_BALANCE when strictMode is true and balance is insufficient', async () => {
-      prisma.user.findUnique.mockResolvedValue({ strictMode: true });
-      balanceService.getBalance.mockResolvedValue(300000n);
-
-      await expect(
-        service.assertSufficient(userId, accountId, 500000n),
-      ).rejects.toThrow(InsufficientBalanceException);
-
-      try {
-        await service.assertSufficient(userId, accountId, 500000n);
-      } catch (err) {
-        expect(err).toBeInstanceOf(InsufficientBalanceException);
-        const exc = err as InsufficientBalanceException;
-        expect(exc.code).toBe('INSUFFICIENT_BALANCE');
-        expect(exc.details).toEqual({
-          accountId,
-          currentBalance: '300000',
-          requested: '500000',
-        });
-      }
+      expect(repository.lockAndGetBalance.mock.calls.map((c) => c[2])).toEqual(['a-acc', 'b-acc']);
     });
   });
 });

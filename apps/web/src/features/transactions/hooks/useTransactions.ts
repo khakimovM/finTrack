@@ -4,6 +4,7 @@ import { ListTransactionsQuery } from '@fintrack/shared';
 import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
+import { invalidateAfter } from '../../../lib/invalidation';
 
 export function useTransactions(filters?: Partial<ListTransactionsQuery>) {
   return useQuery({
@@ -20,10 +21,7 @@ export function useCreateTransaction() {
   return useMutation({
     mutationFn: transactionsApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      void invalidateAfter(queryClient, 'transaction');
       toast.success('Tranzaksiya muvaffaqiyatli qo‘shildi');
     },
     onError: (err) => {
@@ -38,9 +36,7 @@ export function useDeleteTransaction() {
   return useMutation({
     mutationFn: transactionsApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
+      void invalidateAfter(queryClient, 'transaction');
       toast.success('Tranzaksiya o‘chirildi');
     },
     onError: (err) => {
@@ -55,9 +51,7 @@ export function useBulkDeleteTransactions() {
   return useMutation({
     mutationFn: transactionsApi.bulkDelete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() });
+      void invalidateAfter(queryClient, 'transaction');
       toast.success('Tanlangan tranzaksiyalar o‘chirildi');
     },
     onError: (err) => {

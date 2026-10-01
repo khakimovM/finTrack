@@ -1,7 +1,13 @@
-import { Trash2 } from 'lucide-react';
-import { TransactionResponse, TransactionType } from '@fintrack/shared';
+import { Link } from 'react-router-dom';
+import { ArrowUpRight, Lock, Trash2, Undo2 } from 'lucide-react';
+import {
+  TransactionResponse,
+  TransactionType,
+  isUserManagedTransactionType,
+} from '@fintrack/shared';
 import { Amount } from '../../components/ui/Amount';
 import { cn } from '../../lib/utils';
+import { formatDate } from '../../lib/format';
 
 export interface TransactionTableProps {
   transactions: TransactionResponse[];
@@ -9,6 +15,8 @@ export interface TransactionTableProps {
   onToggleSelect: (id: string) => void;
   onToggleAll: () => void;
   onDelete: (id: string) => void;
+  /** Transfers are cancelled as a pair (both legs), never one row at a time. */
+  onCancelTransfer: (groupId: string) => void;
   isDeleting?: boolean;
 }
 
@@ -24,16 +32,85 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   ADJUSTMENT: 'Tuzatish',
 };
 
+const ACTION_CLASS =
+  'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-colors md:h-8 md:w-8';
+
+interface RowActionProps {
+  tx: TransactionResponse;
+  onDelete: (id: string) => void;
+  onCancelTransfer: (groupId: string) => void;
+  disabled?: boolean;
+}
+
+/**
+ * Income and expense rows are deleted here. Transfer and loan rows belong to a transfer pair or
+ * a debt, so they are cancelled as a whole or managed on the debt's page.
+ */
+function RowAction({ tx, onDelete, onCancelTransfer, disabled }: RowActionProps) {
+  if (isUserManagedTransactionType(tx.type)) {
+    return (
+      <button
+        onClick={() => onDelete(tx.id)}
+        disabled={disabled}
+        className={cn(
+          ACTION_CLASS,
+          'text-muted-foreground hover:bg-destructive/10 hover:text-destructive',
+        )}
+        title="O‘chirish"
+        aria-label="O‘chirish"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    );
+  }
+  const groupId = tx.transferGroupId;
+  if (groupId) {
+    return (
+      <button
+        onClick={() => onCancelTransfer(groupId)}
+        disabled={disabled}
+        className={cn(ACTION_CLASS, 'text-muted-foreground hover:bg-primary/10 hover:text-primary')}
+        title="O‘tkazmani bekor qilish"
+        aria-label="O‘tkazmani bekor qilish"
+      >
+        <Undo2 className="h-4 w-4" />
+      </button>
+    );
+  }
+  if (tx.debtId) {
+    return (
+      <Link
+        to={`/app/debts?debt=${tx.debtId}`}
+        className={cn(ACTION_CLASS, 'text-muted-foreground hover:bg-primary/10 hover:text-primary')}
+        title="Qarzga o‘tish"
+        aria-label="Qarzga o‘tish"
+      >
+        <ArrowUpRight className="h-4 w-4" />
+      </Link>
+    );
+  }
+  return (
+    <span
+      className={cn(ACTION_CLASS, 'text-muted-foreground/60')}
+      title="Tizim yozuvi"
+      aria-label="Tizim yozuvi"
+    >
+      <Lock className="h-4 w-4" />
+    </span>
+  );
+}
+
 export function TransactionTable({
   transactions,
   selectedIds,
   onToggleSelect,
   onToggleAll,
   onDelete,
+  onCancelTransfer,
   isDeleting,
 }: TransactionTableProps) {
-  const allSelected =
-    transactions.length > 0 && transactions.every((t) => selectedIds.has(t.id));
+  const selectable = transactions.filter((t) => isUserManagedTransactionType(t.type));
+  const allSelected = selectable.length > 0 && selectable.every((t) => selectedIds.has(t.id));
 
   return (
     <div>
@@ -73,12 +150,13 @@ export function TransactionTable({
                     <input
                       type="checkbox"
                       checked={isSelected}
+                      disabled={!isUserManagedTransactionType(tx.type)}
                       onChange={() => onToggleSelect(tx.id)}
                       className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                     />
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground font-medium whitespace-nowrap">
-                    {tx.date}
+                    {formatDate(tx.date)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
@@ -105,14 +183,12 @@ export function TransactionTable({
                     <Amount value={tx.amount} type={tx.type} className="text-sm" />
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => onDelete(tx.id)}
+                    <RowAction
+                      tx={tx}
+                      onDelete={onDelete}
+                      onCancelTransfer={onCancelTransfer}
                       disabled={isDeleting}
-                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                      title="O‘chirish"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    />
                   </td>
                 </tr>
               );
@@ -138,10 +214,13 @@ export function TransactionTable({
                   <input
                     type="checkbox"
                     checked={isSelected}
+                    disabled={!isUserManagedTransactionType(tx.type)}
                     onChange={() => onToggleSelect(tx.id)}
                     className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                   />
-                  <span className="text-xs text-muted-foreground font-medium">{tx.date}</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {formatDate(tx.date)}
+                  </span>
                 </div>
                 <Amount value={tx.amount} type={tx.type} className="text-sm" />
               </div>
@@ -163,14 +242,12 @@ export function TransactionTable({
                   )}
                 </div>
 
-                <button
-                  onClick={() => onDelete(tx.id)}
+                <RowAction
+                  tx={tx}
+                  onDelete={onDelete}
+                  onCancelTransfer={onCancelTransfer}
                   disabled={isDeleting}
-                  className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                  title="O‘chirish"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                />
               </div>
 
               {tx.note && (

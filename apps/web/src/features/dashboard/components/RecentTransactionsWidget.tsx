@@ -7,6 +7,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ArrowRight, History, ArrowUpRight, ArrowDownRight, ArrowLeftRight } from 'lucide-react';
 import { cn } from '../../../lib/utils';
+import { formatDate } from '../../../lib/format';
 
 export function RecentTransactionsWidget() {
   const { data, isLoading } = useTransactions({ limit: 5 });
@@ -92,7 +93,7 @@ export function RecentTransactionsWidget() {
                         {tx.category?.name ?? tx.note ?? 'Tranzaksiya'}
                       </p>
                       <p className="text-[11px] text-muted-foreground truncate">
-                        {tx.account?.name} · {tx.date}
+                        {tx.account?.name} · {formatDate(tx.date)}
                       </p>
                     </div>
                   </div>

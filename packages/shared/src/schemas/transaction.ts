@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import {
+  isoDateSchema,
+  nonNegativeTiyinSchema,
+  noteSchema,
+  positiveTiyinSchema,
+  refineDateRange,
+  searchSchema,
+} from './common';
 
 export const TransactionTypeSchema = z.enum([
   'INCOME',
@@ -13,57 +21,75 @@ export const TransactionTypeSchema = z.enum([
 ]);
 export type TransactionType = z.infer<typeof TransactionTypeSchema>;
 
-export const CreateTransactionInputSchema = z.object({
-  type: z.enum(['INCOME', 'EXPENSE'], {
-    errorMap: () => ({ message: 'Faqat daromad yoki xarajat turini kiritish mumkin' }),
-  }),
-  accountId: z.string().uuid('Yaroqsiz hisob ID si'),
-  amount: z.string().regex(/^[1-9]\d*$/, 'Summa 0 dan katta butun tiyin bo‘lishi kerak'),
-  categoryId: z.string().uuid('Yaroqsiz kategoriya ID si'),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Sana YYYY-MM-DD formatida bo‘lishi kerak'),
-  note: z.string().max(500, 'Izoh 500 belgidan oshmasligi kerak').optional().nullable(),
-  tagIds: z.array(z.string().uuid('Yaroqsiz teg ID si')).optional(),
-});
+/**
+ * Only these types may be edited or deleted through /transactions. Transfer and loan rows are
+ * owned by /transfers and /debts, which keep the paired rows and debt payments consistent.
+ */
+export const USER_MANAGED_TRANSACTION_TYPES = ['INCOME', 'EXPENSE'] as const;
+
+export function isUserManagedTransactionType(type: string): boolean {
+  return (USER_MANAGED_TRANSACTION_TYPES as readonly string[]).includes(type);
+}
+
+const tagIdsSchema = z.array(z.string().uuid('Yaroqsiz teg ID si')).max(20, 'Ko‘pi bilan 20 ta teg');
+
+export const CreateTransactionInputSchema = z
+  .object({
+    type: z.enum(['INCOME', 'EXPENSE'], {
+      errorMap: () => ({ message: 'Faqat daromad yoki xarajat turini kiritish mumkin' }),
+    }),
+    accountId: z.string().uuid('Yaroqsiz hisob ID si'),
+    amount: positiveTiyinSchema,
+    categoryId: z.string().uuid('Yaroqsiz kategoriya ID si'),
+    date: isoDateSchema,
+    note: noteSchema.optional().nullable(),
+    tagIds: tagIdsSchema.optional(),
+  })
+  .strict();
 export type CreateTransactionInput = z.infer<typeof CreateTransactionInputSchema>;
 
-export const UpdateTransactionInputSchema = z.object({
-  accountId: z.string().uuid('Yaroqsiz hisob ID si').optional(),
-  amount: z.string().regex(/^[1-9]\d*$/, 'Summa 0 dan katta butun tiyin bo‘lishi kerak').optional(),
-  categoryId: z.string().uuid('Yaroqsiz kategoriya ID si').optional().nullable(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Sana YYYY-MM-DD formatida bo‘lishi kerak').optional(),
-  note: z.string().max(500, 'Izoh 500 belgidan oshmasligi kerak').optional().nullable(),
-  tagIds: z.array(z.string().uuid('Yaroqsiz teg ID si')).optional(),
-});
+export const UpdateTransactionInputSchema = z
+  .object({
+    accountId: z.string().uuid('Yaroqsiz hisob ID si').optional(),
+    amount: positiveTiyinSchema.optional(),
+    categoryId: z.string().uuid('Yaroqsiz kategoriya ID si').optional().nullable(),
+    date: isoDateSchema.optional(),
+    note: noteSchema.optional().nullable(),
+    tagIds: tagIdsSchema.optional(),
+  })
+  .strict();
 export type UpdateTransactionInput = z.infer<typeof UpdateTransactionInputSchema>;
 
-export const ListTransactionsQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+export const TransactionFiltersSchema = z.object({
   type: TransactionTypeSchema.optional(),
   accountId: z.string().uuid().optional(),
   categoryId: z.string().uuid().optional(),
   tagId: z.string().uuid().optional(),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  minAmount: z.string().regex(/^\d+$/).optional(),
-  maxAmount: z.string().regex(/^\d+$/).optional(),
-  search: z.string().optional(),
-  sort: z
-    .enum([
-      'date:desc',
-      'date:asc',
-      'amount:desc',
-      'amount:asc',
-      'createdAt:desc',
-      'createdAt:asc',
-    ])
-    .default('date:desc'),
+  from: isoDateSchema.optional(),
+  to: isoDateSchema.optional(),
+  minAmount: nonNegativeTiyinSchema.optional(),
+  maxAmount: nonNegativeTiyinSchema.optional(),
+  search: searchSchema.optional(),
 });
+export type TransactionFilters = z.infer<typeof TransactionFiltersSchema>;
+
+export const ListTransactionsQuerySchema = TransactionFiltersSchema.extend({
+  page: z.coerce.number().int().min(1).max(100_000).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  sort: z
+    .enum(['date:desc', 'date:asc', 'amount:desc', 'amount:asc', 'createdAt:desc', 'createdAt:asc'])
+    .default('date:desc'),
+}).superRefine((value, ctx) => refineDateRange(value, ctx));
 export type ListTransactionsQuery = z.infer<typeof ListTransactionsQuerySchema>;
 
-export const BulkDeleteTransactionsInputSchema = z.object({
-  ids: z.array(z.string().uuid('Yaroqsiz tranzaksiya ID si')).min(1, 'Kamida bitta tranzaksiya tanlanishi kerak'),
-});
+export const BulkDeleteTransactionsInputSchema = z
+  .object({
+    ids: z
+      .array(z.string().uuid('Yaroqsiz tranzaksiya ID si'))
+      .min(1, 'Kamida bitta tranzaksiya tanlanishi kerak')
+      .max(100, 'Bir martada ko‘pi bilan 100 ta tranzaksiya'),
+  })
+  .strict();
 export type BulkDeleteTransactionsInput = z.infer<typeof BulkDeleteTransactionsInputSchema>;
 
 export const TransactionResponseSchema = z.object({

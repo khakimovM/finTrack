@@ -1,15 +1,24 @@
 import { z } from 'zod';
+import { colorSchema } from './common';
 
-export const CreateTagInputSchema = z.object({
-  name: z.string().trim().min(1, 'Teg nomi kiritilishi shart').max(30, 'Teg nomi 30 belgidan oshmasligi kerak'),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Rang hex formatida bo‘lishi kerak (#rrggbb)').default('#94a3b8'),
-});
+export const CreateTagInputSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Teg nomi kiritilishi shart')
+      .max(30, 'Teg nomi 30 belgidan oshmasligi kerak'),
+    color: colorSchema.default('#94a3b8'),
+  })
+  .strict();
 export type CreateTagInput = z.infer<typeof CreateTagInputSchema>;
 
-export const UpdateTagInputSchema = z.object({
-  name: z.string().trim().min(1).max(30).optional(),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-});
+export const UpdateTagInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(30).optional(),
+    color: colorSchema.optional(),
+  })
+  .strict();
 export type UpdateTagInput = z.infer<typeof UpdateTagInputSchema>;
 
 export const TagResponseSchema = z.object({

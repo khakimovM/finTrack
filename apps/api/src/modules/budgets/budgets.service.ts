@@ -1,13 +1,47 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import {
+  BudgetResponse,
+  BudgetStatusItem,
+  BudgetStatusResponse,
+  CreateBudgetInput,
+  UpdateBudgetInput,
+  endOfMonth,
+  formatIsoDate,
+  parseIsoDate,
+  startOfMonth,
+} from '@fintrack/shared';
 import { BudgetsRepository, BudgetWithCategory } from './budgets.repository';
-import { CreateBudgetDto, UpdateBudgetDto } from './dto/budget.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CategoriesRepository } from '../categories/categories.repository';
+import { ClockService } from '../../infra/clock/clock.service';
 import {
-  NotFoundDomainException,
   ConflictDomainException,
+  InvalidCategoryTypeException,
+  NotFoundDomainException,
 } from '../../common/exceptions/domain.exception';
-import { startOfMonth, endOfMonth, parseIsoDate, formatIsoDate } from '@fintrack/shared';
+
+export interface BudgetAlert {
+  categoryId: string;
+  percent: number;
+  limit: string;
+  spent: string;
+}
+
+const WARNING_THRESHOLD = 80;
+const EXCEEDED_THRESHOLD = 100;
+
+/** Percentage with one decimal, computed in BigInt (money never goes through floats). */
+export function percentOf(spent: bigint, limit: bigint): number {
+  if (limit <= 0n) return 0;
+  return Number((spent * 1000n) / limit) / 10;
+}
+
+function thresholdReached(percent: number): number {
+  if (percent >= EXCEEDED_THRESHOLD) return EXCEEDED_THRESHOLD;
+  if (percent >= WARNING_THRESHOLD) return WARNING_THRESHOLD;
+  return 0;
+}
 
 @Injectable()
 export class BudgetsService {
@@ -17,221 +51,176 @@ export class BudgetsService {
     private readonly repository: BudgetsRepository,
     private readonly notificationsService: NotificationsService,
     private readonly categoriesRepository: CategoriesRepository,
+    private readonly clock: ClockService,
   ) {}
 
-  private parseMonth(monthStr?: string): { monthDate: Date; start: Date; end: Date } {
-    let date: Date;
-    if (!monthStr) {
-      date = new Date();
-    } else {
-      // If YYYY-MM provided, append -01
-      const normalized = monthStr.length === 7 ? `${monthStr}-01` : monthStr;
-      date = parseIsoDate(normalized);
-    }
-
-    const monthDate = startOfMonth(date);
-    const end = endOfMonth(date);
-
-    return { monthDate, start: monthDate, end };
+  async list(userId: string, monthStr?: string): Promise<BudgetResponse[]> {
+    const month = await this.resolveMonth(userId, monthStr);
+    const items = await this.repository.findManyByMonth(userId, month);
+    return items.map((b) => this.mapToResponse(b));
   }
 
-  async list(userId: string, monthStr?: string) {
-    const { monthDate } = this.parseMonth(monthStr);
-    const items = await this.repository.findManyByMonth(userId, monthDate);
-    return items.map(this.mapToResponse);
-  }
-
-  async getStatus(userId: string, monthStr?: string) {
-    const { monthDate, start, end } = this.parseMonth(monthStr);
-    const budgets = await this.repository.findManyByMonth(userId, monthDate);
+  async getStatus(userId: string, monthStr?: string): Promise<BudgetStatusResponse> {
+    const month = await this.resolveMonth(userId, monthStr);
+    const [budgets, spentByCategory] = await Promise.all([
+      this.repository.findManyByMonth(userId, month),
+      this.spentByCategory(userId, month),
+    ]);
 
     let totalLimit = 0n;
     let totalSpent = 0n;
-
-    const data = await Promise.all(
-      budgets.map(async (b) => {
-        const spent = await this.repository.getCategorySpent(userId, b.categoryId, start, end);
-        totalLimit += b.limitAmount;
-        totalSpent += spent;
-
-        const limitNum = Number(b.limitAmount);
-        const spentNum = Number(spent);
-        const percent = limitNum > 0 ? Number(((spentNum / limitNum) * 100).toFixed(1)) : 0;
-
-        const remaining = b.limitAmount > spent ? b.limitAmount - spent : 0n;
-
-        let state: 'OK' | 'WARNING' | 'EXCEEDED' = 'OK';
-        if (percent > 100) {
-          state = 'EXCEEDED';
-        } else if (percent >= 80) {
-          state = 'WARNING';
-        }
-
-        return {
-          id: b.id,
-          category: {
-            id: b.category.id,
-            name: b.category.name,
-            icon: b.category.icon,
-            color: b.category.color,
-          },
-          limitAmount: b.limitAmount.toString(),
-          spent: spent.toString(),
-          remaining: remaining.toString(),
-          percent,
-          state,
-        };
-      }),
-    );
-
-    const monthKey = formatIsoDate(monthDate).slice(0, 7);
+    const data: BudgetStatusItem[] = budgets.map((b) => {
+      const spent = spentByCategory.get(b.categoryId) ?? 0n;
+      totalLimit += b.limitAmount;
+      totalSpent += spent;
+      const percent = percentOf(spent, b.limitAmount);
+      return {
+        id: b.id,
+        category: { id: b.category.id, name: b.category.name, icon: b.category.icon, color: b.category.color },
+        limitAmount: b.limitAmount.toString(),
+        spent: spent.toString(),
+        remaining: (b.limitAmount > spent ? b.limitAmount - spent : 0n).toString(),
+        percent,
+        state: percent > 100 ? 'EXCEEDED' : percent >= WARNING_THRESHOLD ? 'WARNING' : 'OK',
+      };
+    });
 
     return {
       data,
       meta: {
-        month: monthKey,
+        month: formatIsoDate(month).slice(0, 7),
         totalLimit: totalLimit.toString(),
         totalSpent: totalSpent.toString(),
       },
     };
   }
 
-  async create(userId: string, dto: CreateBudgetDto) {
+  async create(userId: string, dto: CreateBudgetInput): Promise<BudgetResponse> {
     const category = await this.categoriesRepository.findById(userId, dto.categoryId);
-    if (!category) {
-      throw new NotFoundDomainException('Kategoriya topilmadi');
+    if (!category) throw new NotFoundDomainException('Kategoriya topilmadi');
+    if (category.type !== 'EXPENSE') {
+      throw new InvalidCategoryTypeException('Byudjet faqat xarajat kategoriyasi uchun belgilanadi');
     }
 
-    const { monthDate } = this.parseMonth(dto.month);
-
-    const existing = await this.repository.findByCategoryAndMonth(
-      userId,
-      dto.categoryId,
-      monthDate,
-    );
-    if (existing) {
-      throw new ConflictDomainException(
-        'BUDGET_EXISTS',
-        'Ushbu oy uchun ushbu kategoriyada byudjet allaqachon mavjud',
-      );
+    const month = await this.resolveMonth(userId, dto.month);
+    try {
+      const created = await this.repository.create(userId, {
+        categoryId: dto.categoryId,
+        month,
+        limitAmount: BigInt(dto.limitAmount),
+      });
+      return this.mapToResponse(created);
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictDomainException(
+          'BUDGET_EXISTS',
+          'Ushbu oy uchun ushbu kategoriyada byudjet allaqachon mavjud',
+        );
+      }
+      throw err;
     }
-
-    const created = await this.repository.create(userId, {
-      categoryId: dto.categoryId,
-      month: monthDate,
-      limitAmount: BigInt(dto.limitAmount),
-    });
-
-    return this.mapToResponse(created);
   }
 
-  async update(userId: string, id: string, dto: UpdateBudgetDto) {
+  /** Re-arms alerts: after raising a limit the user is told again when they cross 80%/100%. */
+  async update(userId: string, id: string, dto: UpdateBudgetInput): Promise<BudgetResponse> {
+    const existing = await this.repository.findById(userId, id);
+    if (!existing) throw new NotFoundDomainException('Byudjet topilmadi');
+
+    const limitAmount = BigInt(dto.limitAmount);
+    const spent = (await this.spentByCategory(userId, existing.month)).get(existing.categoryId) ?? 0n;
     const updated = await this.repository.update(userId, id, {
-      limitAmount: BigInt(dto.limitAmount),
+      limitAmount,
+      notifiedAt: thresholdReached(percentOf(spent, limitAmount)),
     });
-
-    if (!updated) {
-      throw new NotFoundDomainException('Byudjet topilmadi');
-    }
-
     return this.mapToResponse(updated);
   }
 
-  async delete(userId: string, id: string) {
-    const deleted = await this.repository.delete(userId, id);
-    if (!deleted) {
-      throw new NotFoundDomainException('Byudjet topilmadi');
-    }
+  async delete(userId: string, id: string): Promise<void> {
+    const existing = await this.repository.findById(userId, id);
+    if (!existing) throw new NotFoundDomainException('Byudjet topilmadi');
+    await this.repository.delete(userId, id);
   }
 
   /**
-   * Called on EXPENSE transaction creation.
-   * Checks budget thresholds (80% and 100%) and safely creates notifications.
-   * Never throws so it won't block the transaction!
+   * Called after an EXPENSE lands in `categoryId`. Checks that category's budget and its
+   * parent's (a parent budget covers subcategories). Never throws: a budget must not block
+   * or fail a transaction (40-domain-money.md §6).
    */
-  async checkAndNotify(
-    userId: string,
-    categoryId: string,
-    txDate: Date,
-  ): Promise<{
-    categoryId: string;
-    percent: number;
-    limit: string;
-    spent: string;
-  } | null> {
+  async checkAndNotify(userId: string, categoryId: string, txDate: Date): Promise<BudgetAlert | null> {
     try {
-      const monthDate = startOfMonth(txDate);
-      const budget = await this.repository.findByCategoryAndMonth(userId, categoryId, monthDate);
-      if (!budget) return null;
+      const category = await this.categoriesRepository.findById(userId, categoryId);
+      if (!category) return null;
 
-      const end = endOfMonth(txDate);
-      const spent = await this.repository.getCategorySpent(userId, categoryId, monthDate, end);
+      const month = startOfMonth(txDate);
+      const candidates = [categoryId, ...(category.parentId ? [category.parentId] : [])];
+      const spentByCategory = await this.spentByCategory(userId, month);
 
-      const limitNum = Number(budget.limitAmount);
-      const spentNum = Number(spent);
-      if (limitNum <= 0) return null;
+      let alert: BudgetAlert | null = null;
+      for (const candidateId of candidates) {
+        const budget = await this.repository.findByCategoryAndMonth(userId, candidateId, month);
+        if (!budget) continue;
 
-      const percent = Number(((spentNum / limitNum) * 100).toFixed(1));
+        const spent = spentByCategory.get(candidateId) ?? 0n;
+        const percent = percentOf(spent, budget.limitAmount);
+        await this.announceThreshold(userId, budget, percent);
 
-      // 80% threshold check (one-time alert)
-      if (percent >= 80 && percent < 100 && budget.notifiedAt < 80) {
-        await this.notificationsService.createSafe(userId, {
-          type: 'BUDGET_WARNING',
-          title: 'Byudjet chegarasi ogohlantirishi',
-          body: `"${budget.category.name}" kategoriyasi bo‘yicha byudjetning ${percent}% qismi sarflandi.`,
-          meta: {
-            budgetId: budget.id,
+        if (!alert && percent >= WARNING_THRESHOLD) {
+          alert = {
             categoryId: budget.categoryId,
             percent,
-          },
-        });
-        await this.repository.updateNotifiedAt(budget.id, 80);
+            limit: budget.limitAmount.toString(),
+            spent: spent.toString(),
+          };
+        }
       }
-
-      // 100% threshold check (one-time alert)
-      if (percent >= 100 && budget.notifiedAt < 100) {
-        await this.notificationsService.createSafe(userId, {
-          type: 'BUDGET_EXCEEDED',
-          title: 'Byudjet chegarasi oshib ketdi',
-          body: `"${budget.category.name}" kategoriyasi bo‘yicha belgilangan byudjet ${percent}% ga yetdi va limitdan oshdi!`,
-          meta: {
-            budgetId: budget.id,
-            categoryId: budget.categoryId,
-            percent,
-          },
-        });
-        await this.repository.updateNotifiedAt(budget.id, 100);
-      }
-
-      if (percent >= 80) {
-        return {
-          categoryId: budget.categoryId,
-          percent,
-          limit: budget.limitAmount.toString(),
-          spent: spent.toString(),
-        };
-      }
-
-      return null;
+      return alert;
     } catch (err) {
-      this.logger.error('Error in checkAndNotify (safe fallback)', err);
+      this.logger.error('Budget check failed (transaction was not affected)', err);
       return null;
     }
   }
 
-  private mapToResponse(b: BudgetWithCategory) {
+  private async announceThreshold(userId: string, budget: BudgetWithCategory, percent: number): Promise<void> {
+    const threshold = thresholdReached(percent);
+    if (threshold === 0) return;
+    if (!(await this.repository.claimThreshold(userId, budget.id, threshold))) return;
+
+    const exceeded = threshold === EXCEEDED_THRESHOLD;
+    await this.notificationsService.createSafe(userId, {
+      type: exceeded ? 'BUDGET_EXCEEDED' : 'BUDGET_WARNING',
+      title: exceeded ? 'Byudjet chegarasi oshib ketdi' : 'Byudjet chegarasi ogohlantirishi',
+      body: exceeded
+        ? `"${budget.category.name}" byudjeti ${percent}% ga yetdi va limitdan oshdi.`
+        : `"${budget.category.name}" byudjetining ${percent}% qismi sarflandi.`,
+      meta: { budgetId: budget.id, categoryId: budget.categoryId, percent },
+    });
+  }
+
+  /** Spent per category for the month, with each subcategory also counted in its parent. */
+  private async spentByCategory(userId: string, month: Date): Promise<Map<string, bigint>> {
+    const rows = await this.repository.expenseByCategory(userId, month, endOfMonth(month));
+    const totals = new Map<string, bigint>();
+    const add = (id: string, amount: bigint) => totals.set(id, (totals.get(id) ?? 0n) + amount);
+    for (const row of rows) {
+      add(row.categoryId, row.spent);
+      if (row.parentId) add(row.parentId, row.spent);
+    }
+    return totals;
+  }
+
+  private async resolveMonth(userId: string, monthStr?: string): Promise<Date> {
+    const iso = monthStr ?? (await this.clock.todayFor(userId));
+    return startOfMonth(parseIsoDate(iso.length === 7 ? `${iso}-01` : iso));
+  }
+
+  private mapToResponse(b: BudgetWithCategory): BudgetResponse {
     return {
       id: b.id,
       categoryId: b.categoryId,
       month: formatIsoDate(b.month),
       limitAmount: b.limitAmount.toString(),
       notifiedAt: b.notifiedAt,
-      category: {
-        id: b.category.id,
-        name: b.category.name,
-        icon: b.category.icon,
-        color: b.category.color,
-      },
+      category: { id: b.category.id, name: b.category.name, icon: b.category.icon, color: b.category.color },
       createdAt: b.createdAt.toISOString(),
       updatedAt: b.updatedAt.toISOString(),
     };

@@ -50,12 +50,20 @@ apps/api/src/
 ├── infra/
 │   ├── prisma/              PrismaModule, PrismaService
 │   ├── redis/               CacheModule
-│   └── queue/               BullMQ konfiguratsiyasi
+│   ├── queue/               BullMQ konfiguratsiyasi
+│   └── telegram/            grammY Bot (yagona nusxa), yuborish, fayl yuklab olish
+├── bootstrap/               configure-app (helmet/CSP, CSRF, Swagger), serve-web (web build)
 └── modules/
     ├── auth/  users/  accounts/  categories/  tags/
     ├── transactions/  transfers/  debts/  budgets/
-    ├── recurring/  stats/  notifications/  export/  health/
+    ├── recurring/  stats/  notifications/  export/  health/  jobs/
+    ├── telegram/            bot handlerlari, qoralamalar, outbox, kunlik xulosa, webhook
+    └── assistant/           ovoz/matn → yozuvlar (Gemini, Groq, Claude adapterlari)
 ```
+
+Bot faqat domen servislarini chaqiradi (TransactionsService, DebtPaymentsService…), shuning uchun
+qat'iy rejim, byudjet, atomarlik va ownership qoidalari botda ham xuddi webdagidek ishlaydi. Botdan
+kelgan har bir yozuv avval Redis'dagi **qoralama** bo'ladi; ledgerga faqat "Saqlash" bosilganda tushadi.
 
 ## Frontend strukturasi
 
@@ -90,14 +98,26 @@ Balans hech qachon frontendda hisoblanmaydi. Grafik ma'lumoti hech qachon fronte
 
 ## Autentifikatsiya oqimi
 
-1. Login → access (15 daq) va refresh (7 kun) `httpOnly` cookie
-2. Refresh token bazada **hashlangan** holda, `familyId` bilan saqlanadi
-3. Har `POST /auth/refresh` da eski token bekor qilinadi, yangisi beriladi (rotatsiya)
-4. Bekor qilingan token qayta ishlatilsa — butun oila bekor qilinadi, qayta login talab etiladi
-5. Frontend Axios interceptori 401 da bir marta refresh qiladi, muvaffaqiyatsiz bo'lsa `/login`
+**Web (Telegram kodi)**
+1. Sayt `POST /auth/telegram/start` → bot deep link'i ochiladi (`t.me/<bot>?start=login_<nonce>`).
+2. Botda Start; yangi foydalanuvchi o'z raqamini ulashadi (hisob shu paytda yaratiladi).
+3. Bot so'rovga bog'langan 6 xonali kodni yuboradi (HMAC bilan saqlanadi, 3 daqiqa, 5 urinish).
+4. Sayt kodni `POST /auth/telegram/verify` ga yuboradi → access (15 daq) va refresh (7 kun) `httpOnly` cookie.
+5. Refresh token bazada **hashlangan**, `familyId` (= sessiya) bilan; har refresh'da rotatsiya,
+   qayta ishlatilgan token butun oilani bekor qiladi. Access tokenda `sid` bor: sessiya yakunlansa
+   yoki hisob o'chsa, token darhol ishlamay qoladi (Redis tekshiruvi).
+
+**Telegram Mini App**
+1. Ilova bot menyu tugmasidan yoki inline tugmadan ochiladi (klaviatura tugmasi `initData` bermaydi).
+2. `Telegram.WebApp.initData` → `POST /auth/telegram/webapp` (HMAC tekshiruvi) → access token **xotirada**,
+   `Authorization: Bearer`. Muddati tugasa o'sha `initData` qayta almashtiriladi.
 
 ## Infratuzilma
 
-`docker-compose.yml`: PostgreSQL 16, Redis 7, Adminer.
-CI (GitHub Actions): install → lint → typecheck → test → e2e (Postgres service container).
-Deploy: API → Railway/Render (`prisma migrate deploy` alohida qadam), Web → Vercel.
+- Lokal: `docker-compose.yml` (PostgreSQL 16, Redis 7, Adminer); bot long polling bilan ishlaydi.
+- CI (GitHub Actions): verify (lint, typecheck, Jest + Vitest, build, migratsiya drift tekshiruvi) ·
+  API e2e (Postgres + Redis) · Playwright (build + mock Telegram) · Docker image build.
+- Production: **bitta Docker image, bitta Railway servisi** — API, BullMQ ishlari va web build (API
+  `WEB_DIST_DIR` dan beradi). Pre-deploy: `prisma migrate deploy`; healthcheck: `/api/v1/health/ready`;
+  Telegram webhook to'g'ridan-to'g'ri shu domenga keladi. Sayt va API bitta domenda bo'lgani uchun
+  cookie'lar first-party, CORS yo'q. CSP faqat `web.telegram.org` ga ilovani iframe'da ochishga ruxsat beradi.

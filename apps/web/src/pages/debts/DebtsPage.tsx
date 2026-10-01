@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useDebts, useDeleteDebt } from '../../features/debts/hooks/useDebts';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useDebt, useDebts, useDeleteDebt } from '../../features/debts/hooks/useDebts';
 import { DebtResponse, DebtDirection, DebtStatus, formatMoney } from '@fintrack/shared';
 import { DebtCard } from '../../features/debts/components/DebtCard';
 import { DebtModal } from '../../features/debts/components/DebtModal';
@@ -11,12 +12,23 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Scale, PlusCircle, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 type FilterStatus = 'ALL' | DebtStatus | 'OVERDUE';
 
 export function DebtsPage() {
+  const [confirmDialog, confirm] = useConfirm();
   const [direction, setDirection] = useState<DebtDirection>('I_LENT');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('ALL');
+  // "Qarzga o‘tish" from a transaction row lands here with ?debt=<id>.
+  const [searchParams] = useSearchParams();
+  const focusId = searchParams.get('debt') ?? undefined;
+  const focused = useDebt(focusId);
+  useEffect(() => {
+    if (!focused.data) return;
+    setDirection(focused.data.direction);
+    setFilterStatus('ALL');
+  }, [focused.data]);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [paymentModalDebt, setPaymentModalDebt] = useState<DebtResponse | null>(null);
@@ -40,7 +52,14 @@ export function DebtsPage() {
   const summary = data?.meta?.summary;
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Haqiqatan ham ushbu qarzni o‘chirmoqchimisiz? Unga bog‘liq ledger tranzaksiyalari ham bekor qilinadi.')) {
+    if (
+      await confirm({
+        title: 'Qarz o‘chirilsinmi?',
+        description: 'Unga bog‘liq ledger tranzaksiyalari ham bekor qilinadi.',
+        confirmLabel: 'O‘chirish',
+        destructive: true,
+      })
+    ) {
       await deleteDebt.mutateAsync(id);
     }
   };
@@ -156,7 +175,9 @@ export function DebtsPage() {
       ) : isError ? (
         <div className="py-12">
           <ErrorState
-            message={error instanceof Error ? error.message : 'Qarzlarni yuklashda xatolik yuz berdi'}
+            message={
+              error instanceof Error ? error.message : 'Qarzlarni yuklashda xatolik yuz berdi'
+            }
             onRetry={refetch}
           />
         </div>
@@ -186,6 +207,7 @@ export function DebtsPage() {
               onAddPayment={(debt) => setPaymentModalDebt(debt)}
               onSettle={(debt) => setSettleModalDebt(debt)}
               onDelete={handleDelete}
+              highlighted={d.id === focusId}
             />
           ))}
         </div>
@@ -209,6 +231,7 @@ export function DebtsPage() {
         isOpen={Boolean(settleModalDebt)}
         onClose={() => setSettleModalDebt(null)}
       />
+      {confirmDialog}
     </div>
   );
 }

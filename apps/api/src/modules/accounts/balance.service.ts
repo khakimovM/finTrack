@@ -1,122 +1,82 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../infra/prisma/prisma.service';
-import { RedisService } from '../../infra/redis/redis.service';
+import { Injectable } from '@nestjs/common';
+import { UserCacheService } from '../../infra/redis/user-cache.service';
+import { BalanceRepository } from './balance.repository';
 
-interface RawBalanceRow {
-  id: string;
-  balance: bigint | string | number;
+export interface AccountBalances {
+  balances: Map<string, bigint>;
+  total: bigint;
 }
 
-interface CachedBalanceData {
-  balances: Record<string, string>;
-  total: string;
-}
+const CACHE_TTL_SECONDS = 3600;
 
+/** Runs after a committed ledger write, e.g. to raise NEGATIVE_BALANCE alerts. */
+export type LedgerCommitListener = (userId: string, touchedAccountIds: string[]) => Promise<void>;
+
+const balancesCodec = {
+  encode: (value: AccountBalances) =>
+    JSON.stringify({
+      balances: Object.fromEntries([...value.balances].map(([id, b]) => [id, b.toString()])),
+      total: value.total.toString(),
+    }),
+  decode: (raw: string): AccountBalances => {
+    const parsed = JSON.parse(raw) as { balances: Record<string, string>; total: string };
+    return {
+      balances: new Map(Object.entries(parsed.balances).map(([id, b]) => [id, BigInt(b)])),
+      total: BigInt(parsed.total),
+    };
+  },
+};
+
+/** Read side of balances: derived from the ledger, cached per user (never stored). */
 @Injectable()
 export class BalanceService {
-  private readonly logger = new Logger(BalanceService.name);
-  private readonly CACHE_TTL_SECONDS = 3600; // 1 hour
+  private readonly listeners: LedgerCommitListener[] = [];
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly redisService: RedisService,
+    private readonly repository: BalanceRepository,
+    private readonly cache: UserCacheService,
   ) {}
 
-  private getCacheKey(userId: string): string {
-    return `balance:${userId}`;
+  async getAccountBalances(userId: string): Promise<AccountBalances> {
+    return this.cache.remember(
+      userId,
+      'balances',
+      CACHE_TTL_SECONDS,
+      async () => {
+        const balances = await this.repository.balancesByAccount(userId);
+        let total = 0n;
+        for (const balance of balances.values()) total += balance;
+        return { balances, total };
+      },
+      balancesCodec,
+    );
   }
 
-  /**
-   * Returns a Map of accountId -> balance (in tiyin as BigInt) and the user's total balance.
-   * Utilizes Redis caching with automatic DB recalculation on cache miss.
-   */
-  async getAccountBalances(userId: string): Promise<{ balances: Map<string, bigint>; total: bigint }> {
-    const cacheKey = this.getCacheKey(userId);
-    const cached = await this.redisService.get(cacheKey);
-
-    if (cached) {
-      try {
-        const parsed: CachedBalanceData = JSON.parse(cached);
-        const balances = new Map<string, bigint>();
-        for (const [accId, balStr] of Object.entries(parsed.balances)) {
-          balances.set(accId, BigInt(balStr));
-        }
-        return {
-          balances,
-          total: BigInt(parsed.total),
-        };
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`Failed to parse cached balances for ${userId}: ${msg}`);
-      }
-    }
-
-    // Cache miss or invalid cache -> compute from PostgreSQL ledger
-    const rows = await this.prisma.$queryRaw<RawBalanceRow[]>`
-      SELECT a.id,
-        a.opening_balance + COALESCE(SUM(
-          CASE
-            WHEN t.type IN ('INCOME', 'TRANSFER_IN', 'LOAN_TAKEN', 'LOAN_REPAY_IN')
-              THEN t.amount
-            WHEN t.type IN ('EXPENSE', 'TRANSFER_OUT', 'LOAN_GIVEN', 'LOAN_REPAY_OUT')
-              THEN -t.amount
-            ELSE 0
-          END
-        ), 0) AS balance
-      FROM accounts a
-      LEFT JOIN transactions t
-        ON t.account_id = a.id AND t.deleted_at IS NULL
-      WHERE a.user_id = ${userId} AND a.deleted_at IS NULL
-      GROUP BY a.id, a.opening_balance;
-    `;
-
-    const balances = new Map<string, bigint>();
-    let total = 0n;
-
-    for (const row of rows) {
-      const bal = BigInt(row.balance);
-      balances.set(row.id, bal);
-      total += bal;
-    }
-
-    // Save to Redis
-    const cachePayload: CachedBalanceData = {
-      balances: Object.fromEntries(
-        Array.from(balances.entries()).map(([k, v]) => [k, v.toString()]),
-      ),
-      total: total.toString(),
-    };
-
-    await this.redisService.set(cacheKey, JSON.stringify(cachePayload), this.CACHE_TTL_SECONDS);
-
-    return { balances, total };
-  }
-
-  /**
-   * Returns the balance for a specific account.
-   */
   async getBalance(userId: string, accountId: string): Promise<bigint> {
     const { balances } = await this.getAccountBalances(userId);
     return balances.get(accountId) ?? 0n;
   }
 
-  /**
-   * Returns the user's total net balance across all non-deleted accounts.
-   */
   async getTotalBalance(userId: string): Promise<bigint> {
     const { total } = await this.getAccountBalances(userId);
     return total;
   }
 
   /**
-   * Invalidates the user's cached balance. Must be called on any ledger write,
-   * account creation, or opening balance update.
+   * Must be called after every committed ledger or account write. `touchedAccountIds` are the
+   * accounts whose balance may have gone down; listeners (alerts) inspect them.
    */
-  async invalidate(userId: string): Promise<void> {
-    await Promise.all([
-      this.redisService.del(this.getCacheKey(userId)),
-      this.redisService.delPattern(`stats:${userId}:*`),
-    ]);
+  async invalidate(userId: string, touchedAccountIds: Iterable<string> = []): Promise<void> {
+    await this.cache.invalidate(userId);
+    const touched = [...new Set(touchedAccountIds)];
+    if (touched.length === 0) return;
+    for (const listener of this.listeners) {
+      await listener(userId, touched);
+    }
+  }
+
+  /** Observer hook so alerting can live outside this module without a dependency cycle. */
+  onLedgerCommitted(listener: LedgerCommitListener): void {
+    this.listeners.push(listener);
   }
 }
-
