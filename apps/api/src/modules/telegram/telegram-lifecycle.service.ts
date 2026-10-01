@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BotError, GrammyError } from 'grammy';
+import { Bot, BotError, GrammyError } from 'grammy';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { AuthHandlers } from './handlers/auth.handlers';
 import { MenuHandlers } from './handlers/menu.handlers';
@@ -14,7 +14,8 @@ export const ALLOWED_UPDATES = ['message', 'callback_query'] as const;
 /**
  * Wires handlers into the bot and chooses the transport: webhook when TELEGRAM_WEBHOOK_URL is
  * set (production), long polling otherwise (local development), neither in tests (updates are
- * injected through the webhook controller).
+ * injected through the webhook controller). Polling never starts on a token that already has a
+ * webhook.
  */
 @Injectable()
 export class TelegramLifecycleService implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -59,6 +60,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
 
     const webhookUrl = this.config.get<string>('TELEGRAM_WEBHOOK_URL');
     try {
+      if (!webhookUrl && (await this.webhookOwnedElsewhere(bot))) return;
       await bot.api.setMyCommands([
         { command: 'start', description: 'Boshlash / kirish' },
         { command: 'menu', description: 'Menyu' },
@@ -95,6 +97,21 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
   logError(err: BotError): void {
     // Never log the update itself: it contains the user's financial messages.
     this.logger.error(`Telegram handler failed (update ${err.ctx.update.update_id}): ${this.describe(err.error)}`);
+  }
+
+  /**
+   * A dev instance that shares the production token would delete the production webhook,
+   * steal its updates and repoint the menu button. It stays offline instead.
+   */
+  private async webhookOwnedElsewhere(bot: Bot): Promise<boolean> {
+    const { url } = await bot.api.getWebhookInfo();
+    if (!url) return false;
+    this.telegram.suspend();
+    this.logger.warn(
+      `Bot token already has a webhook at ${new URL(url).origin}: the bot is off in this process. ` +
+        'Use a separate bot token for local development.',
+    );
+    return true;
   }
 
   private describe(err: unknown): string {

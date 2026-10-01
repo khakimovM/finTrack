@@ -18,6 +18,7 @@ export class TelegramBotService {
   private readonly logger = new Logger(TelegramBotService.name);
   readonly bot: Bot | null;
   readonly username: string;
+  private suspended = false;
 
   constructor(
     config: ConfigService,
@@ -30,7 +31,15 @@ export class TelegramBotService {
   }
 
   get enabled(): boolean {
-    return this.bot !== null;
+    return this.bot !== null && !this.suspended;
+  }
+
+  /**
+   * Switches the bot off in this process when another deployment owns the token: answering
+   * sign-ins or sending digests from here would mix two databases in one chat.
+   */
+  suspend(): void {
+    this.suspended = true;
   }
 
   /** `https://t.me/<bot>?start=<payload>`; payload must match [A-Za-z0-9_-]{1,64}. */
@@ -47,7 +56,7 @@ export class TelegramBotService {
     text: string,
     options: { replyMarkup?: TelegramReplyMarkup; html?: boolean } = {},
   ): Promise<SendResult> {
-    if (!this.bot) return 'DISABLED';
+    if (!this.bot || this.suspended) return 'DISABLED';
     try {
       await this.bot.api.sendMessage(Number(chatId), text, {
         parse_mode: options.html ? 'HTML' : undefined,
