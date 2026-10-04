@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#DEDED9}a{color:#151514}a:hover{color:#4A4A46}</style>
+</helmet>
+<div style="padding:96px;display:flex;flex-direction:column;gap:120px;font-family:Onest,system-ui,sans-serif;color:#151514;background:#DEDED9;width:max-content">
+
+<div style="display:flex;flex-direction:column;gap:8px">
+  <span style="font-size:15px;color:#6B6B66">FinTrack · Round 1</span>
+  <span style="font-size:48px;line-height:56px;font-weight:600;letter-spacing:-0.03em">Landing, kirish va tizim ekranlari</span>
+  <span style="font-size:17px;color:#4A4A46">1440 va 390 · yorug‘ mavzu · landing hero va login kartasining qorong‘i varianti. Barcha ekranlar interaktiv: FAQ, mavzu, menyu, login oqimi (123456 — to‘g‘ri kod).</span>
+</div>
+
+<section data-screen-label="Landing" style="display:flex;flex-direction:column;gap:40px">
+  <span style="font-size:32px;line-height:40px;font-weight:600;letter-spacing:-0.02em">1 · Landing “/”</span>
+  <div style="display:flex;gap:80px;align-items:flex-start">
+    <div id="1a" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">1a</span>1440 · mehmon</span>
+      <div style="width:1440px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Landing" mobile="{{ false }}" theme="light" style="width:1440px;display:block" hint-size="1440px,5200px"></dc-import></div>
+    </div>
+    <div id="1b" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">1b</span>390 · mehmon</span>
+      <div style="width:390px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Landing" mobile="{{ true }}" theme="light" style="width:390px;display:block" hint-size="390px,8000px"></dc-import></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:80px">
+      <div id="1c" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">1c</span>390 · menyu ochiq</span>
+        <div style="width:390px;height:720px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Landing" mobile="{{ true }}" menu-open="{{ true }}" theme="light" style="width:390px;display:block" hint-size="390px,720px"></dc-import></div>
+      </div>
+      <div id="1d" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">1d</span>390 · sessiya bor — “Ilovaga o‘tish”</span>
+        <div style="width:390px;height:280px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Landing" mobile="{{ true }}" session="{{ true }}" theme="light" style="width:390px;display:block" hint-size="390px,280px"></dc-import></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:80px">
+      <div id="1e" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">1e</span>1440 · sessiya bor — “Ilovaga o‘tish”</span>
+        <div style="width:1440px;height:300px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Landing" mobile="{{ false }}" session="{{ true }}" theme="light" style="width:1440px;display:block" hint-size="1440px,300px"></dc-import></div>
+      </div>
+      <div id="1f" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">1f</span>1440 · hero · qorong‘i</span>
+        <div style="width:1440px;height:860px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Landing" mobile="{{ false }}" theme="dark" style="width:1440px;display:block" hint-size="1440px,860px"></dc-import></div>
+      </div>
+      <div id="1g" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">1g</span>390 · hero · qorong‘i</span>
+        <div style="width:390px;height:1120px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Landing" mobile="{{ true }}" theme="dark" style="width:390px;display:block" hint-size="390px,1120px"></dc-import></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="Login" style="display:flex;flex-direction:column;gap:40px">
+  <span style="font-size:32px;line-height:40px;font-weight:600;letter-spacing:-0.02em">2 · Kirish “/login”</span>
+  <div style="display:flex;flex-wrap:wrap;gap:80px;max-width:7680px">
+    <sc-for list="{{ loginDesk }}" as="a" hint-placeholder-count="5">
+      <div id="{{ a.id }}" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">{{ a.id }}</span>{{ a.label }}</span>
+        <div style="width:1440px;height:900px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Login" state="{{ a.state }}" theme="{{ a.theme }}" framed="{{ true }}" style="width:100%;height:100%;display:block" hint-size="1440px,900px"></dc-import></div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:56px;max-width:7680px">
+    <sc-for list="{{ loginMob }}" as="a" hint-placeholder-count="11">
+      <div id="{{ a.id }}" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">{{ a.id }}</span>{{ a.label }}</span>
+        <div style="width:390px;height:844px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Login" state="{{ a.state }}" theme="{{ a.theme }}" framed="{{ true }}" style="width:100%;height:100%;display:block" hint-size="390px,844px"></dc-import></div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+<section data-screen-label="System" style="display:flex;flex-direction:column;gap:40px">
+  <span style="font-size:32px;line-height:40px;font-weight:600;letter-spacing:-0.02em">3 · Tizim ekranlari</span>
+  <div style="display:flex;flex-wrap:wrap;gap:80px;align-items:flex-start">
+    <sc-for list="{{ sys }}" as="a" hint-placeholder-count="4">
+      <div id="{{ a.id }}" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">{{ a.id }}</span>{{ a.label }}</span>
+        <div style="width:{{ a.w }};height:{{ a.h }};border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="System Page" kind="{{ a.kind }}" framed="{{ true }}" style="width:100%;height:100%;display:block" hint-size="390px,844px"></dc-import></div>
+      </div>
+    </sc-for>
+  </div>
+  <span style="font-size:22px;font-weight:600;margin-top:24px">Mini App · 390</span>
+  <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+    <sc-for list="{{ mini }}" as="a" hint-placeholder-count="6">
+      <div id="{{ a.id }}" style="display:flex;flex-direction:column;gap:14px"><span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">{{ a.id }}</span>{{ a.label }}</span>
+        <div style="width:390px;height:760px;border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)"><dc-import name="Mini App Screen" screen="{{ a.screen }}" theme="{{ a.theme }}" framed="{{ true }}" style="width:100%;height:100%;display:block" hint-size="390px,760px"></dc-import></div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const L = (id, state, label, theme = 'light') => ({ id, state, label, theme });
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      loginDesk: [L('2a', 'start', '1440 · a) Boshlash'), L('2b', 'waiting', '1440 · b) Telegram kutilmoqda'), L('2c', 'sent', '1440 · c) Kod yuborildi'), L('2d', 'wrong', '1440 · d) Noto‘g‘ri kod'), L('2e', 'sent', '1440 · c) Kod yuborildi · qorong‘i', 'dark')],
+      loginMob: [
+        L('2f', 'start', 'a) Boshlash'), L('2g', 'starting', 'a) Yuklanmoqda'), L('2h', 'waiting', 'b) Javob kutilmoqda'), L('2i', 'waitingPhone', 'b) Raqam kutilmoqda'),
+        L('2j', 'sent', 'c) Kod yuborildi'), L('2k', 'wrong', 'd) Noto‘g‘ri kod'), L('2l', 'expired', 'e) Kod muddati tugadi'), L('2m', 'cancelled', 'f) Rad etildi'),
+        L('2n', 'requestExpired', 'f) So‘rov muddati tugadi'), L('2o', 'error', 'g) Xizmat ishlamayapti'), L('2p', 'start', 'a) Boshlash · qorong‘i', 'dark'),
+      ],
+      sys: [
+        { id: '3a', kind: '404', label: '404 · 1440', w: '1440px', h: '900px' }, { id: '3b', kind: '404', label: '404 · 390', w: '390px', h: '844px' },
+        { id: '3c', kind: 'error', label: 'Xatolik · 1440', w: '1440px', h: '900px' }, { id: '3d', kind: 'error', label: 'Xatolik · 390', w: '390px', h: '844px' },
+      ],
+      mini: [
+        { id: '4a', screen: 'splash', theme: 'light', label: 'Splash · yorug‘' }, { id: '4b', screen: 'splash', theme: 'dark', label: 'Splash · qorong‘i' },
+        { id: '4c', screen: 'register', theme: 'light', label: 'Ro‘yxatdan o‘tish kerak' }, { id: '4d', screen: 'session', theme: 'light', label: 'Sessiya tugadi' },
+        { id: '4e', screen: 'menu', theme: 'light', label: 'Menyu orqali oching' }, { id: '4f', screen: 'offline', theme: 'light', label: 'Ulanib bo‘lmadi' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
