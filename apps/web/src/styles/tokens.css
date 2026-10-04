@@ -1,0 +1,124 @@
+/* Design tokens from the Claude Design handoff (design/project/fintrack-tokens.css).
+   Every variable maps one-to-one to a Tailwind key in tailwind.config.ts. */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --background: #efefec;
+  --surface: #f6f6f4;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --border: #e3e3df;
+  --input: #d3d3ce;
+  --ring: #1f7a55;
+  --text: #151514;
+  --text-secondary: #4a4a46;
+  --text-muted: #6b6b66;
+  --primary: #151514;
+  --primary-hover: #2e2e2b;
+  --primary-foreground: #ffffff;
+  --secondary: #ededea;
+  --secondary-hover: #e3e3df;
+  --success: #1d7a4b;
+  --success-soft: #e2f2e8;
+  --warning: #965a00;
+  --warning-soft: #fbf0d9;
+  --danger: #c0352b;
+  --danger-soft: #fbe6e3;
+  --danger-hover: #a82c23;
+  --danger-foreground: #ffffff;
+  --info: #2562a6;
+  --info-soft: #e3edf8;
+  --income: #1d7a4b;
+  --expense: #c0352b;
+  --transfer: #4a4a46;
+  --debt: #5a4cc0;
+  --debt-soft: #ece9fa;
+  --brand: #1f7a55;
+  --brand-foreground: #ffffff;
+  --chart-1: #2f9e68;
+  --chart-2: #3d7bd6;
+  --chart-3: #e0a11b;
+  --chart-4: #8a63d2;
+  --chart-5: #22a3a3;
+  --chart-6: #e06a4e;
+  --chart-7: #cf5c9c;
+  --chart-8: #8fa531;
+  --chart-9: #7d8796;
+  --overlay: rgba(20, 20, 18, 0.45);
+  --shadow-xs: 0 1px 2px rgba(20, 20, 18, 0.05);
+  --shadow-sm: 0 1px 3px rgba(20, 20, 18, 0.07), 0 1px 2px rgba(20, 20, 18, 0.04);
+  --shadow-md: 0 10px 28px -8px rgba(20, 20, 18, 0.14), 0 2px 6px rgba(20, 20, 18, 0.05);
+  --shadow-lg: 0 28px 56px -16px rgba(20, 20, 18, 0.22), 0 4px 12px rgba(20, 20, 18, 0.06);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+}
+
+.dark,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #0d0d0c;
+  --surface: #141413;
+  --card: #1b1b1a;
+  --popover: #232321;
+  --border: #2b2b29;
+  --input: #3a3a37;
+  --ring: #4cc28a;
+  --text: #f3f3f0;
+  --text-secondary: #bdbdb7;
+  --text-muted: #94948e;
+  --primary: #f3f3f0;
+  --primary-hover: #ffffff;
+  --primary-foreground: #151514;
+  --secondary: #262624;
+  --secondary-hover: #30302e;
+  --success: #4cc27e;
+  --success-soft: #15291d;
+  --warning: #edb04a;
+  --warning-soft: #2d2410;
+  --danger: #f2756c;
+  --danger-soft: #321816;
+  --danger-hover: #f58b83;
+  --danger-foreground: #1a0705;
+  --info: #72a9ee;
+  --info-soft: #142336;
+  --income: #4cc27e;
+  --expense: #f2756c;
+  --transfer: #bdbdb7;
+  --debt: #a99cff;
+  --debt-soft: #221f3b;
+  --brand: #3fae7c;
+  --brand-foreground: #0d0d0c;
+  --chart-1: #4cc27e;
+  --chart-2: #6a9eeb;
+  --chart-3: #edb04a;
+  --chart-4: #a98af0;
+  --chart-5: #4cc4c2;
+  --chart-6: #f08a6e;
+  --chart-7: #e883bc;
+  --chart-8: #afc452;
+  --chart-9: #9aa3b0;
+  --overlay: rgba(0, 0, 0, 0.62);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-lg: 0 28px 64px -16px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    transition: none !important;
+  }
+}

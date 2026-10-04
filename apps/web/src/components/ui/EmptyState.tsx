@@ -6,33 +6,37 @@ export interface EmptyStateProps {
   title: string;
   description?: string;
   action?: React.ReactNode;
+  /** page: centred block in a list; widget: dashed box inside a card. */
+  variant?: 'page' | 'widget';
   className?: string;
 }
 
-export function EmptyState({
-  icon,
-  title,
-  description,
-  action,
-  className,
-}: EmptyStateProps) {
+/** Nothing to show yet: icon tile, one line of why, and the action that fixes it. */
+export function EmptyState({ icon, title, description, action, variant = 'page', className }: EmptyStateProps) {
+  if (variant === 'widget') {
+    return (
+      <div
+        className={cn(
+          'flex min-h-[200px] flex-col items-center justify-center gap-1.5 rounded-[14px] border border-dashed border-border px-4 py-8 text-center',
+          className,
+        )}
+      >
+        <p className="text-[15px] font-medium text-text-secondary">{title}</p>
+        {description && <p className="max-w-[300px] text-[13px] leading-[18px] text-text-muted">{description}</p>}
+        {action && <div className="mt-2">{action}</div>}
+      </div>
+    );
+  }
   return (
-    <div
-      className={cn(
-        'flex flex-col items-center justify-center p-8 md:p-12 text-center rounded-3xl border border-dashed border-border/80 bg-surface/40',
-        className,
-      )}
-    >
+    <div className={cn('flex flex-col items-center justify-center gap-2.5 px-4 py-14 text-center', className)}>
       {icon && (
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/20 text-muted-foreground mb-4">
+        <div className="mb-1 flex h-14 w-14 items-center justify-center rounded-lg bg-secondary text-text-secondary [&_svg]:h-6 [&_svg]:w-6 [&_svg]:stroke-[1.8]">
           {icon}
         </div>
       )}
-      <h4 className="text-base font-bold text-foreground">{title}</h4>
-      {description && (
-        <p className="mt-1.5 max-w-sm text-xs text-muted-foreground">{description}</p>
-      )}
-      {action && <div className="mt-5">{action}</div>}
+      <h3 className="text-[16px] font-semibold leading-6 text-text">{title}</h3>
+      {description && <p className="max-w-[340px] text-[14px] leading-5 text-text-muted">{description}</p>}
+      {action && <div className="mt-2">{action}</div>}
     </div>
   );
 }

@@ -1,50 +1,75 @@
+import * as React from 'react';
 import { cn } from '../../lib/utils';
 
 export interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
-  label: string;
-  description?: string;
+  label?: React.ReactNode;
+  description?: React.ReactNode;
   disabled?: boolean;
-  id: string;
+  className?: string;
+  id?: string;
+  'aria-label'?: string;
 }
 
-/** Accessible on/off control (role="switch"), operable with Space/Enter. */
-export function Switch({ checked, onChange, label, description, disabled, id }: SwitchProps) {
+/** 44×26 track; with a label the whole row is the (≥44px) hit target. */
+export function Switch({
+  checked,
+  onChange,
+  label,
+  description,
+  disabled,
+  className,
+  id,
+  'aria-label': ariaLabel,
+}: SwitchProps) {
+  const generated = React.useId();
+  const switchId = id ?? generated;
+  const labelId = `${switchId}-label`;
+  const descriptionId = description ? `${switchId}-description` : undefined;
+
+  const track = (
+    <span
+      aria-hidden
+      className={cn(
+        'flex h-[26px] w-11 shrink-0 items-center rounded-full p-[3px] transition-colors duration-fast',
+        checked ? 'justify-end bg-primary' : 'justify-start bg-input',
+      )}
+    >
+      <span className="h-5 w-5 rounded-full bg-card shadow-sm" />
+    </span>
+  );
+
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="min-w-0">
-        <label htmlFor={id} className="text-sm font-semibold text-foreground">
-          {label}
-        </label>
-        {description && (
-          <p id={`${id}-description`} className="mt-0.5 text-xs text-muted-foreground">
-            {description}
-          </p>
-        )}
-      </div>
-      <button
-        id={id}
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-describedby={description ? `${id}-description` : undefined}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={cn(
-          'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2',
-          'disabled:cursor-not-allowed disabled:opacity-50',
-          checked ? 'bg-primary' : 'bg-muted',
-        )}
-      >
-        <span
-          className={cn(
-            'inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
-            checked ? 'translate-x-6' : 'translate-x-1',
+    <button
+      id={switchId}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label ? undefined : ariaLabel}
+      aria-labelledby={label ? labelId : undefined}
+      aria-describedby={descriptionId}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'flex w-full min-h-11 items-center gap-4 rounded-md text-left focus-ring disabled:cursor-not-allowed disabled:opacity-40',
+        !label && 'w-auto',
+        className,
+      )}
+    >
+      {label && (
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <span id={labelId} className="text-[15px] font-medium text-text">
+            {label}
+          </span>
+          {description && (
+            <span id={descriptionId} className="text-[13px] leading-[18px] text-text-secondary">
+              {description}
+            </span>
           )}
-        />
-      </button>
-    </div>
+        </span>
+      )}
+      {track}
+    </button>
   );
 }

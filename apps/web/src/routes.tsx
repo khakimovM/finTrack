@@ -48,6 +48,10 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // Component gallery for checking the design system; compiled out of production builds.
+  ...(import.meta.env.DEV
+    ? [{ path: '/dev/ui', lazy: () => import('./pages/dev/UiGallery').then((m) => ({ Component: m.UiGallery })) }]
+    : []),
   {
     path: '*',
     element: <NotFoundPage />,

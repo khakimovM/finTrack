@@ -1,33 +1,47 @@
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { RotateCcw, TriangleAlert } from 'lucide-react';
 import { Button } from './Button';
 import { cn } from '../../lib/utils';
 
 export interface ErrorStateProps {
+  /** "Tranzaksiyalarni yuklab bo‘lmadi". */
+  title?: string;
   message?: string;
   onRetry?: () => void;
+  /** page: centred in a list; widget: one card failed, the rest of the page still works. */
+  variant?: 'page' | 'widget';
   className?: string;
 }
 
 export function ErrorState({
-  message = 'Maʼlumotlarni yuklashda xatolik yuz berdi',
+  title = 'Maʼlumotlarni yuklab bo‘lmadi',
+  message = 'Internet aloqasini tekshirib, qayta urinib ko‘ring.',
   onRetry,
+  variant = 'page',
   className,
 }: ErrorStateProps) {
+  const widget = variant === 'widget';
   return (
     <div
+      role="alert"
       className={cn(
-        'flex flex-col items-center justify-center p-8 md:p-12 text-center rounded-3xl border border-destructive/20 bg-destructive/5',
+        'flex flex-col items-center justify-center text-center',
+        widget ? 'min-h-[200px] gap-2 rounded-[14px] bg-surface px-4 py-6' : 'gap-2.5 px-4 py-14',
         className,
       )}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive mb-3">
-        <AlertTriangle className="h-6 w-6" />
+      <div
+        className={cn(
+          'mb-1 flex items-center justify-center bg-danger-soft text-danger',
+          widget ? 'h-11 w-11 rounded-md' : 'h-14 w-14 rounded-lg',
+        )}
+      >
+        <TriangleAlert className={widget ? 'h-5 w-5' : 'h-6 w-6'} strokeWidth={1.8} aria-hidden />
       </div>
-      <h4 className="text-sm font-bold text-foreground">Xatolik yuz berdi</h4>
-      <p className="mt-1 max-w-sm text-xs text-muted-foreground">{message}</p>
+      <h3 className={cn('font-semibold text-text', widget ? 'text-[15px]' : 'text-[16px] leading-6')}>{title}</h3>
+      <p className="max-w-[340px] text-[14px] leading-5 text-text-muted">{message}</p>
       {onRetry && (
-        <Button variant="outline" size="sm" onClick={onRetry} className="mt-4">
-          <RefreshCw className="mr-2 h-3.5 w-3.5" />
+        <Button variant="outline" size={widget ? 'sm' : 'md'} onClick={onRetry} className="mt-2">
+          <RotateCcw className="h-4 w-4" aria-hidden />
           Qayta urinish
         </Button>
       )}
