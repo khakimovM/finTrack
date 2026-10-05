@@ -1,34 +1,33 @@
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
-import { formatMoney } from '@fintrack/shared';
+import type { TransactionListMeta } from '@fintrack/shared';
+import { formatAmount } from '../../../lib/money';
+import { cn } from '../../../lib/utils';
 
-/** "+1 200 so‘m" / "−1 200 so‘m", but a plain "0 so‘m" when there is nothing. */
-function signed(sign: '+' | '−', tiyin: string): string {
-  return BigInt(tiyin) === 0n ? formatMoney(tiyin) : `${sign}${formatMoney(tiyin)}`;
+function SumCard({ label, tiyin, count, tone }: { label: string; tiyin: string; count: string; tone: 'income' | 'expense' }) {
+  const zero = BigInt(tiyin) === 0n;
+  const sign = zero ? 'none' : tone === 'income' ? '+' : '-';
+  return (
+    <div className="flex min-w-0 flex-col gap-1 rounded-[20px] border border-border bg-card px-4 py-3.5 sm:px-5 sm:py-4">
+      <span className="text-[13px] leading-[18px] text-text-secondary">{label}</span>
+      <span
+        className={cn(
+          'whitespace-nowrap text-[17px] font-semibold leading-tight tracking-[-0.02em] sm:text-[22px]',
+          tone === 'income' ? 'text-income' : 'text-expense',
+        )}
+      >
+        {formatAmount(tiyin, { sign, currency: false })}{' '}
+        <span className="text-[13px] font-medium tracking-normal text-text-muted">so‘m</span>
+      </span>
+      <span className="text-[12px] leading-4 text-text-muted">{count}</span>
+    </div>
+  );
 }
 
-/** Income and expense of everything matching the current filters (`meta.sums`). */
-export function TransactionSums({ income, expense }: { income: string; expense: string }) {
+/** Income and expense of everything the filters match, not just the page on screen. */
+export function TransactionSums({ sums }: { sums: TransactionListMeta['sums'] }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <div className="flex items-center justify-between rounded-2xl border border-border bg-surface p-4 shadow-sm">
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground">Filtr bo‘yicha kirim</p>
-          <p className="mt-1 text-xl font-extrabold text-success">{signed('+', income)}</p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
-          <ArrowUpRight className="h-5 w-5" />
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between rounded-2xl border border-border bg-surface p-4 shadow-sm">
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground">Filtr bo‘yicha chiqim</p>
-          <p className="mt-1 text-xl font-extrabold text-destructive">{signed('−', expense)}</p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-          <ArrowDownLeft className="h-5 w-5" />
-        </div>
-      </div>
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-[repeat(2,minmax(0,300px))] sm:gap-4">
+      <SumCard label="Filtr bo‘yicha kirim" tiyin={sums.income} count={`${sums.incomeCount} ta kirim`} tone="income" />
+      <SumCard label="Filtr bo‘yicha chiqim" tiyin={sums.expense} count={`${sums.expenseCount} ta chiqim`} tone="expense" />
     </div>
   );
 }

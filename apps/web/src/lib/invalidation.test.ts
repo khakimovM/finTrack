@@ -12,6 +12,7 @@ const SPEC: Record<keyof typeof INVALIDATES, string[]> = {
   category: ['categories', 'transactions', 'stats', 'budgets'],
   account: ['accounts', 'transactions', 'stats'],
   recurring: ['recurring'],
+  tag: ['tags', 'transactions'],
   recurringRun: ['recurring', 'transactions', 'accounts', 'stats'],
 };
 

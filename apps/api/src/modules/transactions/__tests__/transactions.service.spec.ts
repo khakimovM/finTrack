@@ -48,6 +48,7 @@ function row(overrides: Partial<Transaction> = {}): TransactionWithRelations {
     account: { id: base.accountId, name: 'Karta', icon: '💳' },
     category: base.categoryId ? { id: CAT, name: 'Oziq-ovqat', icon: '🍔', color: '#ef4444' } : null,
     tags: [],
+    debt: base.debtId ? { id: base.debtId, personName: 'Jasur Karimov' } : null,
   };
 }
 
@@ -62,6 +63,7 @@ function setup() {
     update: jest.fn(),
     softDelete: jest.fn(),
     restore: jest.fn(),
+    findTransferPeers: jest.fn().mockResolvedValue(new Map()),
   };
   const accountAccess = { assertWritable: jest.fn().mockResolvedValue(undefined) };
   const categories = {
@@ -171,6 +173,27 @@ describe('TransactionsService', () => {
     });
   });
 
+  describe('list', () => {
+    it('names the debt person and the other leg of a transfer, and passes the filter counts through', async () => {
+      const t = setup();
+      const transfer = row({ id: 'tx-t', type: 'TRANSFER_OUT', categoryId: null, transferGroupId: 'tg_1' });
+      const loan = row({ id: 'tx-l', type: 'LOAN_GIVEN', categoryId: null, debtId: 'd1' });
+      t.repository.findMany.mockResolvedValue({ transactions: [transfer, loan], total: 2 });
+      t.repository.calculateSums.mockResolvedValue({ income: '0', expense: '0', incomeCount: 0, expenseCount: 0 });
+      t.repository.findTransferPeers.mockResolvedValue(
+        new Map([['tx-t', { accountId: ACC2, name: 'Jamg‘arma', icon: '🏦' }]]),
+      );
+
+      const res = await t.service.list(USER, { page: 1, limit: 20, sort: 'date:desc' });
+
+      expect(res.data[0].transferPeer).toEqual({ accountId: ACC2, name: 'Jamg‘arma', icon: '🏦' });
+      expect(res.data[0].debt).toBeNull();
+      expect(res.data[1].debt).toEqual({ id: 'd1', personName: 'Jasur Karimov' });
+      expect(res.data[1].transferPeer).toBeNull();
+      expect(res.meta.sums).toEqual({ income: '0', expense: '0', incomeCount: 0, expenseCount: 0 });
+    });
+  });
+
   describe('update', () => {
     it('moving an expense to another account debit-checks the new account for the full amount', async () => {
       const t = setup();
@@ -209,6 +232,36 @@ describe('TransactionsService', () => {
       const error = await t.service.update(USER, 'tx-1', { amount: '1' }).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ManagedTransactionException);
       expect(error).toMatchObject({ details: expect.objectContaining(refs) });
+      expect(t.repository.update).not.toHaveBeenCalled();
+    });
+
+    it('switching an expense to income moves the balance by twice the amount and saves the new type', async () => {
+      const t = setup();
+      const INCOME_CAT = '44444444-4444-4444-4444-444444444444';
+      t.categories.findById.mockResolvedValue({ id: INCOME_CAT, type: 'INCOME', parentId: null });
+      t.repository.findById.mockResolvedValue(row());
+      t.repository.update.mockResolvedValue(row({ type: 'INCOME', categoryId: INCOME_CAT }));
+
+      await t.service.update(USER, 'tx-1', { type: 'INCOME', categoryId: INCOME_CAT });
+
+      expect(t.categories.findById).toHaveBeenCalledWith(USER, INCOME_CAT);
+      expect(t.guard.assertDeltas).toHaveBeenCalledWith(t.prisma.tx, USER, new Map([[ACC, 100_000n]]));
+      expect(t.repository.update).toHaveBeenCalledWith(
+        t.prisma.tx,
+        USER,
+        'tx-1',
+        expect.objectContaining({ type: 'INCOME', categoryId: INCOME_CAT }),
+        undefined,
+      );
+    });
+
+    it('refuses a type switch that keeps a category of the old type', async () => {
+      const t = setup();
+      t.repository.findById.mockResolvedValue(row());
+
+      await expect(t.service.update(USER, 'tx-1', { type: 'INCOME' })).rejects.toBeInstanceOf(
+        InvalidCategoryTypeException,
+      );
       expect(t.repository.update).not.toHaveBeenCalled();
     });
 

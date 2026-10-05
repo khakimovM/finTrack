@@ -67,3 +67,9 @@ export function apiErrorToMessage(error: unknown): string {
 
   return 'Kutilmagan xatolik yuz berdi. Qayta urinib ko‘ring';
 }
+
+/** The documented error code of a failed API call, when there is one. */
+export function apiErrorCode(error: unknown): string | undefined {
+  if (!axios.isAxiosError(error)) return undefined;
+  return (error.response?.data as { error?: ApiErrorPayload } | undefined)?.error?.code;
+}

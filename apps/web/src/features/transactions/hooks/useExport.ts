@@ -1,35 +1,40 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { todayLocalIso } from '@fintrack/shared';
 import { toast } from '../../../stores/toastStore';
+import { apiErrorToMessage } from '../../../lib/apiError';
 import { transactionsApi, triggerDownload } from '../api/transactions.api';
 
-export function useExportTransactions() {
-  const [isExporting, setIsExporting] = useState(false);
+export type ExportFormat = 'csv' | 'xlsx';
 
-  const exportData = async (
-    format: 'csv' | 'xlsx',
-    query?: Record<string, string | undefined>,
-  ) => {
+/** A failed blob request carries its JSON error as a Blob; read it so EXPORT_TOO_LARGE is named. */
+async function exportErrorMessage(err: unknown): Promise<string> {
+  if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
     try {
-      setIsExporting(true);
-      const dateStr = todayLocalIso();
+      err.response.data = JSON.parse(await err.response.data.text()) as unknown;
+    } catch {
+      return 'Faylni yuklab bo‘lmadi. Qayta urinib ko‘ring';
+    }
+  }
+  return apiErrorToMessage(err);
+}
 
-      if (format === 'csv') {
-        const blob = await transactionsApi.exportCsv(query);
-        triggerDownload(blob, `tranzaksiyalar_${dateStr}.csv`);
-      } else {
-        const blob = await transactionsApi.exportXlsx(query);
-        triggerDownload(blob, `tranzaksiyalar_${dateStr}.xlsx`);
-      }
+export function useExportTransactions() {
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
 
-      toast.success(`${format.toUpperCase()} fayli muvaffaqiyatli yuklab olindi`);
+  const exportData = async (format: ExportFormat, query?: Record<string, string | undefined>) => {
+    if (exporting) return;
+    setExporting(format);
+    try {
+      const blob = format === 'csv' ? await transactionsApi.exportCsv(query) : await transactionsApi.exportXlsx(query);
+      triggerDownload(blob, `tranzaksiyalar_${todayLocalIso()}.${format}`);
+      toast.success('Fayl yuklab olindi');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error(`Eksport qilishda xatolik yuz berdi: ${message}`);
+      toast.error(await exportErrorMessage(err));
     } finally {
-      setIsExporting(false);
+      setExporting(null);
     }
   };
 
-  return { exportData, isExporting };
+  return { exportData, exporting, isExporting: exporting !== null };
 }

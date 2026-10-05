@@ -1,8 +1,10 @@
 import { create } from 'zustand';
+import type { TransactionResponse } from '@fintrack/shared';
 
 /** Forms the shell can open from anywhere (quick add, empty states, notifications). */
 export type GlobalForm =
-  | { kind: 'transaction'; type: 'INCOME' | 'EXPENSE' }
+  /** With `transaction` the form edits that income or expense instead of adding one. */
+  | { kind: 'transaction'; type: 'INCOME' | 'EXPENSE'; transaction?: TransactionResponse }
   | { kind: 'transfer' }
   | { kind: 'debt'; direction?: 'I_LENT' | 'I_BORROWED' }
   | { kind: 'account' };

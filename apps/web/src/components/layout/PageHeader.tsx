@@ -17,6 +17,8 @@ export interface PageHeaderProps {
   actions?: ReactNode;
   /** Phones: the main buttons, shown under the top bar (a grid of one or two). */
   mobileActions?: ReactNode;
+  /** equal: same-width buttons; lead: the first fits its text and the last takes the rest. */
+  mobileActionsLayout?: 'equal' | 'lead';
   /** Phones: one icon button in the top bar (e.g. export). */
   mobileIcon?: ReactNode;
   /** Adds the global "+ Qo‘shish" with the quick-add popover (home and notifications). */
@@ -29,7 +31,16 @@ export interface PageHeaderProps {
  * Desktop: sticky, blurred bar with title and subtitle left, page actions, the bell and the theme
  * toggle right. Phones: a compact 56px bar (title + bell); subtitle and actions open the content.
  */
-export function PageHeader({ title, subtitle, actions, mobileActions, mobileIcon, quickAdd, backTo }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+  mobileActions,
+  mobileActionsLayout = 'equal',
+  mobileIcon,
+  quickAdd,
+  backTo,
+}: PageHeaderProps) {
   const isMobile = useIsMobile();
   const inMiniApp = useInMiniApp();
   const navigate = useNavigate();
@@ -59,7 +70,16 @@ export function PageHeader({ title, subtitle, actions, mobileActions, mobileIcon
         {(subtitle || mobileActions) && (
           <div className="flex flex-col gap-3 pb-1">
             {subtitle && <p className="-mt-1 text-[15px] leading-[22px] text-text-secondary">{subtitle}</p>}
-            {mobileActions && <div className="grid auto-cols-fr grid-flow-col gap-2 [&>*]:h-11">{mobileActions}</div>}
+            {mobileActions && (
+              <div
+                className={cn(
+                  'grid gap-2 [&>*]:h-11',
+                  mobileActionsLayout === 'lead' ? 'grid-cols-[auto_minmax(0,1fr)]' : 'auto-cols-fr grid-flow-col',
+                )}
+              >
+                {mobileActions}
+              </div>
+            )}
           </div>
         )}
       </>

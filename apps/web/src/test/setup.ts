@@ -1,7 +1,11 @@
 import { afterAll, afterEach, beforeAll } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { server } from './server';
 import { testViewport } from './viewport';
+
+// `npm run verify` runs the API suite at the same time; a cold first render can take longer than
+// findBy's default second there. Five seconds waits for slow, not for wrong.
+configure({ asyncUtilTimeout: 5_000 });
 
 // Any request a test did not mock is a bug in the test, not a call to a real server.
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));

@@ -9,19 +9,21 @@ test('critical path: Telegram sign-up → income and expense → dashboard → d
 
   // Income and expense through the transaction modal.
   await page.goto('/app/transactions');
-  const table = page.getByRole('table');
+  const list = page.getByRole('region', { name: 'Tranzaksiyalar ro‘yxati' });
+  // The page has its own "Summa dan/gacha" filter inputs: fields are looked up inside the form.
+  const form = page.getByRole('dialog', { name: 'Yangi tranzaksiya' });
   await page.getByRole('button', { name: 'Yangi tranzaksiya', exact: true }).click();
-  await page.getByRole('button', { name: /Kirim \(Daromad\)/ }).click();
-  await page.getByLabel('Summa').fill('10000000');
-  await page.getByLabel('Izoh (ixtiyoriy)').fill('Oylik maosh');
-  await page.getByRole('button', { name: 'Saqlash' }).click();
-  await expect(table.getByText('Oylik maosh')).toBeVisible();
+  await form.getByRole('radio', { name: 'Kirim' }).click();
+  await form.getByLabel('Summa').fill('10000000');
+  await form.getByLabel('Izoh (ixtiyoriy)').fill('Oylik maosh');
+  await form.getByRole('button', { name: 'Saqlash' }).click();
+  await expect(list.getByText('Oylik maosh')).toBeVisible();
 
   await page.getByRole('button', { name: 'Yangi tranzaksiya', exact: true }).click();
-  await page.getByLabel('Summa').fill('2000000');
-  await page.getByLabel('Izoh (ixtiyoriy)').fill('Bozorlik');
-  await page.getByRole('button', { name: 'Saqlash' }).click();
-  await expect(table.getByText('Bozorlik')).toBeVisible();
+  await form.getByLabel('Summa').fill('2000000');
+  await form.getByLabel('Izoh (ixtiyoriy)').fill('Bozorlik');
+  await form.getByRole('button', { name: 'Saqlash' }).click();
+  await expect(list.getByText('Bozorlik')).toBeVisible();
 
   // The ledger, not a stored balance, drives the dashboard.
   await page.goto('/app');
@@ -40,9 +42,10 @@ test('critical path: Telegram sign-up → income and expense → dashboard → d
   await page.getByRole('button', { name: 'To‘lovni qabul qilish' }).click();
   await expect(page.getByText('1 000 000 so‘m').first()).toBeVisible();
 
-  // A loan row cannot be deleted from the list; it leads to its debt instead.
+  // A loan row cannot be edited or deleted from the list; it leads to its debt instead.
   await page.goto('/app/transactions');
-  await table.getByRole('link', { name: 'Qarzga o‘tish' }).first().click();
+  await list.getByText('Ali Valiyev').first().click();
+  await page.getByRole('dialog', { name: 'Qarz yozuvi' }).getByRole('button', { name: 'Qarzga o‘tish' }).click();
   await expect(page).toHaveURL(/\/app\/debts\?debt=/);
   await expect(page.getByText('Ali Valiyev').first()).toBeVisible();
 

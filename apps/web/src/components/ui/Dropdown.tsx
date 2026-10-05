@@ -27,6 +27,10 @@ export interface DropdownProps {
   placeholder?: string;
   /** For pill filters: the value meaning "no filter", e.g. "". */
   emptyValue?: string;
+  /** Pill only: an icon before the text (the sort control). */
+  icon?: React.ReactNode;
+  /** Pill only: a sort is never "set", so it keeps the plain look. */
+  plain?: boolean;
   error?: string;
   /** Renders the list in place instead of floating (mobile filter sheet). */
   inline?: boolean;
@@ -46,6 +50,8 @@ export function Dropdown({
   label,
   placeholder = 'Tanlang',
   emptyValue,
+  icon,
+  plain = false,
   error,
   inline = false,
   align = 'start',
@@ -67,6 +73,7 @@ export function Dropdown({
 
   const selected = options.find((o) => o.value === value);
   const isSet = emptyValue !== undefined ? value !== emptyValue : Boolean(selected);
+  const solid = (isSet && !plain) || open;
 
   const openList = () => {
     setActive(Math.max(0, options.findIndex((o) => o.value === value)));
@@ -153,10 +160,11 @@ export function Dropdown({
         onKeyDown={onKeyDown}
         className={cn(
           'inline-flex h-[38px] max-w-full items-center gap-1.5 rounded-full border pl-3.5 pr-3 text-[13.5px] font-medium transition-colors duration-fast focus-ring',
-          isSet || open ? 'border-text bg-secondary text-text' : 'border-input bg-card text-text hover:bg-secondary',
+          solid ? 'border-text bg-secondary text-text' : 'border-input bg-card text-text hover:bg-secondary',
           className,
         )}
       >
+        {icon}
         <span className="truncate">{isSet && selected ? selected.label : placeholder}</span>
         <Chevron className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
       </button>

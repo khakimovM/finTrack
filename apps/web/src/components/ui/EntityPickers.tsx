@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Check, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Search, TriangleAlert } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { formatAmount } from '../../lib/money';
 import { EmojiTile } from './EmojiTile';
@@ -25,6 +25,17 @@ export interface PickerCategory {
 const triggerClasses =
   'flex h-14 w-full items-center gap-3 rounded-md border bg-card pl-2 pr-3.5 text-left shadow-xs transition-[border-color,box-shadow] duration-fast field-focus';
 const openRing = 'border-ring shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_22%,transparent)]';
+
+/** Muted balance; below zero it turns red with a warning sign, as balances do everywhere. */
+function Balance({ tiyin, className }: { tiyin: string; className?: string }) {
+  const negative = BigInt(tiyin) < 0n;
+  return (
+    <span className={cn('inline-flex items-center gap-1 whitespace-nowrap text-[13px]', negative ? 'text-danger' : 'text-text-muted', className)}>
+      {negative && <TriangleAlert className="h-3.5 w-3.5" aria-label="Manfiy balans" />}
+      {formatAmount(tiyin, { sign: 'negative' })}
+    </span>
+  );
+}
 
 /** Shared open/close + keyboard plumbing of the two pickers. */
 function usePicker() {
@@ -90,7 +101,7 @@ export function AccountPicker({
               <EmojiTile emoji={selected.icon} color={selected.color} size={40} className="rounded-[10px]" />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-[15px] font-medium text-text">{selected.name}</span>
-                <span className="text-[13px] text-text-muted">{formatAmount(selected.balance, { sign: 'negative' })}</span>
+                <Balance tiyin={selected.balance} />
               </span>
             </>
           ) : (
@@ -119,7 +130,7 @@ export function AccountPicker({
                       <span className="truncate text-[14px] font-medium">{account.name}</span>
                       {disabled && <span className="text-[12px] text-text-muted">{disabledHint}</span>}
                     </span>
-                    <span className="shrink-0 text-[13px] text-text-muted">{formatAmount(account.balance, { sign: 'negative' })}</span>
+                    <Balance tiyin={account.balance} className="shrink-0" />
                     <span className="flex w-4 shrink-0 justify-center">{on && <Check className="h-4 w-4" aria-hidden />}</span>
                   </button>
                 </li>

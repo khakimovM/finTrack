@@ -26,8 +26,8 @@ test('on a phone: a bottom tab bar, "+" opens forms as bottom sheets, lists are 
   await page.getByLabel('Izoh (ixtiyoriy)').fill('Tushlik');
   await page.getByRole('button', { name: 'Saqlash' }).click();
 
-  // No table on a phone: the entry shows up as a card, and nothing scrolls sideways.
-  await expect(page.getByRole('table')).toBeHidden();
+  // No table on a phone (no column header to select all): the entry is a card, nothing scrolls sideways.
+  await expect(page.getByRole('checkbox', { name: 'Barchasini tanlash' })).toHaveCount(0);
   await expect(page.getByText('Tushlik').last()).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);

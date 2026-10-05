@@ -1,4 +1,4 @@
-import { AccountResponse, RecurringRuleResponse, TransactionResponse } from '@fintrack/shared';
+import { AccountResponse, RecurringRuleResponse, TransactionResponse, UserResponse } from '@fintrack/shared';
 
 let seq = 0;
 /** Deterministic UUID-shaped ids for fixtures. */
@@ -38,7 +38,9 @@ export function transaction(over: Partial<TransactionResponse> = {}): Transactio
     category: { id: uuid(), name: 'Transport', icon: '🚗', color: '#f97316' },
     tags: [],
     debtId: null,
+    debt: null,
     transferGroupId: null,
+    transferPeer: null,
     createdAt: '2026-09-15T10:00:00.000Z',
     ...over,
   };
@@ -62,6 +64,25 @@ export function rule(over: Partial<RecurringRuleResponse> = {}): RecurringRuleRe
     category: { id: uuid(), name: 'Uy-joy', icon: '🏠', color: '#84cc16' },
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-01T00:00:00.000Z',
+    ...over,
+  };
+}
+
+export function user(over: Partial<UserResponse> = {}): UserResponse {
+  return {
+    id: '00000000-0000-4000-8000-0000000000a1',
+    name: 'Aziz',
+    email: null,
+    telegramUsername: 'aziz',
+    telegramLinked: true,
+    phone: null,
+    baseCurrency: 'UZS',
+    locale: 'uz',
+    timezone: 'Asia/Tashkent',
+    strictMode: false,
+    notifyTelegram: true,
+    dailyDigest: false,
+    createdAt: '2026-09-01T00:00:00.000Z',
     ...over,
   };
 }

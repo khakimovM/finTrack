@@ -16,6 +16,8 @@ export interface SheetProps {
   /** A close button next to the title (full sheets have one). */
   showClose?: boolean;
   footer?: React.ReactNode;
+  /** Footer buttons share the width equally unless this changes the columns. */
+  footerClassName?: string;
   children: React.ReactNode;
   className?: string;
   bodyClassName?: string;
@@ -31,6 +33,7 @@ export function Sheet({
   full = false,
   showClose = full,
   footer,
+  footerClassName,
   children,
   className,
   bodyClassName,
@@ -87,7 +90,7 @@ export function Sheet({
           </div>
           {footer && (
             <div
-              className="grid shrink-0 grid-cols-2 gap-2.5 border-t border-border px-4 pt-3 [&>*]:h-12"
+              className={cn('grid shrink-0 grid-cols-2 gap-2.5 border-t border-border px-4 pt-3 [&>*]:h-12', footerClassName)}
               style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
             >
               {footer}

@@ -13,6 +13,7 @@ export function GlobalForms() {
         isOpen={form?.kind === 'transaction'}
         onClose={close}
         defaultType={form?.kind === 'transaction' ? form.type : 'EXPENSE'}
+        transaction={form?.kind === 'transaction' ? form.transaction ?? null : null}
       />
       <TransferModal isOpen={form?.kind === 'transfer'} onClose={close} />
       <DebtModal

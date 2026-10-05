@@ -3,7 +3,7 @@ import { ChevronRight, TriangleAlert } from 'lucide-react';
 import type { DebtResponse, TransactionResponse } from '@fintrack/shared';
 import { todayLocalIso } from '@fintrack/shared';
 import { formatRelativeDay } from '../../../lib/format';
-import { formatAmount, formatAmountNumber, NBSP, toneOf } from '../../../lib/money';
+import { formatAmount, formatAmountNumber, NBSP } from '../../../lib/money';
 import { Amount } from '../../../components/ui/Amount';
 import { Avatar } from '../../../components/ui/Avatar';
 import { Chip } from '../../../components/ui/Chip';
@@ -15,6 +15,7 @@ import { useBudgetsStatus } from '../../budgets/hooks/useBudgets';
 import { useDebts } from '../../debts/hooks/useDebts';
 import { useTransactions } from '../../transactions/hooks/useTransactions';
 import { TYPE_LABELS } from '../../transactions/typeLabels';
+import { TxTile, rowKind, rowTitle } from '../../transactions/rowView';
 import { useStatsDebts } from '../hooks/useDashboard';
 import { WidgetCard, WidgetState } from './WidgetCard';
 
@@ -86,16 +87,9 @@ export function BudgetsWidget() {
   );
 }
 
+/** Dashboard rows lead with the category; the transactions list leads with the note. */
 function txTitle(tx: TransactionResponse): string {
-  if (tx.type === 'TRANSFER_IN' || tx.type === 'TRANSFER_OUT') return TYPE_LABELS[tx.type];
-  return tx.category?.name ?? tx.note ?? TYPE_LABELS[tx.type];
-}
-
-function TxTile({ tx }: { tx: TransactionResponse }) {
-  const tone = toneOf(tx.type);
-  if (tone === 'transfer') return <EmojiTile emoji="⇄" variant="transfer" size={40} />;
-  if (tone === 'debt') return <EmojiTile emoji="🤝" variant="debt" size={40} />;
-  return <EmojiTile emoji={tx.category?.icon ?? (tx.type === 'INCOME' ? '💵' : '🧾')} color={tx.category?.color} size={40} />;
+  return rowKind(tx) === 'entry' ? tx.category?.name ?? tx.note ?? TYPE_LABELS[tx.type] : rowTitle(tx);
 }
 
 /** The last five entries of any kind; transfers and debt movements keep their own look. */

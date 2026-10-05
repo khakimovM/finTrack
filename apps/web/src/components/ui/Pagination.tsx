@@ -27,9 +27,17 @@ const cell =
 
 /** "Jami 248 tadan 1–20 ko‘rsatilmoqda" with numbered pages. Hidden when everything fits on one. */
 export function Pagination({ page, totalPages, total, limit, onPageChange, className }: PaginationProps) {
-  if (totalPages <= 1) return null;
+  if (total === 0) return null;
   const first = (page - 1) * limit + 1;
   const last = Math.min(page * limit, total);
+  // One page: only the count, no buttons.
+  if (totalPages <= 1) {
+    return (
+      <p className={cn('text-[13px] text-text-muted', className)}>
+        Jami {total} tadan {first}–{last} ko‘rsatilmoqda
+      </p>
+    );
+  }
 
   return (
     <nav className={cn('flex flex-wrap items-center justify-between gap-3', className)} aria-label="Sahifalash">

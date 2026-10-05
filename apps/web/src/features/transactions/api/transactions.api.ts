@@ -41,6 +41,12 @@ export const transactionsApi = {
     await api.post('/transactions/bulk-delete', { ids });
   },
 
+  /** Takes a deleted income or expense back (the undo of a delete). */
+  restore: async (id: string): Promise<TransactionResponse> => {
+    const res = await api.post<{ data: TransactionResponse }>(`/transactions/${id}/restore`);
+    return res.data.data;
+  },
+
   exportCsv: async (query?: Record<string, string | undefined>): Promise<Blob> => {
     const res = await api.get('/export/transactions.csv', {
       params: query,

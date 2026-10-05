@@ -8,6 +8,8 @@ import { Sheet } from './Sheet';
 export interface MenuItem {
   label: string;
   icon?: LucideIcon;
+  /** Custom leading element instead of an icon (e.g. a "CSV" tile). */
+  lead?: React.ReactNode;
   onSelect: () => void;
   /** Red, and placed last after a separator by convention. */
   danger?: boolean;
@@ -112,6 +114,7 @@ export function Menu({ trigger, items, align = 'end', width = 240, sheetHeader, 
                   item.danger ? 'text-danger hover:bg-danger-soft focus-visible:bg-danger-soft' : 'text-text hover:bg-secondary focus-visible:bg-secondary',
                 )}
               >
+                {item.lead}
                 {item.icon && <item.icon className="h-4 w-4 shrink-0" aria-hidden />}
                 {item.label}
               </button>
@@ -136,6 +139,7 @@ export function Menu({ trigger, items, align = 'end', width = 240, sheetHeader, 
                     item.danger ? 'text-danger' : 'text-text',
                   )}
                 >
+                  {item.lead}
                   {item.icon && (
                     <span
                       className={cn(

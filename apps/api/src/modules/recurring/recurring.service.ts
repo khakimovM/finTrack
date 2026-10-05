@@ -233,7 +233,10 @@ export class RecurringService {
       category: tx.category,
       tags: tx.tags.map((t) => t.tag),
       debtId: tx.debtId,
+      // Recurring rules only write income and expense rows: no debt, no transfer leg.
+      debt: null,
       transferGroupId: tx.transferGroupId,
+      transferPeer: null,
       createdAt: tx.createdAt.toISOString(),
     };
   }
