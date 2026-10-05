@@ -1,4 +1,4 @@
-import { AccountResponse, CategoryResponse, RecurringRuleResponse, TagResponse, TransactionResponse, UserResponse } from '@fintrack/shared';
+import { AccountResponse, CategoryResponse, DebtResponse, RecurringRuleResponse, TagResponse, TransactionResponse, UserResponse } from '@fintrack/shared';
 
 let seq = 0;
 /** Deterministic UUID-shaped ids for fixtures. */
@@ -106,4 +106,25 @@ export function category(over: Partial<CategoryResponse> = {}): CategoryResponse
 
 export function tag(over: Partial<TagResponse> = {}): TagResponse {
   return { id: uuid(), name: 'oila', color: '#3d7bd6', transactionCount: 0, createdAt: '2026-09-01T00:00:00.000Z', ...over };
+}
+
+export function debt(over: Partial<DebtResponse> = {}): DebtResponse {
+  return {
+    id: uuid(),
+    direction: 'I_LENT',
+    personName: 'Jasur Karimov',
+    personPhone: null,
+    amount: '100000000',
+    paidAmount: '0',
+    remainingAmount: '100000000',
+    dueDate: null,
+    status: 'ACTIVE',
+    paidAt: null,
+    isOverdue: false,
+    daysLeft: null,
+    note: null,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+    ...over,
+  };
 }

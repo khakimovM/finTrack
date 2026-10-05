@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RecurringRule } from '@prisma/client';
 import { addDays, formatIsoDate, formatMoney, parseIsoDate } from '@fintrack/shared';
 import { RecurringRepository, OccurrenceWithRelations } from './recurring.repository';
-import { nextOccurrence } from './recurrence';
+import { nextOccurrence } from '@fintrack/shared';
 import { BalanceService } from '../accounts/balance.service';
 import { BalanceGuardService } from '../accounts/balance-guard.service';
 import { BudgetsService } from '../budgets/budgets.service';

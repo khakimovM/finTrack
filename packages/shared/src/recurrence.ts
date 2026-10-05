@@ -1,7 +1,10 @@
-import { RecurrenceFrequency } from '@prisma/client';
-import { addDays, endOfMonth } from '@fintrack/shared';
+import { addDays, endOfMonth, formatIsoDate, parseIsoDate } from './date';
+import type { RecurrenceFrequency } from './schemas/recurring';
 
-/** All dates here are UTC midnights of calendar days (`@db.Date`). */
+/**
+ * The schedule of recurring rules, shared so the API books payments on the same days the form's
+ * "Keyingi to‘lov" preview promises. All dates are UTC midnights of calendar days.
+ */
 
 function daysInMonth(year: number, monthIndex: number): number {
   return endOfMonth(new Date(Date.UTC(year, monthIndex, 1))).getUTCDate();
@@ -82,4 +85,19 @@ export function nextOccurrence(
     case 'YEARLY':
       return clampedDay(current.getUTCFullYear() + 1, startsAt.getUTCMonth(), startsAt.getUTCDate());
   }
+}
+
+/**
+ * The first payment date of a rule as the API will schedule it, or null when it would fall after
+ * `endsAt`. Dates are YYYY-MM-DD; nothing is booked for days before `today`.
+ */
+export function firstRunDate(
+  rule: { frequency: RecurrenceFrequency; startsAt: string; dayOfCycle?: number | null; endsAt?: string | null },
+  today: string,
+): string | null {
+  const startsAt = parseIsoDate(rule.startsAt);
+  const from = rule.startsAt > today ? startsAt : parseIsoDate(today);
+  const day = defaultDayOfCycle(rule.frequency, startsAt, rule.dayOfCycle);
+  const first = formatIsoDate(firstOccurrenceOnOrAfter(from, rule.frequency, startsAt, day));
+  return rule.endsAt && first > rule.endsAt ? null : first;
 }

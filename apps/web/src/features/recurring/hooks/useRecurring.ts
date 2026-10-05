@@ -11,71 +11,71 @@ export const recurringKeys = {
   detail: (id: string) => [...recurringKeys.all, 'detail', id] as const,
 };
 
-export function useRecurringRules(isActive?: boolean) {
+/** Active and paused rules together; the page splits them into its two tabs. */
+export function useRecurringRules() {
   return useQuery({
-    queryKey: recurringKeys.list(isActive),
-    queryFn: () => recurringApi.list(isActive),
+    queryKey: recurringKeys.list(),
+    queryFn: () => recurringApi.list(),
   });
 }
 
+/** Silent on failure: the form shows why (strict mode, dates) next to its fields. */
 export function useCreateRecurringRule() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (data: CreateRecurringRuleInput) => recurringApi.create(data),
     onSuccess: () => {
-      toast.success('Takrorlanuvchi to‘lov qoidasi yaratildi');
+      toast.success('Qoida yaratildi');
+      // A rule due today is booked at once.
       void invalidateAfter(queryClient, 'recurringRun');
-    },
-    onError: (err: unknown) => {
-      toast.error(apiErrorToMessage(err));
     },
   });
 }
 
 export function useUpdateRecurringRule() {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateRecurringRuleInput }) =>
-      recurringApi.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateRecurringRuleInput }) => recurringApi.update(id, data),
     onSuccess: () => {
-      toast.success('Takrorlanuvchi to‘lov qoidasi yangilandi');
+      toast.success('Qoida saqlandi');
       void invalidateAfter(queryClient, 'recurring');
     },
-    onError: (err: unknown) => {
-      toast.error(apiErrorToMessage(err));
+  });
+}
+
+export function usePauseRecurringRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => recurringApi.update(id, { isActive }),
+    onSuccess: (_, { isActive }) => {
+      toast.success(isActive ? 'Qoida davom ettirildi' : 'Qoida to‘xtatildi');
+      // Resuming may book today's payment.
+      void invalidateAfter(queryClient, isActive ? 'recurringRun' : 'recurring');
     },
+    onError: (err: unknown) => toast.error(apiErrorToMessage(err)),
   });
 }
 
 export function useDeleteRecurringRule() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (id: string) => recurringApi.delete(id),
     onSuccess: () => {
-      toast.success('Takrorlanuvchi to‘lov qoidasi o‘chirildi');
+      toast.success('Qoida o‘chirildi');
       void invalidateAfter(queryClient, 'recurring');
     },
-    onError: (err: unknown) => {
-      toast.error(apiErrorToMessage(err));
-    },
+    onError: (err: unknown) => toast.error(apiErrorToMessage(err)),
   });
 }
 
 export function useRunNowRecurringRule() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (id: string) => recurringApi.runNow(id),
-    onSuccess: (data) => {
-      toast.success('Tranzaksiya muvaffaqiyatli yaratildi');
+    onSuccess: () => {
+      toast.success('To‘lov yozildi');
       void invalidateAfter(queryClient, 'recurringRun');
-      return data;
     },
-    onError: (err: unknown) => {
-      toast.error(apiErrorToMessage(err));
-    },
+    onError: (err: unknown) => toast.error(apiErrorToMessage(err)),
   });
 }

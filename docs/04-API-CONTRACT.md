@@ -295,6 +295,13 @@ ortiqcha summa — `422 DEBT_OVERPAYMENT`, **hech narsa o'zgarmaydi**; to'langan
 `POST /debts/:id/settle` — `{ accountId, paidAt?, note? }`, qoldiqning hammasi.
 `DELETE /debts/:id/payments/:paymentId` — to'lov va uning ledger yozuvi atomar bekor qilinadi, status qayta hisoblanadi.
 
+To'lov obyekti (`payment` va `GET /debts/:id/payments`, yangisi birinchi):
+```json
+{ "id": "p1…", "amount": "20000000", "paidAt": "2026-08-29", "note": "birinchi qism",
+  "account": { "id": "a1…", "name": "Humo karta", "icon": "💳" }, "createdAt": "2026-08-29T10:15:00.000Z" }
+```
+`account` — to'lovning ledger yozuvi qaysi hisobda turgani (pul shu hisobga tushgan yoki undan chiqqan).
+
 ### `GET /debts`
 Query: `direction`, `status`, `overdue=true`, `page`, `limit`. `meta.summary`:
 `{ owedToMe, iOwe, net, overdueCount }`.

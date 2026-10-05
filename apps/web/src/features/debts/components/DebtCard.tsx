@@ -1,256 +1,192 @@
-import { useEffect, useRef, useState } from 'react';
-import { DebtResponse, formatMoney } from '@fintrack/shared';
-import { Card, CardContent } from '../../../components/ui/Card';
-import { Badge } from '../../../components/ui/Badge';
+import { forwardRef } from 'react';
+import { CalendarDays, ChevronDown, ChevronUp, EllipsisVertical, HandCoins, Pencil, Trash2 } from 'lucide-react';
+import type { DebtPaymentResponse, DebtResponse } from '@fintrack/shared';
+import { Avatar } from '../../../components/ui/Avatar';
 import { Button } from '../../../components/ui/Button';
-import { Amount } from '../../../components/ui/Amount';
-import { useDebtPayments } from '../hooks/useDebts';
-import {
-  Calendar,
-  Phone,
-  Clock,
-  AlertTriangle,
-  CreditCard,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Trash2,
-} from 'lucide-react';
-import { cn } from '../../../lib/utils';
+import { Chip } from '../../../components/ui/Chip';
+import { Menu } from '../../../components/ui/Menu';
+import { Progress } from '../../../components/ui/Progress';
 import { formatDate } from '../../../lib/format';
+import { formatAmount, formatAmountNumber } from '../../../lib/money';
+import { cn } from '../../../lib/utils';
+import { useDebtPayments } from '../hooks/useDebts';
+import { DEBT_STATUS, dueChip, dueText, paidPercent } from '../debtView';
 
-interface DebtCardProps {
-  debt: DebtResponse;
-  onAddPayment: (debt: DebtResponse) => void;
+export interface DebtCardActions {
+  onPay: (debt: DebtResponse) => void;
   onSettle: (debt: DebtResponse) => void;
-  onDelete: (id: string) => void;
-  /** Opened from a transaction ("Qarzga o‘tish"): scroll to it, outline it, show its payments. */
-  highlighted?: boolean;
+  onEdit: (debt: DebtResponse) => void;
+  onDelete: (debt: DebtResponse) => void;
+  onDeletePayment: (debt: DebtResponse, payment: DebtPaymentResponse) => void;
 }
 
-export function DebtCard({
-  debt,
-  onAddPayment,
-  onSettle,
-  onDelete,
-  highlighted = false,
-}: DebtCardProps) {
-  const [showHistory, setShowHistory] = useState(highlighted);
-  const rootRef = useRef<HTMLDivElement>(null);
+export interface DebtCardProps {
+  debt: DebtResponse;
+  actions: DebtCardActions;
+  historyOpen: boolean;
+  onToggleHistory: () => void;
+  /** Reached through "Qarzga o‘tish": ringed. */
+  focused?: boolean;
+}
 
-  useEffect(() => {
-    if (!highlighted) return;
-    setShowHistory(true);
-    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [highlighted]);
-  const { data: payments = [], isLoading: loadingPayments } = useDebtPayments(
-    showHistory ? debt.id : undefined,
-  );
-
-  const isLent = debt.direction === 'I_LENT';
-  const totalAmount = BigInt(debt.amount);
-  const paidAmount = BigInt(debt.paidAmount);
-  const remainingAmount = BigInt(debt.remainingAmount);
-
-  const percentPaid = totalAmount > 0n ? Number((paidAmount * 100n) / totalAmount) : 0;
-  const isPaid = debt.status === 'PAID';
-
+function Stat({ label, value, end, className }: { label: string; value: string; end?: boolean; className?: string }) {
   return (
-    <div ref={rootRef}>
-      <Card
-        className={cn(
-          'border border-border/60 shadow-sm hover:border-primary/40 transition-all overflow-hidden',
-          highlighted && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
-        )}
-      >
-        <CardContent className="p-5 space-y-4">
-          {/* Top Header: Person Info & Status Badge */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-foreground truncate">{debt.personName}</h3>
-                <Badge
-                  variant={
-                    isPaid ? 'success' : debt.status === 'PARTIALLY_PAID' ? 'warning' : 'outline'
-                  }
-                  className="text-[11px] font-bold"
-                >
-                  {isPaid
-                    ? 'To‘langan'
-                    : debt.status === 'PARTIALLY_PAID'
-                      ? 'Qisman to‘langan'
-                      : 'Faol'}
-                </Badge>
-              </div>
-
-              {debt.personPhone && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Phone className="h-3 w-3" />
-                  <span>{debt.personPhone}</span>
-                </p>
-              )}
-            </div>
-
-            <div className="text-right shrink-0">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                {isLent ? 'Menga berishi kerak' : 'Men berishim kerak'}
-              </span>
-              <span className="text-lg font-black text-foreground">
-                <Amount value={debt.amount} showSign={false} className="text-lg" />
-              </span>
-            </div>
-          </div>
-
-          {/* Progress Bar (To'langan ulush va qoldiq) */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-medium">
-                To‘langan:{' '}
-                <b className="text-foreground">
-                  {formatMoney(paidAmount, { showFraction: false })}
-                </b>{' '}
-                ({percentPaid}%)
-              </span>
-              <span className="font-bold flex items-center gap-1">
-                <span className="text-muted-foreground font-medium">Qoldiq:</span>
-                <span className={cn(isPaid ? 'text-success' : 'text-primary')}>
-                  {formatMoney(remainingAmount)}
-                </span>
-              </span>
-            </div>
-
-            <div className="h-2.5 w-full rounded-full bg-muted/60 overflow-hidden relative">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-all duration-500',
-                  isPaid ? 'bg-success' : percentPaid > 0 ? 'bg-primary' : 'bg-muted-foreground/30',
-                )}
-                style={{ width: `${Math.min(100, percentPaid)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Due Date & Alerts */}
-          <div className="flex items-center justify-between flex-wrap gap-2 text-xs pt-1 border-t border-border/40">
-            <div className="flex items-center gap-3">
-              {debt.dueDate ? (
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>Muddat: {formatDate(debt.dueDate)}</span>
-                </span>
-              ) : (
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>Muddatsiz</span>
-                </span>
-              )}
-
-              {debt.isOverdue && !isPaid && (
-                <span className="inline-flex items-center gap-1 text-destructive font-bold bg-destructive/10 px-2 py-0.5 rounded-md">
-                  <AlertTriangle className="h-3 w-3" />
-                  Muddati o‘tgan!
-                </span>
-              )}
-
-              {!debt.isOverdue && debt.daysLeft !== null && debt.daysLeft <= 3 && !isPaid && (
-                <span className="inline-flex items-center gap-1 text-warning font-bold bg-warning/10 px-2 py-0.5 rounded-md">
-                  <Clock className="h-3 w-3" />
-                  {debt.daysLeft} kun qoldi
-                </span>
-              )}
-            </div>
-
-            {debt.note && (
-              <span className="text-muted-foreground italic truncate max-w-xs text-[11px]">
-                &ldquo;{debt.note}&rdquo;
-              </span>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowHistory(!showHistory)}
-              className="text-xs h-8 text-muted-foreground hover:text-foreground"
-            >
-              {showHistory ? (
-                <ChevronUp className="h-3.5 w-3.5 mr-1" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5 mr-1" />
-              )}
-              To‘lovlar tarixi
-            </Button>
-
-            <div className="flex items-center gap-2">
-              {!isPaid && (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onAddPayment(debt)}
-                    className="text-xs h-8 font-bold"
-                  >
-                    <CreditCard className="h-3.5 w-3.5 mr-1 text-primary" />
-                    To‘lov kiritish
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => onSettle(debt)}
-                    className="text-xs h-8 font-bold text-success hover:text-success"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-success" />
-                    To‘liq yopish
-                  </Button>
-                </>
-              )}
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(debt.id)}
-                className="text-xs h-8 text-destructive hover:bg-destructive/10"
-                title="Qarzni o‘chirish"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Payment History Accordion */}
-          {showHistory && (
-            <div className="mt-3 p-3 rounded-xl bg-muted/40 border border-border/50 space-y-2 text-xs">
-              <h4 className="font-bold text-foreground">To‘lovlar Tarixi</h4>
-              {loadingPayments ? (
-                <p className="text-muted-foreground">Yuklanmoqda...</p>
-              ) : payments.length === 0 ? (
-                <p className="text-muted-foreground">Hozircha hech qanday to‘lov kiritilmagan.</p>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {payments.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between py-1.5">
-                      <div>
-                        <span className="font-semibold text-foreground">
-                          {formatDate(p.paidAt)}
-                        </span>
-                        {p.note && <span className="text-muted-foreground ml-2">({p.note})</span>}
-                      </div>
-                      <span className="font-black text-success">+{formatMoney(p.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className={cn('flex min-w-0 flex-col gap-0.5', end && 'items-end text-right')}>
+      <span className="text-[12px] text-text-muted">{label}</span>
+      <span className={cn('whitespace-nowrap text-[14px] font-semibold tabular-nums sm:text-[15px]', className)}>{value}</span>
     </div>
   );
 }
+
+function History({ debt, onDelete }: { debt: DebtResponse; onDelete: (payment: DebtPaymentResponse) => void }) {
+  const payments = useDebtPayments(debt.id);
+  if (payments.isLoading) return <span className="py-2.5 text-[13px] text-text-muted">Yuklanmoqda…</span>;
+  if (payments.isError) return <span className="py-2.5 text-[13px] text-danger">To‘lovlarni yuklab bo‘lmadi</span>;
+  const list = payments.data ?? [];
+  if (list.length === 0) return <span className="py-2.5 text-[13px] text-text-muted">Hali to‘lov yo‘q</span>;
+  return (
+    <ul className="-mt-1.5 flex flex-col" aria-label="To‘lovlar tarixi">
+      {list.map((payment) => (
+        <li key={payment.id} className="flex min-h-[52px] items-center gap-2.5 border-b border-border last:border-b-0">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-debt-soft text-debt" aria-hidden>
+            <HandCoins className="h-4 w-4" />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-[13.5px] font-medium">{payment.note || 'To‘lov'}</span>
+            <span className="truncate text-[12px] text-text-muted">
+              {formatDate(payment.paidAt)} · {payment.account.name}
+            </span>
+          </div>
+          <span className="whitespace-nowrap text-[14px] font-semibold text-debt">{formatAmount(payment.amount)}</span>
+          <button
+            type="button"
+            onClick={() => onDelete(payment)}
+            aria-label="To‘lovni o‘chirish"
+            title="To‘lovni o‘chirish"
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-danger-soft hover:text-danger focus-ring"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export const DebtCard = forwardRef<HTMLElement, DebtCardProps>(function DebtCard(
+  { debt, actions, historyOpen, onToggleHistory, focused },
+  ref,
+) {
+  const lent = debt.direction === 'I_LENT';
+  const paid = debt.status === 'PAID';
+  const status = DEBT_STATUS[debt.status];
+  const chip = dueChip(debt);
+  const percent = paidPercent(debt);
+  const remaining = BigInt(debt.remainingAmount);
+  const payments = useDebtPayments(debt.id, { enabled: historyOpen });
+  const Chevron = historyOpen ? ChevronUp : ChevronDown;
+
+  return (
+    <article
+      ref={ref}
+      aria-label={debt.personName}
+      className={cn(
+        'flex flex-col gap-3.5 rounded-[20px] border bg-card p-4 sm:p-5',
+        focused
+          ? 'border-ring shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_22%,transparent)]'
+          : debt.isOverdue
+            ? 'border-[color-mix(in_oklab,var(--danger)_40%,var(--border))]'
+            : 'border-border',
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar name={debt.personName} size={44} letters={2} tone={lent ? 'debt' : 'neutral'} className="text-[15px]" />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="truncate text-[16px] font-semibold leading-[22px]">{debt.personName}</span>
+          <span className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-muted">
+            <span className={cn('whitespace-nowrap font-medium', lent ? 'text-debt' : 'text-text-secondary')}>{lent ? 'Menga qarzdor' : 'Men qarzdorman'}</span>
+            {debt.personPhone && (
+              <>
+                <span aria-hidden>·</span>
+                <a href={`tel:${debt.personPhone.replace(/\s/g, '')}`} className="whitespace-nowrap text-text-secondary hover:text-text hover:underline">
+                  {debt.personPhone}
+                </a>
+              </>
+            )}
+          </span>
+        </div>
+        <Chip tone={status.tone} dot>
+          {status.label}
+        </Chip>
+        <Menu
+          label="Amallar"
+          width={200}
+          className="-mr-2 -mt-[5px]"
+          items={[
+            { label: 'Tahrirlash', icon: Pencil, onSelect: () => actions.onEdit(debt) },
+            { label: 'O‘chirish', icon: Trash2, danger: true, separatorBefore: true, onSelect: () => actions.onDelete(debt) },
+          ]}
+          trigger={(props) => (
+            <button
+              {...props}
+              type="button"
+              aria-label="Amallar"
+              className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-text-secondary hover:bg-secondary focus-ring aria-expanded:bg-secondary"
+            >
+              <EllipsisVertical className="h-[18px] w-[18px]" aria-hidden />
+            </button>
+          )}
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Stat label="Asl summa" value={formatAmountNumber(debt.amount)} />
+        <Stat label={`To‘langan · ${percent}%`} value={formatAmountNumber(debt.paidAmount)} />
+        <Stat
+          label="Qoldiq, so‘m"
+          value={formatAmountNumber(debt.remainingAmount)}
+          end
+          className={remaining === 0n ? 'text-success' : debt.isOverdue ? 'text-danger' : undefined}
+        />
+      </div>
+      <Progress value={percent} tone={paid ? 'success' : 'debt'} aria-label={`${percent}% to‘langan`} />
+
+      <div className="flex flex-wrap items-center gap-2 text-[13px] text-text-secondary">
+        <CalendarDays className="h-4 w-4" aria-hidden />
+        <span>{dueText(debt)}</span>
+        {chip && (
+          <Chip tone={chip.tone} className="font-semibold">
+            {chip.label}
+          </Chip>
+        )}
+      </div>
+
+      {debt.note && <p className="rounded-md bg-surface px-3 py-2.5 text-[13.5px] leading-[19px] text-text-secondary">{debt.note}</p>}
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+        {!paid && (
+          <>
+            <Button size="sm" onClick={() => actions.onPay(debt)}>
+              To‘lov kiritish
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => actions.onSettle(debt)}>
+              To‘liq yopish
+            </Button>
+          </>
+        )}
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={onToggleHistory}
+          aria-expanded={historyOpen}
+          className="flex h-9 items-center gap-1 whitespace-nowrap rounded-full pl-2.5 pr-1.5 text-[13px] font-medium text-text-secondary hover:bg-secondary hover:text-text focus-ring"
+        >
+          To‘lovlar tarixi{payments.data ? ` (${payments.data.length})` : ''}
+          <Chevron className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+
+      {historyOpen && <History debt={debt} onDelete={(payment) => actions.onDeletePayment(debt, payment)} />}
+    </article>
+  );
+});

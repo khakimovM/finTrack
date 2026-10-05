@@ -48,3 +48,8 @@ export function scheduleLabel({ frequency, dayOfCycle, startsAt }: Schedule): st
       return `Har yili, ${formatDate(startsAt).replace(/, \d{4}$/, '')}`;
   }
 }
+
+/** The category names the rule; without one the note does, then the type. */
+export function ruleTitle(rule: Pick<RecurringRuleResponse, 'category' | 'note' | 'type'>): string {
+  return rule.category?.name ?? (rule.note || (rule.type === 'INCOME' ? 'Kirim' : 'Chiqim'));
+}

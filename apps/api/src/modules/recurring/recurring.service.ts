@@ -14,7 +14,7 @@ import {
   RecurringRuleWithRelations,
 } from './recurring.repository';
 import { RecurringRunnerService } from './recurring-runner.service';
-import { defaultDayOfCycle, firstOccurrenceOnOrAfter } from './recurrence';
+import { defaultDayOfCycle, firstOccurrenceOnOrAfter } from '@fintrack/shared';
 import { AccountAccessService } from '../accounts/account-access.service';
 import { BalanceGuardService } from '../accounts/balance-guard.service';
 import { CategoriesRepository } from '../categories/categories.repository';

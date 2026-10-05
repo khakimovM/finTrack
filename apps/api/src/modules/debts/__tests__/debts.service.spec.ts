@@ -1,7 +1,8 @@
-import { Debt, DebtPayment, Transaction } from '@prisma/client';
+import { Debt, Transaction } from '@prisma/client';
 import { DebtsService } from '../debts.service';
 import { DebtPaymentsService } from '../debt-payments.service';
 import { DebtsRepository, DebtWithPayments } from '../debts.repository';
+import type { DebtPaymentWithAccount } from '../debt.mapper';
 import { AccountAccessService } from '../../accounts/account-access.service';
 import { BalanceService } from '../../accounts/balance.service';
 import { BalanceGuardService } from '../../accounts/balance-guard.service';
@@ -218,7 +219,9 @@ describe('DebtsService', () => {
 });
 
 describe('DebtPaymentsService', () => {
-  function paymentResult(amount: bigint): { payment: DebtPayment; transaction: Transaction } {
+  const humo = { id: ACCOUNT, name: 'Humo karta', icon: '💳' };
+
+  function paymentResult(amount: bigint): { payment: DebtPaymentWithAccount; transaction: Transaction } {
     return {
       payment: {
         id: 'p1',
@@ -228,6 +231,7 @@ describe('DebtPaymentsService', () => {
         paidAt: new Date('2026-09-26T00:00:00Z'),
         note: null,
         createdAt: created,
+        transaction: { account: humo },
       },
       transaction: ledgerRow({ id: 't1', type: 'LOAN_REPAY_IN', amount }),
     };
@@ -246,6 +250,7 @@ describe('DebtPaymentsService', () => {
     expect(t.repository.setStatus).toHaveBeenCalledWith(t.prisma.tx, USER, DEBT_ID, 'PARTIALLY_PAID', null);
     expect(t.guard.assertCanDebit).not.toHaveBeenCalled();
     expect(res.debt.remainingAmount).toBe('600000');
+    expect(res.payment.account).toEqual(humo);
   });
 
   it('final payment flips status to PAID and stamps paidAt in the same transaction', async () => {

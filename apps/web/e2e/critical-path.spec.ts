@@ -38,9 +38,11 @@ test('critical path: Telegram sign-up → income and expense → dashboard → d
   await expect(page.getByText('Ali Valiyev').first()).toBeVisible();
 
   await page.getByRole('button', { name: /To‘lov kiritish/ }).first().click();
-  await page.getByLabel('To‘lov summasi').fill('500000');
-  await page.getByRole('button', { name: 'To‘lovni qabul qilish' }).click();
-  await expect(page.getByText('1 000 000 so‘m').first()).toBeVisible();
+  const payment = page.getByRole('dialog', { name: 'To‘lov kiritish' });
+  await payment.getByLabel('To‘lov summasi').fill('500000');
+  await payment.getByRole('button', { name: 'Saqlash' }).click();
+  // 1 500 000 lent, 500 000 back: what is left is owed to me.
+  await expect(page.getByRole('button', { name: /Menga qarzdor/ })).toContainText('1 000 000');
 
   // A loan row cannot be edited or deleted from the list; it leads to its debt instead.
   await page.goto('/app/transactions');
@@ -51,10 +53,11 @@ test('critical path: Telegram sign-up → income and expense → dashboard → d
 
   // A monthly rule books today's occurrence right away when today is its day.
   await page.goto('/app/recurring');
-  await page.getByRole('button', { name: 'Yangi qoida' }).click();
-  await page.getByLabel('Summa').fill('300000');
-  await page.getByLabel('Izoh (ixtiyoriy)').fill('Internet');
-  await page.getByRole('button', { name: 'Saqlash' }).click();
+  await page.getByRole('button', { name: 'Yangi qoida' }).first().click();
+  const ruleForm = page.getByRole('dialog', { name: 'Yangi takroriy to‘lov' });
+  await ruleForm.getByLabel('Summa').fill('300000');
+  await ruleForm.getByLabel('Izoh').fill('Internet');
+  await ruleForm.getByRole('button', { name: 'Saqlash' }).click();
   await expect(page.getByText('Internet')).toBeVisible();
   await expect(page.getByText(/Har oy, \d+-kuni/)).toBeVisible();
 

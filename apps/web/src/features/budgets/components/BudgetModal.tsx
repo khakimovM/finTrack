@@ -1,76 +1,63 @@
-import { useInitOnOpen } from '../../../lib/useInitOnOpen';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { CreateBudgetInputSchema, CreateBudgetInput, BudgetStatusItem } from '@fintrack/shared';
-import { useCreateBudget, useUpdateBudget } from '../hooks/useBudgets';
-import { useCategories } from '../../categories/hooks/useCategories';
+import { useState, type FormEvent } from 'react';
+import type { BudgetStatusItem } from '@fintrack/shared';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { MoneyInput } from '../../../components/ui/MoneyInput';
-import { Select } from '../../../components/ui/Select';
+import { ChoiceGrid } from '../../../components/ui/ChoiceGrid';
+import { formatMonth } from '../../../lib/format';
+import { apiErrorCode, apiErrorToMessage } from '../../../lib/apiError';
+import { useInitOnOpen } from '../../../lib/useInitOnOpen';
+import { toast } from '../../../stores/toastStore';
+import { useCategories } from '../../categories/hooks/useCategories';
+import { useCreateBudget, useUpdateBudget } from '../hooks/useBudgets';
 
-interface BudgetModalProps {
+export interface BudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** "YYYY-MM". */
   month: string;
+  /** Budgets the month already has: their categories are marked and refused. */
+  existing: BudgetStatusItem[];
+  /** Edit this budget's limit; its category and month stay. */
   editItem?: BudgetStatusItem | null;
 }
 
-export function BudgetModal({ isOpen, onClose, month, editItem }: BudgetModalProps) {
-  const { data: categoriesData } = useCategories();
-  const expenseCategories = (categoriesData ?? []).filter((c) => c.type === 'EXPENSE');
+const TAKEN = 'Bu oy uchun ushbu kategoriyada byudjet allaqachon bor';
 
+export function BudgetModal({ isOpen, onClose, month, existing, editItem = null }: BudgetModalProps) {
+  const editing = editItem !== null;
+  const { data: tree = [] } = useCategories();
   const createBudget = useCreateBudget();
   const updateBudget = useUpdateBudget();
+  const [categoryId, setCategoryId] = useState('');
+  const [limit, setLimit] = useState('');
+  const [error, setError] = useState<{ category?: string; limit?: string }>({});
 
-  const isEdit = Boolean(editItem);
-
-  const {
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateBudgetInput>({
-    resolver: zodResolver(CreateBudgetInputSchema),
-    defaultValues: {
-      categoryId: editItem?.category?.id ?? expenseCategories[0]?.id ?? '',
-      month,
-      limitAmount: editItem?.limitAmount ?? '',
-    },
+  useInitOnOpen(isOpen, true, () => {
+    setCategoryId(editItem?.category.id ?? '');
+    setLimit(editItem?.limitAmount ?? '');
+    setError({});
   });
 
-  // Waits for the categories so a new budget starts on the first expense category.
-  useInitOnOpen(isOpen, editItem != null || categoriesData !== undefined, () => {
-    if (editItem) {
-      setValue('categoryId', editItem.category.id);
-      setValue('month', month);
-      setValue('limitAmount', editItem.limitAmount);
-    } else {
-      reset({ categoryId: expenseCategories[0]?.id ?? '', month, limitAmount: '' });
-    }
-  });
+  // Budgets are set on top-level expense categories; their subcategories count towards them.
+  const parents = tree.filter((c) => c.type === 'EXPENSE' && c.parentId === null);
+  const budgeted = new Set(existing.map((b) => b.category.id));
+  const taken = !editing && budgeted.has(categoryId);
+  const busy = createBudget.isPending || updateBudget.isPending;
+  const monthName = formatMonth(month);
 
-  const categoryIdValue = watch('categoryId');
-  const limitAmountValue = watch('limitAmount');
-
-  const onSubmit = async (data: CreateBudgetInput) => {
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!editing && !categoryId) return setError({ category: 'Kategoriyani tanlang' });
+    if (taken) return;
+    if (!(/^\d+$/.test(limit) && BigInt(limit) > 0n)) return setError({ limit: 'Limit 0 dan katta bo‘lishi kerak' });
     try {
-      if (isEdit && editItem) {
-        await updateBudget.mutateAsync({
-          id: editItem.id,
-          data: { limitAmount: data.limitAmount },
-        });
-      } else {
-        await createBudget.mutateAsync({
-          ...data,
-          month,
-        });
-      }
-      reset();
+      if (editItem) await updateBudget.mutateAsync({ id: editItem.id, data: { limitAmount: limit } });
+      else await createBudget.mutateAsync({ categoryId, month, limitAmount: limit });
       onClose();
-    } catch {
-      // Error handled in hook toast
+    } catch (err) {
+      if (apiErrorCode(err) === 'BUDGET_EXISTS') setError({ category: TAKEN });
+      else toast.error(apiErrorToMessage(err));
     }
   };
 
@@ -78,59 +65,67 @@ export function BudgetModal({ isOpen, onClose, month, editItem }: BudgetModalPro
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEdit ? 'Byudjet Limitini Yangilash' : 'Yangi Byudjet Belgilash'}
-      description={`Tanlangan oy (${month}) uchun xarajat kategoriyasiga limit belgilang.`}
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-        {!isEdit ? (
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-foreground">Xarajat Kategoriyasi *</label>
-            <Select
-              value={categoryIdValue || expenseCategories[0]?.id || ''}
-              onChange={(e) => setValue('categoryId', e.target.value)}
-              options={expenseCategories.map((c) => ({
-                value: c.id,
-                label: `${c.icon} ${c.name}`,
-              }))}
-              error={errors.categoryId?.message}
-            />
-          </div>
-        ) : (
-          <div className="p-3 rounded-xl bg-muted/40 border border-border/50 flex items-center gap-2.5">
-            <span className="text-xl">{editItem?.category.icon}</span>
-            <div>
-              <span className="text-xs font-bold text-foreground block">
-                {editItem?.category.name}
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Kategoriya limitini tahrirlash
-              </span>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-foreground">Oylik Limit Summasi *</label>
-          <MoneyInput
-            value={limitAmountValue}
-            onChange={(tiyinStr: string) => setValue('limitAmount', tiyinStr)}
-            placeholder="0"
-            error={errors.limitAmount?.message}
-          />
-        </div>
-
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/40">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+      title={editing ? 'Byudjetni tahrirlash' : 'Byudjet belgilash'}
+      description={`${monthName} uchun oylik xarajat limiti`}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
             Bekor qilish
           </Button>
-          <Button
-            type="submit"
-            size="sm"
-            loading={isSubmitting || createBudget.isPending || updateBudget.isPending}
-          >
-            {isEdit ? 'Yangilash' : 'Saqlash'}
+          <Button type="submit" form="budget-form" loading={busy} disabled={taken}>
+            Saqlash
           </Button>
-        </div>
+        </>
+      }
+    >
+      <form id="budget-form" onSubmit={(e) => void submit(e)} className="flex flex-col gap-[18px]" noValidate>
+        {editItem ? (
+          <div className="flex flex-col gap-2">
+            <span className="text-[13px] font-medium text-text-secondary">Xarajat kategoriyasi</span>
+            <dl className="flex flex-col rounded-md border border-border bg-surface px-3.5 py-1">
+              {[
+                ['Kategoriya', `${editItem.category.icon} ${editItem.category.name}`],
+                ['Oy', monthName],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-4 border-b border-border py-2.5 text-[14px] last:border-b-0">
+                  <dt className="text-text-muted">{label}</dt>
+                  <dd className="text-right font-medium">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="text-[12.5px] leading-[17px] text-text-muted">Kategoriyani o‘zgartirish uchun byudjetni o‘chirib, yangisini belgilang.</p>
+          </div>
+        ) : (
+          <ChoiceGrid
+            label="Xarajat kategoriyasi"
+            columns={2}
+            phoneColumns={2}
+            value={categoryId}
+            onChange={(id) => {
+              setCategoryId(id);
+              setError({});
+            }}
+            error={taken ? TAKEN : error.category}
+            options={parents.map((c) => ({
+              value: c.id,
+              label: c.name,
+              emoji: c.icon,
+              color: c.color,
+              sub: budgeted.has(c.id) ? 'Byudjet bor' : undefined,
+            }))}
+          />
+        )}
+        <MoneyInput
+          label="Oylik limit"
+          size="md"
+          autoFocus={editing}
+          value={limit}
+          onChange={(value) => {
+            setLimit(value);
+            setError((prev) => ({ ...prev, limit: undefined }));
+          }}
+          error={error.limit}
+        />
       </form>
     </Modal>
   );

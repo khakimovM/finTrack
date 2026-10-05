@@ -12,6 +12,12 @@ import { ListDebtsQuery } from '@fintrack/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { Db } from '../../infra/prisma/prisma.types';
 import { toBigInt } from '../../infra/prisma/ledger-sql';
+import type { DebtPaymentWithAccount } from './debt.mapper';
+
+/** The account of a payment's ledger row, for "Humo karta" in the payment history. */
+export const paymentAccountInclude = {
+  transaction: { select: { account: { select: { id: true, name: true, icon: true } } } },
+} satisfies Prisma.DebtPaymentInclude;
 
 export type DebtWithPayments = Debt & { payments: DebtPayment[] };
 export type DebtPaymentWithTransaction = DebtPayment & { transaction: Transaction };
@@ -201,7 +207,7 @@ export class DebtsRepository {
     userId: string,
     debtId: string,
     data: CreatePaymentRepoData,
-  ): Promise<{ payment: DebtPayment; transaction: Transaction }> {
+  ): Promise<{ payment: DebtPaymentWithAccount; transaction: Transaction }> {
     const transaction = await db.transaction.create({
       data: {
         userId,
@@ -221,6 +227,7 @@ export class DebtsRepository {
         paidAt: data.paidAt,
         note: data.note,
       },
+      include: paymentAccountInclude,
     });
     return { payment, transaction };
   }
@@ -298,10 +305,11 @@ export class DebtsRepository {
     }));
   }
 
-  async findPayments(userId: string, debtId: string): Promise<DebtPayment[]> {
+  async findPayments(userId: string, debtId: string): Promise<DebtPaymentWithAccount[]> {
     return this.prisma.debtPayment.findMany({
       where: { debtId, debt: { userId, deletedAt: null } },
-      orderBy: { paidAt: 'desc' },
+      include: paymentAccountInclude,
+      orderBy: [{ paidAt: 'desc' }, { createdAt: 'desc' }],
     });
   }
 }

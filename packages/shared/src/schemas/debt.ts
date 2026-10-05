@@ -100,6 +100,8 @@ export const DebtPaymentResponseSchema = z.object({
   amount: z.string(),
   paidAt: z.string(),
   note: z.string().nullable(),
+  /** The account the money went to or came from (the payment's ledger row). */
+  account: z.object({ id: z.string().uuid(), name: z.string(), icon: z.string() }),
   createdAt: z.string(),
 });
 export type DebtPaymentResponse = z.infer<typeof DebtPaymentResponseSchema>;

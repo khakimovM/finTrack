@@ -1,119 +1,73 @@
-import { BudgetStatusItem, formatMoney } from '@fintrack/shared';
-import { AlertCircle, AlertTriangle, CheckCircle2, Edit2, Trash2 } from 'lucide-react';
-import { Card, CardContent } from '../../../components/ui/Card';
-import { Button } from '../../../components/ui/Button';
-import { Badge } from '../../../components/ui/Badge';
+import { Info, Pencil, Trash2 } from 'lucide-react';
+import type { BudgetStatusItem } from '@fintrack/shared';
+import { Chip } from '../../../components/ui/Chip';
+import { EmojiTile } from '../../../components/ui/EmojiTile';
+import { Progress, budgetTone } from '../../../components/ui/Progress';
+import { formatAmount, formatAmountNumber } from '../../../lib/money';
 import { cn } from '../../../lib/utils';
+
+export const BUDGET_LABEL = { success: 'Meʼyorida', warning: '80% dan oshdi', danger: 'Oshib ketdi' } as const;
 
 export interface BudgetCardProps {
   budget: BudgetStatusItem;
+  /** The category has subcategories, whose spending is counted here too. */
+  hasChildren: boolean;
   onEdit: (budget: BudgetStatusItem) => void;
-  onDelete: (id: string) => void;
+  onDelete: (budget: BudgetStatusItem) => void;
 }
 
-/** One category budget: spent / limit / remaining, coloured by its state. */
-export function BudgetCard({ budget: b, onEdit, onDelete }: BudgetCardProps) {
-  const isOk = b.state === 'OK';
-  const isWarning = b.state === 'WARNING';
-  const isExceeded = b.state === 'EXCEEDED';
+export function BudgetCard({ budget, hasChildren, onEdit, onDelete }: BudgetCardProps) {
+  const tone = budgetTone(budget.percent);
+  // The API stops `remaining` at zero; over the limit the card says by how much.
+  const left = BigInt(budget.limitAmount) - BigInt(budget.spent);
 
   return (
-    <Card className="border border-border/60 shadow-sm hover:border-primary/40 transition-all overflow-hidden">
-      <CardContent className="p-5 space-y-4">
-        {/* Card Header: Category & State Badge */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-2xl shrink-0">{b.category.icon}</span>
-            <div className="min-w-0">
-              <h3 className="text-base font-black text-foreground truncate">{b.category.name}</h3>
-              <p className="text-xs text-muted-foreground">
-                Limit: <b className="text-foreground">{formatMoney(b.limitAmount)}</b>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Badge
-              variant={isExceeded ? 'destructive' : isWarning ? 'warning' : 'success'}
-              className="text-[11px] font-bold flex items-center gap-1"
-            >
-              {isExceeded && <AlertCircle className="h-3 w-3" />}
-              {isWarning && <AlertTriangle className="h-3 w-3" />}
-              {isOk && <CheckCircle2 className="h-3 w-3" />}
-              <span>{isExceeded ? 'Oshib ketdi' : isWarning ? '80% dan oshdi' : 'Meʼyorda'}</span>
-            </Badge>
-          </div>
+    <article aria-label={budget.category.name} className="flex flex-col gap-3.5 rounded-[20px] border border-border bg-card p-4 sm:p-5">
+      <div className="flex items-center gap-3">
+        <EmojiTile emoji={budget.category.icon} color={budget.category.color} size={44} className="rounded-md text-[21px]" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-[16px] font-semibold leading-[22px]">{budget.category.name}</span>
+          <span className="whitespace-nowrap text-[13px] text-text-muted">Limit: {formatAmount(budget.limitAmount)}</span>
         </div>
-
-        {/* Progress Bar */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">
-              Sarflangan: <b className="text-foreground">{formatMoney(b.spent)}</b>
-            </span>
-            <span
-              className={cn(
-                'font-black',
-                isExceeded && 'text-destructive',
-                isWarning && 'text-warning',
-                isOk && 'text-success',
-              )}
-            >
-              {b.percent.toFixed(1)}%
-            </span>
-          </div>
-
-          <div className="h-3 w-full rounded-full bg-muted/60 overflow-hidden relative">
-            <div
-              className={cn(
-                'h-full rounded-full transition-all duration-500',
-                isExceeded && 'bg-destructive',
-                isWarning && 'bg-warning',
-                isOk && 'bg-success',
-              )}
-              style={{ width: `${Math.min(100, b.percent)}%` }}
-            />
-          </div>
-
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
-            <span>
-              {isExceeded ? (
-                <span className="text-destructive font-semibold">
-                  ⚠️ Limitdan {formatMoney(BigInt(b.spent) - BigInt(b.limitAmount))} ko‘p sarflandi
-                </span>
-              ) : (
-                <span>
-                  Qoldiq: <b className="text-foreground">{formatMoney(b.remaining)}</b>
-                </span>
-              )}
-            </span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onEdit(b)}
-            className="text-xs h-8 text-muted-foreground hover:text-foreground"
-          >
-            <Edit2 className="h-3.5 w-3.5 mr-1" />
-            Tahrirlash
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(b.id)}
-            className="text-xs h-8 text-destructive hover:bg-destructive/10"
-          >
-            <Trash2 className="h-3.5 w-3.5 mr-1" />
-            O‘chirish
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        <button
+          type="button"
+          onClick={() => onEdit(budget)}
+          aria-label="Tahrirlash"
+          title="Tahrirlash"
+          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-secondary hover:text-text focus-ring"
+        >
+          <Pencil className="h-4 w-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(budget)}
+          aria-label="O‘chirish"
+          title="O‘chirish"
+          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-danger-soft hover:text-danger focus-ring"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[14px] text-text-secondary">
+          Sarflangan <b className="font-semibold text-text">{formatAmountNumber(budget.spent)}</b> · {Math.round(budget.percent)}%
+        </span>
+        <Chip tone={tone} dot>
+          {BUDGET_LABEL[tone]}
+        </Chip>
+      </div>
+      <Progress value={budget.percent} tone={tone} aria-label={`${Math.round(budget.percent)}% sarflandi`} />
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-[13px]">
+        <span className={cn('font-medium', left >= 0n ? 'text-text-secondary' : 'text-danger')}>
+          {left >= 0n ? `Qoldiq: ${formatAmount(left)}` : `Limitdan ${formatAmount(-left)} ko‘p sarflandi`}
+        </span>
+        {hasChildren && (
+          <span className="flex items-center gap-1.5 text-text-muted">
+            <Info className="h-3.5 w-3.5" aria-hidden />
+            Subkategoriyalar ham hisobga olinadi
+          </span>
+        )}
+      </div>
+    </article>
   );
 }

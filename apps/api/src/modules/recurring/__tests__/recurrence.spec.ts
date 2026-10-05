@@ -1,5 +1,4 @@
-import { formatIsoDate, parseIsoDate } from '@fintrack/shared';
-import { defaultDayOfCycle, firstOccurrenceOnOrAfter, nextOccurrence } from '../recurrence';
+import { defaultDayOfCycle, firstOccurrenceOnOrAfter, firstRunDate, formatIsoDate, nextOccurrence, parseIsoDate } from '@fintrack/shared';
 
 const d = parseIsoDate;
 const iso = formatIsoDate;
@@ -53,5 +52,23 @@ describe('recurrence', () => {
   it('daily steps one day and never needs an anchor', () => {
     expect(defaultDayOfCycle('DAILY', d('2026-09-27'))).toBeNull();
     expect(iso(nextOccurrence(d('2026-12-31'), 'DAILY', d('2026-01-01'), null))).toBe('2027-01-01');
+  });
+});
+
+describe('firstRunDate (the form preview uses the same rule)', () => {
+  it('starts from today when the rule started in the past', () => {
+    expect(firstRunDate({ frequency: 'MONTHLY', startsAt: '2026-09-05', dayOfCycle: 5 }, '2026-10-03')).toBe('2026-10-05');
+  });
+
+  it('books today when today is the day', () => {
+    expect(firstRunDate({ frequency: 'WEEKLY', startsAt: '2026-10-03', dayOfCycle: 6 }, '2026-10-03')).toBe('2026-10-03');
+  });
+
+  it('waits for a start in the future', () => {
+    expect(firstRunDate({ frequency: 'YEARLY', startsAt: '2027-02-28' }, '2026-10-03')).toBe('2027-02-28');
+  });
+
+  it('gives nothing after the end date', () => {
+    expect(firstRunDate({ frequency: 'MONTHLY', startsAt: '2026-10-03', dayOfCycle: 20, endsAt: '2026-10-10' }, '2026-10-03')).toBeNull();
   });
 });

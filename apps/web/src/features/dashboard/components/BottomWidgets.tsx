@@ -12,6 +12,7 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { Progress, budgetTone } from '../../../components/ui/Progress';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useBudgetsStatus } from '../../budgets/hooks/useBudgets';
+import { BUDGET_LABEL } from '../../budgets/components/BudgetCard';
 import { useDebts } from '../../debts/hooks/useDebts';
 import { useTransactions } from '../../transactions/hooks/useTransactions';
 import { TYPE_LABELS } from '../../transactions/typeLabels';
@@ -19,7 +20,6 @@ import { TxTile, rowKind, rowTitle } from '../../transactions/rowView';
 import { useStatsDebts } from '../hooks/useDashboard';
 import { WidgetCard, WidgetState } from './WidgetCard';
 
-const BUDGET_LABEL = { success: 'Meʼyorida', warning: '80% dan oshdi', danger: 'Oshib ketdi' } as const;
 
 /** This month's budgets, the fullest first. */
 export function BudgetsWidget() {
