@@ -15,6 +15,8 @@ export interface ConfirmOptions {
   icon?: LucideIcon;
   /** false: a single acknowledgement button ("Tushunarli"). */
   hasCancel?: boolean;
+  /** Amber tile for "can't do that, here is why" (blocked delete, last account). */
+  warning?: boolean;
 }
 
 interface PendingConfirm extends ConfirmOptions {
@@ -47,7 +49,7 @@ function ConfirmPanel({ pending, answer }: { pending: PendingConfirm; answer: (c
           <div
             className={cn(
               'mb-2 flex h-11 w-11 items-center justify-center rounded-full',
-              destructive ? 'bg-danger-soft text-danger' : 'bg-secondary text-text',
+              destructive ? 'bg-danger-soft text-danger' : pending.warning ? 'bg-warning-soft text-warning' : 'bg-secondary text-text',
             )}
           >
             <Icon className="h-5 w-5" aria-hidden />

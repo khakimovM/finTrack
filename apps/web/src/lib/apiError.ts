@@ -20,6 +20,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   TOKEN_REUSE_DETECTED: 'Xavfsizlik sababli sessiyangiz yakunlandi, qayta kiring',
   NOT_FOUND: 'Resurs topilmadi',
   CATEGORY_EXISTS: 'Bunday nomli kategoriya allaqachon mavjud',
+  TAG_EXISTS: 'Bunday teg allaqachon mavjud',
   ACCOUNT_EXISTS: 'Bunday nomli hisob allaqachon mavjud',
   DEBT_ALREADY_PAID: 'Ushbu qarz allaqachon to‘liq to‘langan',
   INSUFFICIENT_BALANCE: 'Hisobingizda mablag‘ yetarli emas',

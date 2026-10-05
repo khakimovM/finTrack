@@ -1,143 +1,247 @@
 import { useState } from 'react';
-import { Plus, ArrowRightLeft, Wallet } from 'lucide-react';
-import { AccountResponse } from '@fintrack/shared';
+import { useNavigate } from 'react-router-dom';
+import { Archive, ArrowLeftRight, Info, Lock, Plus, Trash2, Wallet } from 'lucide-react';
+import type { AccountResponse } from '@fintrack/shared';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { Amount } from '../../components/ui/Amount';
-import { AccountCard } from '../../features/accounts/components/AccountCard';
-import { AccountModal } from '../../features/accounts/components/AccountModal';
-import { TransferModal } from '../../features/accounts/components/TransferModal';
-import { useAccounts, useArchiveAccount } from '../../features/accounts/hooks/useAccounts';
+import { Tabs } from '../../components/ui/Tabs';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { useIsMobile } from '../../lib/useMediaQuery';
+import { useSortable } from '../../lib/useSortable';
+import { apiErrorCode, apiErrorToMessage } from '../../lib/apiError';
+import { cn } from '../../lib/utils';
+import { toast } from '../../stores/toastStore';
+import { useFormStore } from '../../stores/formStore';
+import { AccountCard, type AccountActions } from '../../features/accounts/components/AccountCard';
+import { AccountModal } from '../../features/accounts/components/AccountModal';
+import {
+  useAccountsWithArchived,
+  useDeleteAccount,
+  useReorderAccounts,
+  useToggleArchiveAccount,
+  useUpdateAccount,
+} from '../../features/accounts/hooks/useAccounts';
+import { AccountsBanner, AccountsSkeleton, ReorderBar } from './AccountsPageParts';
+
+type Tab = 'active' | 'archived';
 
 export function AccountsPage() {
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const openForm = useFormStore((s) => s.open);
   const [confirmDialog, confirm] = useConfirm();
-  const { data, isLoading, isError, error, refetch } = useAccounts();
-  const archiveAccount = useArchiveAccount();
+  const { data, isLoading, isError, refetch } = useAccountsWithArchived();
+  const toggleArchive = useToggleArchiveAccount();
+  const deleteAccount = useDeleteAccount();
+  const reorder = useReorderAccounts();
+  const makeDefault = useUpdateAccount({ silent: true });
 
-  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<AccountResponse | null>(null);
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>('active');
+  const [editing, setEditing] = useState<AccountResponse | null | undefined>(undefined);
+  // The order being arranged; null outside reorder mode.
+  const [draft, setDraft] = useState<string[] | null>(null);
 
-  const accounts = data?.data ?? [];
-  const totalBalance = data?.meta?.totalBalance ?? '0';
+  const all = data?.data ?? [];
+  const active = all.filter((a) => a.archivedAt === null);
+  const archived = all.filter((a) => a.archivedAt !== null);
+  const sortable = useSortable(draft ?? active.map((a) => a.id), { onCommit: setDraft });
+  const byId = new Map(all.map((a) => [a.id, a]));
+  const shown =
+    tab === 'archived'
+      ? archived
+      : draft
+        ? sortable.order.map((id) => byId.get(id)).filter((a): a is AccountResponse => a !== undefined)
+        : active;
 
-  const handleOpenCreate = () => {
-    setEditingAccount(null);
-    setIsAccountModalOpen(true);
-  };
+  const lastActive = () =>
+    confirm({
+      title: 'Kamida bitta faol hisob qolishi kerak',
+      description: 'Avval yangi hisob qo‘shing yoki boshqasini arxivdan chiqaring.',
+      confirmLabel: 'Tushunarli',
+      hasCancel: false,
+      warning: true,
+      icon: Info,
+    });
 
-  const handleOpenEdit = (account: AccountResponse) => {
-    setEditingAccount(account);
-    setIsAccountModalOpen(true);
-  };
-
-  const handleArchive = async (id: string) => {
-    if (
-      await confirm({
-        title: 'Hisob arxivlansinmi?',
-        description:
-          'Arxivlangan hisob tranzaksiyalar tarixida saqlanadi, ammo yangi amallar uchun ko‘rsatilmaydi.',
-        confirmLabel: 'Arxivlash',
-      })
-    ) {
-      await archiveAccount.mutateAsync(id);
+  const archive = async (account: AccountResponse) => {
+    if (active.length <= 1) return void lastActive();
+    try {
+      await toggleArchive.mutateAsync(account.id);
+    } catch (err) {
+      if (apiErrorCode(err) === 'LAST_ACCOUNT') void lastActive();
+      else toast.error(apiErrorToMessage(err));
     }
   };
 
-  const headerActions = (
-    <>
-      {accounts.length >= 2 && (
-        <Button variant="outline" onClick={() => setIsTransferModalOpen(true)}>
-          <ArrowRightLeft className="h-[18px] w-[18px]" aria-hidden />
-          O‘tkazma
-        </Button>
+  const actions: AccountActions = {
+    onOpen: (account) => navigate(`/app/transactions?accountId=${encodeURIComponent(account.id)}`),
+    onEdit: (account) => setEditing(account),
+    onMakeDefault: (account) =>
+      makeDefault
+        .mutateAsync({ id: account.id, data: { isDefault: true } })
+        .then(() => toast.success(`“${account.name}” asosiy hisob qilindi`))
+        .catch((err: unknown) => toast.error(apiErrorToMessage(err))),
+    onArchive: async (account) => {
+      if (active.length <= 1) return void lastActive();
+      const ok = await confirm({
+        title: 'Hisob arxivlansinmi?',
+        description: 'Arxivlangan hisob tarixda saqlanadi, ammo yangi amallar uchun ko‘rsatilmaydi.',
+        confirmLabel: 'Arxivlash',
+        icon: Archive,
+      });
+      if (ok) await archive(account);
+    },
+    onUnarchive: async (account) => {
+      await toggleArchive.mutateAsync(account.id).catch((err: unknown) => toast.error(apiErrorToMessage(err)));
+      if (archived.length <= 1) setTab('active');
+    },
+    onDelete: async (account) => {
+      if (account.transactionCount > 0) {
+        const isArchived = account.archivedAt !== null;
+        const ok = await confirm({
+          title: 'Hisobda tranzaksiyalar bor. O‘chirish o‘rniga arxivlang',
+          description: isArchived
+            ? `“${account.name}” hisobida ${account.transactionCount} ta tranzaksiya bor, shuning uchun u arxivda saqlanadi.`
+            : `“${account.name}” hisobida ${account.transactionCount} ta tranzaksiya bor. Arxivlansa, ular tarixda saqlanib qoladi.`,
+          confirmLabel: isArchived ? 'Tushunarli' : 'Arxivlash',
+          hasCancel: !isArchived,
+          warning: true,
+          icon: Lock,
+        });
+        if (ok && !isArchived) await archive(account);
+        return;
+      }
+      if (account.archivedAt === null && active.length <= 1) return void lastActive();
+      const ok = await confirm({
+        title: 'Hisob o‘chirilsinmi?',
+        description: 'Bu hisobda hech qanday yozuv yo‘q, u butunlay o‘chiriladi.',
+        confirmLabel: 'O‘chirish',
+        destructive: true,
+        icon: Trash2,
+      });
+      if (!ok) return;
+      try {
+        await deleteAccount.mutateAsync(account.id);
+      } catch (err) {
+        if (apiErrorCode(err) === 'LAST_ACCOUNT') void lastActive();
+        // Someone added a transaction meanwhile: the history rule wins, the account stays.
+        else toast.error(apiErrorToMessage(err));
+      }
+    },
+  };
+
+  const saveOrder = async () => {
+    if (!draft) return;
+    await reorder
+      .mutateAsync({ items: draft.map((id, index) => ({ id, sortOrder: index + 1 })) })
+      .then(() => setDraft(null))
+      .catch(() => undefined);
+  };
+
+  const openNew = () => setEditing(null);
+  const canTransfer = active.length >= 2;
+  const transferButton = canTransfer && (
+    <Button variant="outline" onClick={() => openForm({ kind: 'transfer' })}>
+      <ArrowLeftRight className="h-4 w-4" aria-hidden />
+      O‘tkazma
+    </Button>
+  );
+  const newButton = (
+    <Button onClick={openNew}>
+      <Plus className="h-[18px] w-[18px]" aria-hidden />
+      Yangi hisob
+    </Button>
+  );
+
+  const list = shown.length > 0 && (
+    <div
+      className={cn(
+        isMobile
+          ? 'flex flex-col rounded-[20px] border border-border bg-card px-4'
+          : 'grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4',
       )}
-      <Button onClick={handleOpenCreate}>
-        <Plus className="h-[18px] w-[18px]" aria-hidden />
-        Yangi hisob
-      </Button>
-    </>
+    >
+      {shown.map((account) => (
+        <AccountCard
+          key={account.id}
+          account={account}
+          actions={actions}
+          compact={isMobile}
+          handle={draft && account.archivedAt === null ? sortable.handleProps(account.id) : undefined}
+          dragging={sortable.dragId === account.id}
+          sortProps={draft ? sortable.itemProps(account.id) : undefined}
+        />
+      ))}
+    </div>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Hisoblar"
         subtitle="Bank kartalari, naqd pul va jamg‘armalar"
-        actions={headerActions}
-        mobileActions={headerActions}
+        actions={
+          <>
+            {transferButton}
+            {newButton}
+          </>
+        }
+        mobileActionsLayout={canTransfer ? 'lead' : 'equal'}
+        mobileActions={
+          <>
+            {transferButton}
+            {newButton}
+          </>
+        }
       />
 
-      {/* Total Balance Banner */}
-      <div className="p-6 rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
-            <Wallet className="h-6 w-6" />
-          </div>
-          <div>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Barcha hisoblardagi jami balans
-            </span>
-            <div className="mt-1">
-              <Amount value={totalBalance} showSign={false} className="text-2xl sm:text-3xl" />
-            </div>
-          </div>
-        </div>
+      <AccountsBanner total={data?.meta.totalBalance ?? '0'} activeCount={active.length} />
 
-        <div className="text-xs text-muted-foreground sm:text-right">
-          <p className="font-semibold text-foreground">Faol hisoblar: {accounts.length} ta</p>
-          <p className="mt-0.5">Valyuta: UZS (O‘zbek so‘mi)</p>
-        </div>
+      <div className={cn('flex flex-wrap items-center gap-2', draft === null && 'max-sm:flex-nowrap')}>
+        <Tabs
+          aria-label="Hisoblar"
+          value={tab}
+          onChange={(next) => {
+            setTab(next);
+            setDraft(null);
+          }}
+          items={[
+            { value: 'active', label: 'Faol', count: active.length },
+            { value: 'archived', label: 'Arxiv', count: archived.length },
+          ]}
+        />
+        <span className="flex-1" />
+        {tab === 'active' && !isLoading && !isError && (
+          <ReorderBar
+            reordering={draft !== null}
+            canStart={active.length > 1}
+            saving={reorder.isPending}
+            onStart={() => setDraft(active.map((a) => a.id))}
+            onCancel={() => setDraft(null)}
+            onSave={() => void saveOrder()}
+          />
+        )}
       </div>
 
-      {/* States: Loading, Error, Empty, Success */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Skeleton className="h-44 w-full rounded-2xl" />
-          <Skeleton className="h-44 w-full rounded-2xl" />
-          <Skeleton className="h-44 w-full rounded-2xl" />
-        </div>
+        <AccountsSkeleton compact={isMobile} />
       ) : isError ? (
-        <ErrorState
-          message={error instanceof Error ? error.message : 'Hisoblarni yuklab bo‘lmadi'}
-          onRetry={() => refetch()}
-        />
-      ) : accounts.length === 0 ? (
+        <ErrorState title="Hisoblarni yuklab bo‘lmadi" onRetry={() => void refetch()} className="rounded-[20px] border border-border bg-card" />
+      ) : shown.length === 0 ? (
         <EmptyState
-          title="Hisoblar mavjud emas"
-          description="Moliyaviy amallaringizni boshlash uchun dastlabki bank kartangiz yoki naqd pul hamyoningizni qo‘shing."
-          action={<Button onClick={handleOpenCreate}>Yangi hisob ochish</Button>}
+          icon={<Wallet className="h-6 w-6" aria-hidden />}
+          title={tab === 'archived' ? 'Arxiv bo‘sh' : 'Hisoblar mavjud emas'}
+          description={tab === 'archived' ? 'Arxivlangan hisoblar shu yerda ko‘rinadi.' : 'Birinchi kartangiz yoki naqd pul hamyoningizni qo‘shing.'}
+          action={tab === 'active' ? <Button onClick={openNew}>Yangi hisob ochish</Button> : undefined}
+          className="rounded-[20px] border border-border bg-card"
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {accounts.map((account) => (
-            <AccountCard
-              key={account.id}
-              account={account}
-              onEdit={handleOpenEdit}
-              onArchive={handleArchive}
-              isArchiving={archiveAccount.isPending}
-            />
-          ))}
-        </div>
+        list
       )}
 
-      {/* Account Modal (Create / Edit) */}
-      <AccountModal
-        isOpen={isAccountModalOpen}
-        onClose={() => {
-          setIsAccountModalOpen(false);
-          setEditingAccount(null);
-        }}
-        initialAccount={editingAccount}
-      />
-
-      {/* Transfer Modal */}
-      <TransferModal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} />
+      <AccountModal isOpen={editing !== undefined} onClose={() => setEditing(undefined)} initialAccount={editing ?? null} />
       {confirmDialog}
     </div>
   );

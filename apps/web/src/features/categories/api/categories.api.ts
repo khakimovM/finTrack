@@ -2,6 +2,7 @@ import { api } from '../../../lib/api';
 import {
   CategoryResponse,
   CreateCategoryInput,
+  ReorderCategoriesInput,
   UpdateCategoryInput,
 } from '@fintrack/shared';
 
@@ -21,7 +22,12 @@ export const categoriesApi = {
     return res.data.data;
   },
 
+  /** Deletes its subcategories too; their transactions stay, without a category. */
   delete: async (id: string): Promise<void> => {
     await api.delete(`/categories/${id}`);
+  },
+
+  reorder: async (data: ReorderCategoriesInput): Promise<void> => {
+    await api.patch('/categories/reorder', data);
   },
 };
