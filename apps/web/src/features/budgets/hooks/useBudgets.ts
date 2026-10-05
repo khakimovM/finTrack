@@ -21,11 +21,9 @@ export function useCreateBudget() {
     mutationFn: (data: CreateBudgetInput) => budgetsApi.create(data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'budget');
-      toast.success('Byudjet muvaffaqiyatli belgilandi');
+      toast.success('Byudjet belgilandi');
     },
-    onError: (err) => {
-      toast.error(apiErrorToMessage(err));
-    },
+    // A budget the month already has is shown next to the category in the form.
   });
 }
 
@@ -37,10 +35,7 @@ export function useUpdateBudget() {
       budgetsApi.update(id, data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'budget');
-      toast.success('Byudjet limiti yangilandi');
-    },
-    onError: (err) => {
-      toast.error(apiErrorToMessage(err));
+      toast.success('Byudjet saqlandi');
     },
   });
 }

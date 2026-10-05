@@ -9,6 +9,7 @@ export type HealthCheckResponse = z.infer<typeof HealthCheckResponseSchema>;
 
 export * from './money';
 export * from './date';
+export * from './recurrence';
 export * from './schemas/auth';
 export * from './schemas/user';
 export * from './schemas/account';

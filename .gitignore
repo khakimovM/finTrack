@@ -15,3 +15,6 @@ playwright-report/
 test-results/
 apps/api/prisma/*.db
 *.tsbuildinfo
+
+# Reference images pasted into Claude Design (third-party; not ours to redistribute).
+design/project/uploads/

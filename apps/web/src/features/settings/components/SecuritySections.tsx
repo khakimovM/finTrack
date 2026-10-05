@@ -1,32 +1,37 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
-import { Laptop, LogOut, Send, Smartphone, Trash2 } from 'lucide-react';
+import { Laptop, LoaderCircle, LogOut, Send, Smartphone, Trash2, TriangleAlert } from 'lucide-react';
 import { DELETE_ACCOUNT_CONFIRMATION, SessionResponse, UserResponse } from '@fintrack/shared';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
-import { Badge } from '../../../components/ui/Badge';
+import { Chip } from '../../../components/ui/Chip';
 import { Input } from '../../../components/ui/Input';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import { ErrorState } from '../../../components/ui/ErrorState';
+import { useConfirm } from '../../../components/ui/ConfirmDialog';
+import { formatDateTime } from '../../../lib/format';
+import { cn } from '../../../lib/utils';
 import { queryKeys } from '../../../lib/queryKeys';
+import { isMiniAppSession } from '../../../lib/miniAppAuth';
 import { useTelegramLoginStatus } from '../../auth/hooks/useTelegramLogin';
-import {
-  useDeleteAccount,
-  useLinkTelegram,
-  useLogoutAll,
-  useRevokeSession,
-  useSessions,
-} from '../hooks/useSettings';
+import { BOT_USERNAME } from '../../landing/links';
+import { useDeleteAccount, useLinkTelegram, useLogoutAll, useRevokeSession, useSessions } from '../hooks/useSettings';
+import { SettingsCard } from './ProfileSection';
 
-function deviceLabel(ua: string | null | undefined): { label: string; mobile: boolean } {
+export function deviceLabel(ua: string | null | undefined): { label: string; mobile: boolean } {
   if (!ua) return { label: 'Nomaʼlum qurilma', mobile: false };
   const mobile = /Android|iPhone|iPad|Mobile/.test(ua);
   if (ua.startsWith('TelegramMiniApp')) return { label: 'Telegram ilovasi', mobile };
   const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Brauzer';
   const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
   return { label: os ? `${browser}, ${os}` : browser, mobile };
+}
+
+/** "84.54.**": enough to recognise a network, not to publish the address on screen. */
+export function maskIp(ip: string | null | undefined): string {
+  if (!ip) return 'IP nomaʼlum';
+  const v4 = ip.replace(/^::ffff:/, '').split('.');
+  if (v4.length === 4) return `IP ${v4[0]}.${v4[1]}.**`;
+  return `IP ${ip.split(':').slice(0, 2).join(':')}:**`;
 }
 
 export function TelegramSection({ user }: { user: UserResponse }) {
@@ -44,145 +49,203 @@ export function TelegramSection({ user }: { user: UserResponse }) {
 
   if (user.telegramLinked) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Telegram</CardTitle>
-          <CardDescription>Kirish kodlari va bildirishnomalar shu hisobga keladi.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 text-sm">
-          <span className="font-semibold">
-            <Send className="mr-2 inline h-4 w-4 text-primary" />
-            {user.telegramUsername ? `@${user.telegramUsername}` : 'Ulangan'}
-            {user.phone && <span className="ml-2 text-muted-foreground">{user.phone}</span>}
+      <SettingsCard title="Telegram">
+        <div className="flex flex-wrap items-center gap-3.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-info-soft text-info" aria-hidden>
+            <Send className="h-5 w-5" />
           </span>
-          <Badge variant="success">Ulangan</Badge>
-        </CardContent>
-      </Card>
+          <div className="flex min-w-0 flex-[1_1_180px] flex-col">
+            <span className="font-semibold">{user.telegramUsername ? `@${user.telegramUsername}` : 'Telegram hisobi'}</span>
+            {user.phone && <span className="text-[13px] text-text-muted">{user.phone}</span>}
+          </div>
+          <Chip tone="success" dot className="h-[26px] text-[12.5px] font-semibold">
+            Ulangan
+          </Chip>
+        </div>
+        <p className="text-[13.5px] leading-[19px] text-text-secondary">Kirish kodlari va bildirishnomalar shu hisobga keladi.</p>
+      </SettingsCard>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Telegram</CardTitle>
-        <CardDescription>
-          Kirish faqat Telegram orqali ishlaydi. Profilingizni saqlab qolish uchun Telegram hisobingizni ulang.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <SettingsCard title="Telegram">
+      <div className="flex flex-wrap items-center gap-3.5">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary text-text-secondary" aria-hidden>
+          <Send className="h-5 w-5" />
+        </span>
+        <div className="flex min-w-0 flex-[1_1_220px] flex-col">
+          <span className="font-semibold">Telegram ulanmagan</span>
+          <span className="text-[13px] leading-[18px] text-text-muted">Bildirishnomalar va kirish kodlarini olish uchun hisobingizni ulang.</span>
+        </div>
         <Button
           loading={link.isPending}
+          disabled={requestId !== null}
           onClick={async () => {
             const created = await link.mutateAsync();
             setRequestId(created.requestId);
             window.open(created.deepLink, '_blank', 'noopener');
           }}
         >
-          <Send className="mr-2 h-4 w-4" /> Telegram’ni ulash
+          Telegram’ni ulash
         </Button>
-        {requestId && (
-          <p className="mt-3 text-xs text-muted-foreground" aria-live="polite">
-            Botda <b>Start</b> tugmasini bosing — ulanish avtomatik tasdiqlanadi.
-          </p>
-        )}
-      </CardContent>
-    </Card>
+      </div>
+      {requestId && (
+        <div role="status" className="flex min-h-11 items-center gap-2.5 rounded-[14px] bg-surface px-3.5 text-[14px] text-text-secondary">
+          <LoaderCircle className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+          Telegram’da @{BOT_USERNAME} ochildi — “Start” tugmasini bosing…
+        </div>
+      )}
+    </SettingsCard>
+  );
+}
+
+function SessionRow({ session, first, onEnd, ending }: { session: SessionResponse; first: boolean; onEnd: () => void; ending: boolean }) {
+  const device = deviceLabel(session.userAgent);
+  const Icon = device.mobile ? Smartphone : Laptop;
+  const meta = [maskIp(session.ipAddress), session.isCurrent ? 'hozir faol' : `oxirgi faollik ${formatDateTime(session.lastUsedAt)}`].join(' · ');
+  return (
+    <li className={cn('flex flex-wrap items-center gap-3 py-3', !first && 'border-t border-border')}>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary" aria-hidden>
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="flex min-w-0 flex-[1_1_200px] flex-col gap-0.5">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-[15px] font-semibold">{device.label}</span>
+          {session.isCurrent && (
+            <Chip tone="success" size="sm" className="font-semibold">
+              Shu qurilma
+            </Chip>
+          )}
+        </span>
+        <span className="text-[12.5px] leading-[17px] text-text-muted">{meta}</span>
+      </div>
+      {!session.isCurrent && (
+        <Button variant="outline" size="sm" onClick={onEnd} loading={ending} className="hover:border-transparent hover:bg-danger-soft hover:text-danger">
+          Yakunlash
+        </Button>
+      )}
+    </li>
   );
 }
 
 export function SessionsSection() {
   const navigate = useNavigate();
+  const [confirmDialog, confirm] = useConfirm();
   const sessions = useSessions();
   const revoke = useRevokeSession();
   const logoutAll = useLogoutAll();
+  const list = sessions.data ?? [];
+  const miniApp = isMiniAppSession();
+
+  const endAll = async () => {
+    const ok = await confirm({
+      title: 'Barcha qurilmalardan chiqilsinmi?',
+      // On the web this device is signed out too; inside Telegram the launch signs it back in.
+      description: miniApp
+        ? 'Boshqa qurilmalardagi sessiyalar yakunlanadi. Shu ilovada kirgan holatda qolasiz.'
+        : 'Barcha qurilmalardagi sessiyalar, shu jumladan bu qurilmadagi ham yakunlanadi. Keyin Telegram orqali qayta kirasiz.',
+      confirmLabel: 'Chiqish',
+      destructive: true,
+      icon: LogOut,
+    });
+    if (!ok) return;
+    const stayed = await logoutAll.mutateAsync().catch(() => true);
+    if (!stayed) navigate('/login', { replace: true });
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Faol sessiyalar</CardTitle>
-        <CardDescription>Hisobingizga kirilgan qurilmalar. Tanimaganingizni darhol yakunlang.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {sessions.isLoading && [0, 1].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
-        {sessions.isError && <ErrorState onRetry={() => void sessions.refetch()} />}
-        {sessions.data?.map((s: SessionResponse) => {
-          const device = deviceLabel(s.userAgent);
-          const Icon = device.mobile ? Smartphone : Laptop;
-          return (
-            <div key={s.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">
-                    {device.label} {s.isCurrent && <Badge variant="secondary" className="ml-1">Shu qurilma</Badge>}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {s.ipAddress ?? 'IP nomaʼlum'} · oxirgi faollik {format(parseISO(s.lastUsedAt), 'dd.MM.yyyy HH:mm')}
-                  </p>
-                </div>
+    <SettingsCard title="Faol sessiyalar" description="FinTrack ochiq bo‘lgan qurilmalar">
+      {sessions.isLoading ? (
+        <div role="status" aria-label="Yuklanmoqda" className="flex flex-col gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3 py-1.5">
+              <Skeleton className="h-10 w-10 rounded-md" />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Skeleton className="h-3 w-2/5" />
+                <Skeleton className="h-2.5 w-[65%]" />
               </div>
-              {!s.isCurrent && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Sessiyani yakunlash"
-                  loading={revoke.isPending && revoke.variables === s.id}
-                  onClick={() => revoke.mutate(s.id)}
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              )}
             </div>
-          );
-        })}
-        <Button
-          variant="outline"
-          className="w-full"
-          loading={logoutAll.isPending}
-          onClick={async () => {
-            const stayed = await logoutAll.mutateAsync();
-            if (!stayed) navigate('/login', { replace: true });
-          }}
-        >
-          Barcha qurilmalardan chiqish
-        </Button>
-      </CardContent>
-    </Card>
+          ))}
+        </div>
+      ) : sessions.isError ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[14px] bg-danger-soft p-3.5">
+          <TriangleAlert className="h-5 w-5 text-danger" aria-hidden />
+          <span className="flex-[1_1_200px] text-[14px] font-medium">Sessiyalarni yuklab bo‘lmadi</span>
+          <Button variant="outline" size="sm" onClick={() => void sessions.refetch()}>
+            Qayta urinish
+          </Button>
+        </div>
+      ) : (
+        <>
+          <ul className="flex flex-col">
+            {list.map((s, i) => (
+              <SessionRow
+                key={s.id}
+                session={s}
+                first={i === 0}
+                ending={revoke.isPending && revoke.variables === s.id}
+                onEnd={() => revoke.mutate(s.id)}
+              />
+            ))}
+          </ul>
+          <Button
+            variant="outline"
+            onClick={() => void endAll()}
+            disabled={list.length <= 1}
+            loading={logoutAll.isPending}
+            className="self-start text-danger hover:bg-danger-soft"
+          >
+            <LogOut className="h-4 w-4" aria-hidden />
+            Barcha qurilmalardan chiqish
+          </Button>
+        </>
+      )}
+      {confirmDialog}
+    </SettingsCard>
   );
 }
+
+/** Apostrophe look-alikes count: “O'CHIRISH” typed on any keyboard confirms. */
+const normalise = (text: string) => text.trim().toUpperCase().replace(/['’ʻʼ`]/g, '‘');
 
 export function DangerZoneSection() {
   const navigate = useNavigate();
+  const [confirmDialog, confirm] = useConfirm();
   const remove = useDeleteAccount();
-  const [confirm, setConfirm] = useState('');
+  const [typed, setTyped] = useState('');
+  const ok = normalise(typed) === DELETE_ACCOUNT_CONFIRMATION;
+
+  const deleteAccount = async () => {
+    const sure = await confirm({
+      title: 'Akkaunt butunlay o‘chirilsinmi?',
+      description: 'Barcha hisoblar, tranzaksiyalar, qarzlar va byudjetlar butunlay o‘chiriladi. Bu amalni qaytarib bo‘lmaydi.',
+      confirmLabel: 'Butunlay o‘chirish',
+      destructive: true,
+    });
+    if (!sure) return;
+    await remove.mutateAsync({ confirm: DELETE_ACCOUNT_CONFIRMATION });
+    navigate('/', { replace: true });
+  };
 
   return (
-    <Card className="border-destructive/40">
-      <CardHeader>
-        <CardTitle className="text-destructive">Akkauntni o‘chirish</CardTitle>
-        <CardDescription>
-          Barcha hisoblar, tranzaksiyalar, qarzlar va byudjetlar butunlay o‘chiriladi. Bu amalni qaytarib bo‘lmaydi.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Input
-          label={`Tasdiqlash uchun “${DELETE_ACCOUNT_CONFIRMATION}” deb yozing`}
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          autoComplete="off"
-        />
-        <Button
-          variant="destructive"
-          disabled={confirm !== DELETE_ACCOUNT_CONFIRMATION}
-          loading={remove.isPending}
-          onClick={async () => {
-            await remove.mutateAsync({ confirm: DELETE_ACCOUNT_CONFIRMATION });
-            navigate('/login', { replace: true });
-          }}
-        >
-          <Trash2 className="mr-2 h-4 w-4" /> Akkauntni butunlay o‘chirish
-        </Button>
-      </CardContent>
-    </Card>
+    <SettingsCard title="Akkauntni o‘chirish" danger>
+      <p className="-mt-2 text-pretty text-[14px] leading-5 text-text-secondary">
+        Barcha hisoblar, tranzaksiyalar, qarzlar va byudjetlar butunlay o‘chiriladi. Bu amalni qaytarib bo‘lmaydi.
+      </p>
+      <Input
+        label={`Tasdiqlash uchun “${DELETE_ACCOUNT_CONFIRMATION}” deb yozing`}
+        placeholder={DELETE_ACCOUNT_CONFIRMATION}
+        value={typed}
+        onChange={(e) => setTyped(e.target.value)}
+        autoComplete="off"
+        className={cn('font-semibold tracking-[0.04em]', ok && 'border-danger')}
+      />
+      <Button variant="destructive" disabled={!ok} loading={remove.isPending} onClick={() => void deleteAccount()} className="h-11 self-start">
+        <Trash2 className="h-4 w-4" aria-hidden />
+        Akkauntni butunlay o‘chirish
+      </Button>
+      {confirmDialog}
+    </SettingsCard>
   );
 }
+

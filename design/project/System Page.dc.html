@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fintrack-tokens.css">
+</helmet>
+<div data-theme="{{ theme }}" style="container-type:inline-size;min-height:{{ minH }};height:100%;box-sizing:border-box;display:flex;flex-direction:column;background:var(--background);color:var(--text);font-family:Onest,system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased">
+  <header style="height:64px;flex:none;display:flex;align-items:center;padding:0 clamp(16px,2.2cqi,32px)">
+    <a href="Landing.dc.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text)"><svg width="30" height="30" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="var(--brand)"></rect><rect x="8" y="8" width="16" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="14.5" width="10.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="21" width="4.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect></svg><span style="font-size:18px;font-weight:600;letter-spacing:-0.02em">FinTrack</span></a>
+  </header>
+  <main style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px 20px 88px">
+    <div style="max-width:480px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">
+      <sc-if value="{{ is404 }}" hint-placeholder-val="{{ true }}">
+        <span style="font-size:clamp(88px,10cqi,136px);line-height:1;font-weight:600;letter-spacing:-0.05em;color:var(--text)">4<span style="color:var(--brand)">0</span>4</span>
+        <h1 style="margin:16px 0 0;font-size:clamp(26px,2.2cqi,32px);line-height:1.2;font-weight:600;letter-spacing:-0.02em">Sahifa topilmadi</h1>
+        <p style="margin:0;font-size:16px;line-height:24px;color:var(--text-secondary);text-wrap:pretty">Siz qidirayotgan sahifa mavjud emas yoki boshqa manzilga ko‘chirilgan.</p>
+        <a href="Landing.dc.html" style="margin-top:12px;height:48px;padding:0 22px;display:flex;align-items:center;gap:8px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:15px;font-weight:500;text-decoration:none" style-hover="background:var(--primary-hover);color:var(--primary-foreground)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"></path></svg>Asosiy sahifaga qaytish</a>
+      </sc-if>
+      <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+        <span style="width:72px;height:72px;border-radius:20px;background:var(--danger-soft);color:var(--danger);display:flex;align-items:center;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4M12 17h.01"></path></svg></span>
+        <h1 style="margin:16px 0 0;font-size:clamp(26px,2.2cqi,32px);line-height:1.2;font-weight:600;letter-spacing:-0.02em">Xatolik yuz berdi</h1>
+        <p style="margin:0;font-size:16px;line-height:24px;color:var(--text-secondary);text-wrap:pretty">Sahifani ko‘rsatishda kutilmagan muammo chiqdi. Maʼlumotlaringiz saqlanib qolgan — sahifani yangilab ko‘ring.</p>
+        <div style="margin-top:12px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px">
+          <button onClick="{{ reload }}" style="height:48px;padding:0 22px;border:0;border-radius:999px;background:var(--primary);color:var(--primary-foreground);display:flex;align-items:center;gap:8px;font:500 15px Onest,sans-serif;cursor:pointer" style-hover="background:var(--primary-hover)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>Sahifani yangilash</button>
+          <a href="Landing.dc.html" style="height:48px;padding:0 22px;display:flex;align-items:center;border-radius:999px;border:1px solid var(--input);color:var(--text);font-size:15px;font-weight:500;text-decoration:none" style-hover="background:var(--secondary);color:var(--text)">Bosh sahifaga o‘tish</a>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;404&quot;,&quot;error&quot;],&quot;default&quot;:&quot;404&quot;,&quot;tsType&quot;:&quot;'404'|'error'&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const kind = this.props.kind ?? '404';
+    return { minH: this.props.framed ? '100%' : '100vh', theme: this.props.theme ?? 'light', is404: kind === '404', isError: kind !== '404', reload: () => location.reload() };
+  }
+}
+</script>
+</body>
+</html>

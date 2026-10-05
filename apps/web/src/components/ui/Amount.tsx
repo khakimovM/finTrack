@@ -1,15 +1,36 @@
-import { AlertTriangle } from 'lucide-react';
-import { formatMoney } from '@fintrack/shared';
+import { TriangleAlert } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { CURRENCY, formatAmountNumber, MINUS, NBSP, signOf, TONE_CLASS, toneOf, type AmountTone } from '../../lib/money';
 
 export interface AmountProps {
+  /** Tiyin, as the API returns it. */
   value: string | bigint;
-  type?: string; // 'INCOME' | 'EXPENSE' | 'TRANSFER_IN' | 'TRANSFER_OUT' | etc.
-  className?: string;
+  /** Ledger type (INCOME, TRANSFER_OUT, LOAN_GIVEN…): decides sign and colour. */
+  type?: string;
+  /** Explicit tone when there is no ledger type (e.g. a KPI). */
+  tone?: AmountTone;
+  /** false hides the +/− (balances, totals). Negative balances keep their minus. */
   showSign?: boolean;
+  /** Renders "so‘m" as a separate muted unit (big numbers) instead of inline text. */
+  unit?: 'inline' | 'muted' | 'none';
+  className?: string;
+  unitClassName?: string;
 }
 
-export function Amount({ value, type, className, showSign = true }: AmountProps) {
+/**
+ * Money on screen. The sign and the icon carry the meaning; colour only reinforces it:
+ * income "+" green, expense "−" red, transfers and debt movements unsigned, a negative balance
+ * red with "−" and a warning icon.
+ */
+export function Amount({
+  value,
+  type,
+  tone,
+  showSign = true,
+  unit = 'inline',
+  className,
+  unitClassName,
+}: AmountProps) {
   let tiyin: bigint;
   try {
     tiyin = typeof value === 'bigint' ? value : BigInt(value);
@@ -17,43 +38,31 @@ export function Amount({ value, type, className, showSign = true }: AmountProps)
     tiyin = 0n;
   }
 
-  const isIncome =
-    type === 'INCOME' ||
-    type === 'TRANSFER_IN' ||
-    type === 'LOAN_TAKEN' ||
-    type === 'LOAN_REPAY_IN';
-  const isExpense =
-    type === 'EXPENSE' ||
-    type === 'TRANSFER_OUT' ||
-    type === 'LOAN_GIVEN' ||
-    type === 'LOAN_REPAY_OUT';
-
-  const isNegativeBalance = !type && tiyin < 0n;
-  const absTiyin = tiyin < 0n ? -tiyin : tiyin;
-  const formatted = formatMoney(absTiyin);
+  const resolvedTone: AmountTone = type ? toneOf(type) : tone ?? 'neutral';
+  const negativeBalance = !type && tiyin < 0n;
 
   let prefix = '';
-  if (showSign) {
-    if (isIncome) prefix = '+ ';
-    else if (isExpense) prefix = '− ';
-    else if (isNegativeBalance) prefix = '− ';
+  if (negativeBalance) prefix = MINUS;
+  else if (showSign) {
+    const sign = signOf(resolvedTone);
+    prefix = sign === '+' ? '+' : sign === '-' ? MINUS : '';
   }
 
+  const number = `${prefix}${formatAmountNumber(tiyin)}`;
+  const colour = negativeBalance ? 'text-danger' : TONE_CLASS[resolvedTone];
+
   return (
-    <span
-      className={cn(
-        'font-bold tracking-tight inline-flex items-center gap-1 whitespace-nowrap',
-        isIncome && 'text-success',
-        isExpense && 'text-destructive',
-        isNegativeBalance && 'text-destructive font-extrabold',
-        !isIncome && !isExpense && !isNegativeBalance && 'text-foreground',
-        className,
-      )}
-    >
-      {isNegativeBalance && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+    <span className={cn('inline-flex items-center gap-1 whitespace-nowrap font-semibold tabular-nums', colour, className)}>
+      {negativeBalance && <TriangleAlert className="h-[0.95em] w-[0.95em] shrink-0" aria-label="Manfiy balans" />}
       <span>
-        {prefix}
-        {formatted}
+        {number}
+        {unit === 'inline' && `${NBSP}${CURRENCY}`}
+        {unit === 'muted' && (
+          <>
+            {NBSP}
+            <span className={cn('text-[14px] font-medium tracking-normal text-text-muted', unitClassName)}>{CURRENCY}</span>
+          </>
+        )}
       </span>
     </span>
   );

@@ -124,6 +124,26 @@ describe('Ledger invariants (e2e, real Postgres)', () => {
       expect(await balanceOf(user, acc)).toBe('-100');
     });
 
+    it('names the account each payment went to', async () => {
+      const user = await newUser(ctx);
+      const cash = await account(user, 'Naqd', '0');
+      const card = await account(user, 'Humo', '0');
+      const created = await user.post('/debts', { direction: 'I_LENT', personName: 'Ali', accountId: cash, amount: '1000' });
+      const debtId = created.body.data.debt.id as string;
+
+      const paid = await user.post(`/debts/${debtId}/payments`, { amount: '400', accountId: card });
+      expect(paid.status).toBe(201);
+      expect(paid.body.data.payment.account).toMatchObject({ id: card, name: 'Humo' });
+      await user.post(`/debts/${debtId}/settle`, { accountId: cash });
+
+      const history = await user.get(`/debts/${debtId}/payments`);
+      expect(history.status).toBe(200);
+      expect(history.body.data.map((p: { amount: string; account: { name: string } }) => [p.amount, p.account.name]).sort()).toEqual([
+        ['400', 'Humo'],
+        ['600', 'Naqd'],
+      ]);
+    });
+
     it('deleting a payment reverses its ledger row and reopens the debt', async () => {
       const user = await newUser(ctx);
       const acc = await account(user, 'Borrow', '0');

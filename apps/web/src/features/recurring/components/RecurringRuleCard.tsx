@@ -1,11 +1,10 @@
-import { CalendarClock, Edit2, Pause, Play, Repeat, Trash2, Zap } from 'lucide-react';
-import { RecurringRuleResponse } from '@fintrack/shared';
-import { Card, CardContent } from '../../../components/ui/Card';
-import { Badge } from '../../../components/ui/Badge';
-import { Button } from '../../../components/ui/Button';
+import { Pause, Pencil, Play, Repeat, Trash2 } from 'lucide-react';
+import type { RecurringRuleResponse } from '@fintrack/shared';
 import { Amount } from '../../../components/ui/Amount';
+import { EmojiTile } from '../../../components/ui/EmojiTile';
 import { formatDate } from '../../../lib/format';
-import { scheduleLabel } from '../recurringLabels';
+import { cn } from '../../../lib/utils';
+import { ruleTitle, scheduleLabel } from '../recurringLabels';
 
 export interface RecurringRuleCardProps {
   rule: RecurringRuleResponse;
@@ -16,108 +15,78 @@ export interface RecurringRuleCardProps {
   busy?: boolean;
 }
 
-const ACTION = 'h-11 gap-1.5 px-2 text-xs sm:h-8 sm:px-3';
+const iconButton = 'flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full text-text-secondary focus-ring';
 
-export function RecurringRuleCard({
-  rule,
-  onRunNow,
-  onToggleActive,
-  onEdit,
-  onDelete,
-  busy,
-}: RecurringRuleCardProps) {
-  const title = rule.category?.name ?? rule.note ?? (rule.type === 'INCOME' ? 'Kirim' : 'Chiqim');
+export function RecurringRuleCard({ rule, onRunNow, onToggleActive, onEdit, onDelete, busy }: RecurringRuleCardProps) {
   // The note is the title when there is no category; otherwise it is shown under the details.
   const note = rule.category ? rule.note : null;
-  const icon = rule.category?.icon ?? (rule.type === 'INCOME' ? '💼' : '🔁');
+  const finished = rule.endsAt !== null && rule.nextRunAt > rule.endsAt;
+  const next = !rule.isActive ? 'To‘xtatilgan' : finished ? 'Tugagan' : `Keyingi: ${formatDate(rule.nextRunAt)}`;
 
   return (
-    <Card className="overflow-hidden border border-border/60 shadow-sm transition-all hover:border-primary/40">
-      <CardContent className="space-y-4 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="shrink-0 text-2xl" aria-hidden="true">
-              {icon}
-            </span>
-            <div className="min-w-0">
-              <h3 className="truncate text-base font-black text-foreground">{title}</h3>
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Repeat className="h-3 w-3 shrink-0" />
-                <span className="truncate">{scheduleLabel(rule)}</span>
-              </p>
-            </div>
+    <article
+      aria-label={ruleTitle(rule)}
+      className={cn(
+        'flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[20px] border border-border bg-card p-4 sm:px-5',
+        !rule.isActive && 'opacity-80',
+      )}
+    >
+      <div className="flex min-w-0 flex-[1_1_320px] items-start gap-3">
+        <EmojiTile
+          emoji={rule.category?.icon ?? (rule.type === 'INCOME' ? '💰' : '🧾')}
+          color={rule.category?.color}
+          variant={rule.category ? 'color' : 'neutral'}
+          size={44}
+          muted={!rule.isActive}
+          className="rounded-md text-[21px]"
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <div className="flex items-baseline gap-2.5">
+            <h3 className="min-w-0 flex-1 truncate text-[16px] font-semibold leading-[22px]">{ruleTitle(rule)}</h3>
+            <Amount value={rule.amount} type={rule.type} className="text-[15px]" />
           </div>
-          <Amount value={rule.amount} type={rule.type} className="shrink-0 text-base" />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-          <span>
-            {rule.account.icon} {rule.account.name}
+          <span className="flex items-center gap-1.5 text-[13px] leading-[18px] text-text-secondary">
+            <Repeat className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {scheduleLabel(rule)}
           </span>
-          {rule.isActive ? (
-            <span className="flex items-center gap-1">
-              <CalendarClock className="h-3.5 w-3.5" />
-              Keyingi: <b className="text-foreground">{formatDate(rule.nextRunAt)}</b>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] leading-[17px] text-text-muted">
+            <span>
+              {rule.account.icon} {rule.account.name}
             </span>
-          ) : (
-            <Badge variant="secondary" className="text-[11px]">
-              To‘xtatilgan
-            </Badge>
-          )}
-          {rule.endsAt && <span>{formatDate(rule.endsAt)} gacha</span>}
+            <span className={cn('font-medium', rule.isActive ? 'text-text' : 'text-warning')}>{next}</span>
+            {rule.endsAt && <span>{formatDate(rule.endsAt)} gacha</span>}
+          </div>
+          {note && <span className="text-[13px] text-text-secondary">{note}</span>}
         </div>
-        {note && <p className="truncate text-xs italic text-muted-foreground">{note}</p>}
-
-        <div className="flex flex-wrap items-center justify-end gap-1 border-t border-border/40 pt-3">
-          {rule.isActive && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className={ACTION}
-              disabled={busy}
-              onClick={() => onRunNow(rule)}
-              aria-label="Hozir bajarish"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              {/* Shorter label on phones so the four actions fit one row. */}
-              <span className="sm:hidden">Bajarish</span>
-              <span className="hidden sm:inline">Hozir bajarish</span>
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className={ACTION}
+      </div>
+      <div className="flex flex-1 items-center justify-end gap-1 sm:flex-none">
+        {rule.isActive && !finished && (
+          <button
+            type="button"
+            onClick={() => onRunNow(rule)}
             disabled={busy}
-            onClick={() => onToggleActive(rule)}
+            className="h-[34px] whitespace-nowrap rounded-full border border-input px-3 text-[13px] font-medium text-text hover:bg-secondary focus-ring disabled:opacity-50"
           >
-            {rule.isActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-            {rule.isActive ? 'To‘xtatish' : 'Davom ettirish'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={ACTION}
-            disabled={busy}
-            onClick={() => onEdit(rule)}
-            aria-label="Tahrirlash"
-          >
-            <Edit2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Tahrirlash</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`${ACTION} text-destructive hover:bg-destructive/10`}
-            disabled={busy}
-            onClick={() => onDelete(rule)}
-            aria-label="O‘chirish"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">O‘chirish</span>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+            Hozir bajarish
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => onToggleActive(rule)}
+          disabled={busy}
+          className="flex h-[34px] items-center gap-1.5 whitespace-nowrap rounded-full bg-secondary px-3 text-[13px] font-medium text-text hover:bg-secondary-hover focus-ring disabled:opacity-50"
+        >
+          {rule.isActive ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}
+          {rule.isActive ? 'To‘xtatish' : 'Davom ettirish'}
+        </button>
+        <span className="flex-1 sm:hidden" />
+        <button type="button" onClick={() => onEdit(rule)} aria-label="Tahrirlash" title="Tahrirlash" className={cn(iconButton, 'hover:bg-secondary hover:text-text')}>
+          <Pencil className="h-4 w-4" aria-hidden />
+        </button>
+        <button type="button" onClick={() => onDelete(rule)} aria-label="O‘chirish" title="O‘chirish" className={cn(iconButton, 'hover:bg-danger-soft hover:text-danger')}>
+          <Trash2 className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+    </article>
   );
 }

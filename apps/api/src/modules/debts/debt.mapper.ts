@@ -33,12 +33,18 @@ export function toDebtResponse(debt: DebtWithPayments, today: string): DebtRespo
   };
 }
 
-export function toDebtPaymentResponse(payment: DebtPayment): DebtPaymentResponse {
+/** A payment with the account of its ledger row (see `paymentAccountInclude`). */
+export type DebtPaymentWithAccount = DebtPayment & {
+  transaction: { account: { id: string; name: string; icon: string } };
+};
+
+export function toDebtPaymentResponse(payment: DebtPaymentWithAccount): DebtPaymentResponse {
   return {
     id: payment.id,
     amount: payment.amount.toString(),
     paidAt: formatIsoDate(payment.paidAt),
     note: payment.note,
+    account: payment.transaction.account,
     createdAt: payment.createdAt.toISOString(),
   };
 }

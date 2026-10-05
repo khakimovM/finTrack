@@ -8,6 +8,7 @@ const relationsInclude = {
   account: { select: { id: true, name: true, icon: true } },
   category: { select: { id: true, name: true, icon: true, color: true } },
   tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
+  debt: { select: { id: true, personName: true } },
 } satisfies Prisma.TransactionInclude;
 
 export type TransactionWithRelations = Prisma.TransactionGetPayload<{ include: typeof relationsInclude }>;
@@ -22,6 +23,7 @@ export interface CreateTransactionData {
 }
 
 export interface UpdateTransactionData {
+  type?: TransactionType;
   accountId?: string;
   amount?: bigint;
   categoryId?: string | null;
@@ -43,7 +45,10 @@ export class TransactionsRepository {
 
     if (filters.type) where.type = filters.type as TransactionType;
     if (filters.accountId) where.accountId = filters.accountId;
-    if (filters.categoryId) where.categoryId = filters.categoryId;
+    // A parent category also matches its subcategories ("Transport" includes "Taksi"), as budgets do.
+    if (filters.categoryId) {
+      where.OR = [{ categoryId: filters.categoryId }, { category: { parentId: filters.categoryId } }];
+    }
     if (filters.tagId) where.tags = { some: { tagId: filters.tagId } };
     if (filters.from || filters.to) {
       where.date = {
@@ -99,16 +104,45 @@ export class TransactionsRepository {
     return { transactions, total };
   }
 
-  /** Income and expense totals for the whole filter (not just the current page). */
-  async calculateSums(userId: string, filters: TransactionFilters): Promise<{ income: string; expense: string }> {
+  /** Income and expense totals and counts for the whole filter (not just the current page). */
+  async calculateSums(
+    userId: string,
+    filters: TransactionFilters,
+  ): Promise<{ income: string; expense: string; incomeCount: number; expenseCount: number }> {
+    const where = this.buildWhereClause(userId, filters);
     const groups = await this.prisma.transaction.groupBy({
       by: ['type'],
-      where: { ...this.buildWhereClause(userId, filters), type: { in: ['INCOME', 'EXPENSE'] } },
+      // AND keeps a type filter from the query and this one both in force.
+      where: { AND: [where, { type: { in: ['INCOME', 'EXPENSE'] } }] },
       _sum: { amount: true },
+      _count: { _all: true },
     });
-    const sumOf = (type: TransactionType) =>
-      (groups.find((g) => g.type === type)?._sum.amount ?? 0n).toString();
-    return { income: sumOf('INCOME'), expense: sumOf('EXPENSE') };
+    const group = (type: TransactionType) => groups.find((g) => g.type === type);
+    return {
+      income: (group('INCOME')?._sum.amount ?? 0n).toString(),
+      expense: (group('EXPENSE')?._sum.amount ?? 0n).toString(),
+      incomeCount: group('INCOME')?._count._all ?? 0,
+      expenseCount: group('EXPENSE')?._count._all ?? 0,
+    };
+  }
+
+  /** The other leg of each transfer among the given rows, keyed by the row's id. */
+  async findTransferPeers(
+    userId: string,
+    rows: Array<Pick<Transaction, 'id' | 'transferGroupId'>>,
+  ): Promise<Map<string, { accountId: string; name: string; icon: string }>> {
+    const groupIds = [...new Set(rows.map((r) => r.transferGroupId).filter((g): g is string => g !== null))];
+    if (groupIds.length === 0) return new Map();
+    const legs = await this.prisma.transaction.findMany({
+      where: { userId, transferGroupId: { in: groupIds } },
+      select: { id: true, transferGroupId: true, account: { select: { id: true, name: true, icon: true } } },
+    });
+    const peers = new Map<string, { accountId: string; name: string; icon: string }>();
+    for (const row of rows) {
+      const peer = legs.find((leg) => leg.transferGroupId === row.transferGroupId && leg.id !== row.id);
+      if (peer) peers.set(row.id, { accountId: peer.account.id, name: peer.account.name, icon: peer.account.icon });
+    }
+    return peers;
   }
 
   async findById(userId: string, id: string, db: Db = this.prisma): Promise<TransactionWithRelations | null> {

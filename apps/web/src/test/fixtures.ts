@@ -1,4 +1,4 @@
-import { AccountResponse, RecurringRuleResponse, TransactionResponse } from '@fintrack/shared';
+import { AccountResponse, CategoryResponse, DebtResponse, RecurringRuleResponse, TagResponse, TransactionResponse, UserResponse } from '@fintrack/shared';
 
 let seq = 0;
 /** Deterministic UUID-shaped ids for fixtures. */
@@ -38,7 +38,9 @@ export function transaction(over: Partial<TransactionResponse> = {}): Transactio
     category: { id: uuid(), name: 'Transport', icon: '🚗', color: '#f97316' },
     tags: [],
     debtId: null,
+    debt: null,
     transferGroupId: null,
+    transferPeer: null,
     createdAt: '2026-09-15T10:00:00.000Z',
     ...over,
   };
@@ -60,6 +62,67 @@ export function rule(over: Partial<RecurringRuleResponse> = {}): RecurringRuleRe
     note: null,
     account: cash,
     category: { id: uuid(), name: 'Uy-joy', icon: '🏠', color: '#84cc16' },
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+    ...over,
+  };
+}
+
+export function user(over: Partial<UserResponse> = {}): UserResponse {
+  return {
+    id: '00000000-0000-4000-8000-0000000000a1',
+    name: 'Aziz',
+    email: null,
+    telegramUsername: 'aziz',
+    telegramLinked: true,
+    phone: null,
+    baseCurrency: 'UZS',
+    locale: 'uz',
+    timezone: 'Asia/Tashkent',
+    strictMode: false,
+    notifyTelegram: true,
+    dailyDigest: false,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    ...over,
+  };
+}
+
+export function category(over: Partial<CategoryResponse> = {}): CategoryResponse {
+  return {
+    id: uuid(),
+    name: 'Oziq-ovqat',
+    type: 'EXPENSE',
+    icon: '🍔',
+    color: '#2f9e68',
+    parentId: null,
+    isSystem: false,
+    sortOrder: 0,
+    children: [],
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+    ...over,
+  };
+}
+
+export function tag(over: Partial<TagResponse> = {}): TagResponse {
+  return { id: uuid(), name: 'oila', color: '#3d7bd6', transactionCount: 0, createdAt: '2026-09-01T00:00:00.000Z', ...over };
+}
+
+export function debt(over: Partial<DebtResponse> = {}): DebtResponse {
+  return {
+    id: uuid(),
+    direction: 'I_LENT',
+    personName: 'Jasur Karimov',
+    personPhone: null,
+    amount: '100000000',
+    paidAmount: '0',
+    remainingAmount: '100000000',
+    dueDate: null,
+    status: 'ACTIVE',
+    paidAt: null,
+    isOverdue: false,
+    daysLeft: null,
+    note: null,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-01T00:00:00.000Z',
     ...over,

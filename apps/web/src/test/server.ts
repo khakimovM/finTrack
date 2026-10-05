@@ -1,7 +1,17 @@
 import { setupServer } from 'msw/node';
+import { http, HttpResponse } from 'msw';
 
-/** Shared MSW server: tests register their API responses with `server.use(...)`. */
-export const server = setupServer();
+/**
+ * Shared MSW server: tests register their API responses with `server.use(...)`. Every page has
+ * the notification bell in its header and the transaction form lists tags, so an empty inbox and
+ * no tags are answered unless a test says otherwise.
+ */
+export const server = setupServer(
+  http.get('*/api/v1/notifications', () =>
+    HttpResponse.json({ success: true, data: [], meta: { page: 1, limit: 30, total: 0, totalPages: 0, unreadCount: 0 } }),
+  ),
+  http.get('*/api/v1/tags', () => HttpResponse.json({ success: true, data: [] })),
+);
 
 /** The API's success envelope. */
 export function ok<T>(data: T, meta?: unknown) {

@@ -2,6 +2,7 @@ import { api } from '../../../lib/api';
 import {
   AccountResponse,
   CreateAccountInput,
+  ReorderAccountsInput,
   UpdateAccountInput,
 } from '@fintrack/shared';
 
@@ -13,8 +14,11 @@ export interface AccountsListResponse {
 }
 
 export const accountsApi = {
-  list: async (): Promise<AccountsListResponse> => {
-    const res = await api.get<AccountsListResponse>('/accounts');
+  /** Active accounts only, unless `includeArchived` (the "Arxiv" tab). */
+  list: async (includeArchived = false): Promise<AccountsListResponse> => {
+    const res = await api.get<AccountsListResponse>('/accounts', {
+      params: includeArchived ? { includeArchived: 'true' } : undefined,
+    });
     return res.data;
   },
 
@@ -28,8 +32,18 @@ export const accountsApi = {
     return res.data.data;
   },
 
-  archive: async (id: string): Promise<AccountResponse> => {
+  /** Archives an active account, or brings an archived one back. */
+  toggleArchive: async (id: string): Promise<AccountResponse> => {
     const res = await api.post<{ data: AccountResponse }>(`/accounts/${id}/archive`);
     return res.data.data;
+  },
+
+  /** Only accounts without history; others answer 409 ACCOUNT_HAS_HISTORY. */
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/accounts/${id}`);
+  },
+
+  reorder: async (data: ReorderAccountsInput): Promise<void> => {
+    await api.patch('/accounts/reorder', data);
   },
 };

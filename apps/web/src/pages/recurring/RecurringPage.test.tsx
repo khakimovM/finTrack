@@ -26,7 +26,7 @@ function mockApi(
     http.get('*/api/v1/recurring', ({ request }) => {
       const isActive = new URL(request.url).searchParams.get('isActive') ?? '';
       calls.lists.push(isActive);
-      return HttpResponse.json(ok(isActive === 'false' ? (rules.paused ?? []) : rules.active));
+      return HttpResponse.json(ok(isActive === 'false' ? (rules.paused ?? []) : [...rules.active, ...(rules.paused ?? [])]));
     }),
     http.patch('*/api/v1/recurring/:id', async ({ params, request }) => {
       calls.patches.push({ id: String(params.id), body: await request.json() });
@@ -49,7 +49,7 @@ describe('RecurringPage', () => {
 
     expect(await screen.findByText('Uy-joy')).toBeTruthy();
     expect(screen.getByText('Har oy, 5-kuni')).toBeTruthy();
-    expect(screen.getByText('5-oktabr, 2026')).toBeTruthy();
+    expect(screen.getByText('Keyingi: 5-oktabr, 2026')).toBeTruthy();
   });
 
   it('shows the note: as the title without a category, under the details with one', async () => {
@@ -73,7 +73,8 @@ describe('RecurringPage', () => {
     renderWithProviders(<RecurringPage />);
 
     expect(await screen.findByText('Faol takroriy to‘lovlar yo‘q')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '+ Birinchi qoidani qo‘shish' })).toBeTruthy();
+    // The header's button and the empty state's own.
+    expect(screen.getAllByRole('button', { name: 'Yangi qoida' })).toHaveLength(2);
   });
 
   it('shows the error and recovers on retry', async () => {
@@ -117,7 +118,7 @@ describe('RecurringPage', () => {
     expect(calls.runs).toEqual([]);
 
     await userEvent.click(screen.getByRole('button', { name: 'Hozir bajarish' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Yozish' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Hozir yozish' }));
     await waitFor(() => expect(calls.runs).toEqual([rent.id]));
   });
 
@@ -126,10 +127,11 @@ describe('RecurringPage', () => {
     mockApi({ active: [], paused: [rule({ isActive: false })] }, calls);
     renderWithProviders(<RecurringPage />);
 
-    await userEvent.click(await screen.findByRole('tab', { name: 'To‘xtatilgan' }));
+    await userEvent.click(await screen.findByRole('tab', { name: /To‘xtatilgan/ }));
 
     expect(await screen.findByRole('button', { name: 'Davom ettirish' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Hozir bajarish' })).toBeNull();
-    expect(calls.lists).toContain('false');
+    // One request brings both tabs.
+    expect(calls.lists).toEqual(['']);
   });
 });

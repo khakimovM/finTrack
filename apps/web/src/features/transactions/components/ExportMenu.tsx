@@ -1,81 +1,64 @@
-import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { ChevronDown, Download, LoaderCircle } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
-import { useExportTransactions } from '../hooks/useExport';
+import { Menu, type MenuItem } from '../../../components/ui/Menu';
+import { useExportTransactions, type ExportFormat } from '../hooks/useExport';
 
 export interface ExportMenuProps {
   /** Same filters as the list on screen: the file contains exactly what the user sees. */
   query: Record<string, string | undefined>;
+  /** icon: the phone top bar; wide: a full-width phone button. */
+  variant?: 'button' | 'icon' | 'wide';
+  /** What the file will cover, above the formats (reports: "1–31-oktabr, 2026"). */
+  heading?: string;
+  /** Toast after the download. */
+  doneMessage?: string;
 }
 
-export function ExportMenu({ query }: ExportMenuProps) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const { exportData, isExporting } = useExportTransactions();
+const FORMATS: { format: ExportFormat; ext: string; label: string }[] = [
+  { format: 'csv', ext: 'CSV', label: 'CSV formatida' },
+  { format: 'xlsx', ext: 'XLS', label: 'Excel (XLSX) formatida' },
+];
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent | KeyboardEvent) => {
-      if (
-        e instanceof KeyboardEvent
-          ? e.key === 'Escape'
-          : !rootRef.current?.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', close);
-    return () => {
-      document.removeEventListener('mousedown', close);
-      document.removeEventListener('keydown', close);
-    };
-  }, [open]);
+export function ExportMenu({ query, variant = 'button', heading, doneMessage }: ExportMenuProps) {
+  const { exportData, exporting } = useExportTransactions(doneMessage);
 
-  const run = (format: 'csv' | 'xlsx') => {
-    setOpen(false);
-    void exportData(format, query);
-  };
+  const items: MenuItem[] = FORMATS.map(({ format, ext, label }) => ({
+    label: exporting === format ? 'Yuklanmoqda...' : label,
+    disabled: exporting !== null,
+    onSelect: () => void exportData(format, query),
+    lead: (
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-secondary text-[10px] font-bold text-text-secondary">
+        {exporting === format ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden /> : ext}
+      </span>
+    ),
+  }));
 
   return (
-    <div ref={rootRef} className="relative">
-      <Button
-        variant="outline"
-        disabled={isExporting}
-        onClick={() => setOpen((prev) => !prev)}
-        className="gap-2"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <Download className="h-4 w-4" />
-        <span>{isExporting ? 'Yuklanmoqda...' : 'Eksport'}</span>
-        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-      </Button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 z-30 mt-1 w-52 rounded-xl border border-border bg-surface py-1 shadow-lg"
-        >
+    <Menu
+      label="Eksport"
+      sheetTitle="Eksport"
+      width={heading ? 270 : 250}
+      header={heading}
+      className={variant === 'wide' ? 'flex w-full' : undefined}
+      items={items}
+      trigger={(props) =>
+        variant === 'icon' ? (
           <button
+            {...props}
             type="button"
-            role="menuitem"
-            onClick={() => run('csv')}
-            className="flex w-full items-center gap-2 px-3 py-3 text-left text-xs text-foreground hover:bg-muted/50 sm:py-2"
+            aria-label="Eksport"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-text hover:bg-secondary focus-ring"
           >
-            <FileText className="h-4 w-4 text-emerald-500" />
-            <span>CSV formatida</span>
+            {exporting ? <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden /> : <Download className="h-5 w-5" aria-hidden />}
           </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => run('xlsx')}
-            className="flex w-full items-center gap-2 px-3 py-3 text-left text-xs text-foreground hover:bg-muted/50 sm:py-2"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-            <span>Excel (XLSX) formatida</span>
-          </button>
-        </div>
-      )}
-    </div>
+        ) : (
+          <Button {...props} variant="outline" className={variant === 'wide' ? 'h-11 w-full aria-expanded:bg-secondary' : 'aria-expanded:bg-secondary'}>
+            {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden /> : <Download className="h-4 w-4" aria-hidden />}
+            {exporting ? 'Yuklanmoqda...' : 'Eksport'}
+            <ChevronDown className="h-3.5 w-3.5 text-text-muted" aria-hidden />
+          </Button>
+        )
+      }
+    />
   );
 }

@@ -1,20 +1,19 @@
-import { useInitOnOpen } from '../../../lib/useInitOnOpen';
-import { useForm, Controller } from 'react-hook-form';
+import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  CreateTransferInput,
-  CreateTransferInputSchema,
-  todayLocalIso,
-  formatMoney,
-} from '@fintrack/shared';
+import { AlertCircle, ArrowDownUp, ArrowLeftRight } from 'lucide-react';
+import { CreateTransferInput, CreateTransferInputSchema, todayLocalIso } from '@fintrack/shared';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
-import { Input } from '../../../components/ui/Input';
-import { Select } from '../../../components/ui/Select';
 import { MoneyInput } from '../../../components/ui/MoneyInput';
+import { DatePicker } from '../../../components/ui/DatePicker';
+import { Textarea } from '../../../components/ui/Textarea';
+import { AccountPicker } from '../../../components/ui/EntityPickers';
+import { useInitOnOpen } from '../../../lib/useInitOnOpen';
+import { apiErrorToMessage } from '../../../lib/apiError';
+import { formatAmount } from '../../../lib/money';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCreateTransfer } from '../../transfers/hooks/useTransfers';
-import { ArrowRightLeft } from 'lucide-react';
 
 export interface TransferModalProps {
   isOpen: boolean;
@@ -26,53 +25,44 @@ export function TransferModal({ isOpen, onClose, defaultFromAccountId }: Transfe
   const { data: accountsData } = useAccounts();
   const createTransfer = useCreateTransfer();
   const accounts = accountsData?.data ?? [];
+  const today = todayLocalIso();
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    setValue,
-    watch,
-    reset,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateTransferInput>({
+  const { control, handleSubmit, setValue, getValues, reset, watch, formState } = useForm<CreateTransferInput>({
     resolver: zodResolver(CreateTransferInputSchema),
-    defaultValues: {
-      fromAccountId: '',
-      toAccountId: '',
-      amount: '',
-      date: todayLocalIso(),
-      note: '',
-    },
+    defaultValues: { fromAccountId: '', toAccountId: '', amount: '', date: today, note: '' },
+  });
+
+  useInitOnOpen(isOpen, accountsData !== undefined, () => {
+    setServerError(null);
+    const from = accounts.find((a) => a.id === defaultFromAccountId) ?? accounts.find((a) => a.isDefault) ?? accounts[0];
+    const to = accounts.find((a) => a.id !== from?.id);
+    reset({ fromAccountId: from?.id ?? '', toAccountId: to?.id ?? '', amount: '', date: today, note: '' });
   });
 
   const fromAccountId = watch('fromAccountId');
   const toAccountId = watch('toAccountId');
+  const amount = watch('amount');
+  const same = fromAccountId !== '' && fromAccountId === toAccountId;
+  const from = accounts.find((a) => a.id === fromAccountId);
+  const to = accounts.find((a) => a.id === toAccountId);
 
-  useInitOnOpen(isOpen, accountsData !== undefined, () => {
-    if (accounts.length < 2) return;
-    const from = defaultFromAccountId ?? accounts[0].id;
-    const to = accounts.find((a) => a.id !== from)?.id ?? accounts[1].id;
-    setValue('fromAccountId', from);
-    setValue('toAccountId', to);
-    setValue('date', todayLocalIso());
-  });
-
-  const onSubmit = async (data: CreateTransferInput) => {
-    if (data.fromAccountId === data.toAccountId) {
-      setError('toAccountId', {
-        message: 'Jo‘natuvchi va qabul qiluvchi hisob bir xil bo‘lishi mumkin emas',
-      });
-      return;
-    }
-    await createTransfer.mutateAsync(data);
-    reset();
-    onClose();
+  const swap = () => {
+    const { fromAccountId: a, toAccountId: b } = getValues();
+    setValue('fromAccountId', b);
+    setValue('toAccountId', a);
   };
 
-  const fromAccount = accounts.find((a) => a.id === fromAccountId);
-  const toAccount = accounts.find((a) => a.id === toAccountId);
+  const onSubmit = async (data: CreateTransferInput) => {
+    if (data.fromAccountId === data.toAccountId) return;
+    setServerError(null);
+    try {
+      await createTransfer.mutateAsync({ ...data, note: data.note || undefined });
+      onClose();
+    } catch (err) {
+      setServerError(apiErrorToMessage(err));
+    }
+  };
 
   return (
     <Modal
@@ -80,88 +70,105 @@ export function TransferModal({ isOpen, onClose, defaultFromAccountId }: Transfe
       onClose={onClose}
       title="Hisoblararo o‘tkazma"
       description="Bir hisobingizdan boshqasiga pul o‘tkazish"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={formState.isSubmitting}>
+            Bekor qilish
+          </Button>
+          <Button type="submit" form="transfer-form" loading={formState.isSubmitting} disabled={same}>
+            <ArrowLeftRight className="h-4 w-4" aria-hidden />
+            O‘tkazish
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* From / To Accounts */}
-        <div className="space-y-3">
-          <Select
-            label="Qayerdan (Chiqim hisobi)"
-            error={errors.fromAccountId?.message}
-            {...register('fromAccountId')}
-          >
-            {accounts.map((acc) => (
-              <option key={acc.id} value={acc.id}>
-                {acc.icon} {acc.name} ({formatMoney(acc.balance)})
-              </option>
-            ))}
-          </Select>
-
-          <div className="flex justify-center -my-1">
-            <div className="h-8 w-8 rounded-full bg-muted/60 border border-border flex items-center justify-center text-muted-foreground">
-              <ArrowRightLeft className="h-4 w-4" />
-            </div>
+      <form id="transfer-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-[18px]" noValidate>
+        <div className="flex flex-col gap-1.5">
+          <Controller
+            name="fromAccountId"
+            control={control}
+            render={({ field }) => (
+              <AccountPicker label="Qayerdan" accounts={accounts} value={field.value} onChange={field.onChange} />
+            )}
+          />
+          <div className="-mb-1.5 mt-0.5 flex justify-center">
+            <button
+              type="button"
+              onClick={swap}
+              aria-label="Hisoblarni almashtirish"
+              className="focus-ring flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-text shadow-xs transition-colors duration-fast hover:bg-secondary"
+            >
+              <ArrowDownUp className="h-[18px] w-[18px]" aria-hidden />
+            </button>
           </div>
-
-          <Select
-            label="Qayerga (Kirim hisobi)"
-            error={errors.toAccountId?.message}
-            {...register('toAccountId')}
-          >
-            {accounts
-              .filter((acc) => acc.id !== fromAccountId)
-              .map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.icon} {acc.name} ({formatMoney(acc.balance)})
-                </option>
-              ))}
-          </Select>
+          <Controller
+            name="toAccountId"
+            control={control}
+            render={({ field }) => (
+              <AccountPicker
+                label="Qayerga"
+                accounts={accounts}
+                value={field.value}
+                onChange={field.onChange}
+                disabledId={same ? undefined : fromAccountId}
+                invalid={same}
+              />
+            )}
+          />
+          {same && (
+            <p role="alert" className="flex items-center gap-1.5 text-[13px] font-medium leading-[18px] text-danger">
+              <AlertCircle className="h-[15px] w-[15px] shrink-0" aria-hidden />
+              Jo‘natuvchi va qabul qiluvchi hisob bir xil bo‘lishi mumkin emas
+            </p>
+          )}
         </div>
-
-        {/* Amount */}
         <Controller
           name="amount"
           control={control}
-          render={({ field }) => (
+          render={({ field, fieldState }) => (
             <MoneyInput
-              label="O‘tkazma summasi"
+              label="Summa"
+              size="lg"
+              autoFocus
               value={field.value}
               onChange={field.onChange}
-              error={errors.amount?.message}
+              error={fieldState.error ? 'Summa 0 dan katta bo‘lishi kerak' : undefined}
             />
           )}
         />
-
-        {/* Date and Note */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input type="date" label="Sana" error={errors.date?.message} {...register('date')} />
-          <Input
-            type="text"
-            label="Izoh (ixtiyoriy)"
-            placeholder="Masalan: Kartani to‘ldirish"
-            error={errors.note?.message}
-            {...register('note')}
-          />
-        </div>
-
-        {/* Summary pill */}
-        {fromAccount && toAccount && (
-          <div className="p-3 rounded-xl bg-accent/40 border border-border/60 text-xs text-muted-foreground flex items-center justify-between">
-            <span>
-              {fromAccount.name} → {toAccount.name}
+        <Controller
+          name="date"
+          control={control}
+          render={({ field }) => (
+            <DatePicker label="Sana" value={field.value} onChange={field.onChange} chips={['today', 'yesterday']} max={today} today={today} />
+          )}
+        />
+        <Controller
+          name="note"
+          control={control}
+          render={({ field }) => (
+            <Textarea
+              label="Izoh (ixtiyoriy)"
+              placeholder="Masalan: Kartani to‘ldirish"
+              maxLength={500}
+              value={field.value ?? ''}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {from && to && !same && (
+          <div className="flex items-center gap-2.5 rounded-md border border-border bg-surface px-3.5 py-3 text-[14px] font-medium">
+            <ArrowLeftRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
+            <span className="text-pretty">
+              {from.name} → {to.name} · {formatAmount(/^\d+$/.test(amount) ? amount : '0')}
             </span>
-            <span className="font-semibold text-foreground">Ichki o‘tkazma</span>
           </div>
         )}
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/80">
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Bekor qilish
-          </Button>
-          <Button type="submit" loading={isSubmitting}>
-            O‘tkazish
-          </Button>
-        </div>
+        {serverError && (
+          <p role="alert" className="rounded-md bg-danger-soft px-3 py-2.5 text-[13px] font-medium text-danger">
+            {serverError}
+          </p>
+        )}
       </form>
     </Modal>
   );

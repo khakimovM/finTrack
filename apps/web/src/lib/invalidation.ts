@@ -9,7 +9,8 @@ export type QueryRoot =
   | 'debts'
   | 'categories'
   | 'recurring'
-  | 'notifications';
+  | 'notifications'
+  | 'tags';
 
 /**
  * What each kind of write makes stale — docs/05 "Query kalitlari va invalidatsiya", plus
@@ -18,7 +19,8 @@ export type QueryRoot =
  * safe; too little shows the user stale money.
  */
 export const INVALIDATES = {
-  transaction: ['transactions', 'stats', 'accounts', 'budgets', 'notifications'],
+  // Tags show how many entries use them.
+  transaction: ['transactions', 'stats', 'accounts', 'budgets', 'notifications', 'tags'],
   transfer: ['transactions', 'accounts', 'stats', 'notifications'],
   debt: ['debts', 'transactions', 'accounts', 'stats', 'notifications'],
   debtPayment: ['debts', 'transactions', 'accounts', 'stats', 'notifications'],
@@ -26,6 +28,8 @@ export const INVALIDATES = {
   category: ['categories', 'transactions', 'stats', 'budgets', 'recurring'],
   account: ['accounts', 'transactions', 'stats', 'recurring', 'debts'],
   recurring: ['recurring'],
+  /** Renaming or recolouring a tag changes the chips on transactions. */
+  tag: ['tags', 'transactions'],
   /** Run-now, and creation (which books today's occurrence right away). */
   recurringRun: ['recurring', 'transactions', 'accounts', 'stats', 'budgets', 'notifications'],
 } as const satisfies Record<string, readonly QueryRoot[]>;

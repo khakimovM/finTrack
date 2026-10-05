@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fintrack-tokens.css">
+</helmet>
+<div ref="{{ rootRef }}" data-theme="{{ theme }}" style="container-type:inline-size;background:var(--background);color:var(--text);font-family:Onest,system-ui,sans-serif;font-size:15px;line-height:22px;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;min-height:100%">
+
+<header style="position:sticky;top:0;z-index:30;background:color-mix(in oklab, var(--background) 86%, transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border)">
+  <div style="max-width:1232px;margin:0 auto;padding:0 16px;height:64px;display:flex;align-items:center;gap:24px">
+    <a href="#" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text)">
+      <svg width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="var(--brand)"></rect><rect x="8" y="8" width="16" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="14.5" width="10.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="21" width="4.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect></svg>
+      <span style="font-size:19px;font-weight:600;letter-spacing:-0.02em">FinTrack</span>
+    </a>
+    <sc-if value="{{ desktop }}" hint-placeholder-val="{{ true }}">
+      <nav style="flex:1;display:flex;justify-content:center;gap:4px">
+        <a href="#imkoniyatlar" style="height:36px;padding:0 14px;display:flex;align-items:center;border-radius:999px;font-size:14px;font-weight:500;color:var(--text-secondary);text-decoration:none" style-hover="background:var(--secondary);color:var(--text)">Imkoniyatlar</a>
+        <a href="#qanday-ishlaydi" style="height:36px;padding:0 14px;display:flex;align-items:center;border-radius:999px;font-size:14px;font-weight:500;color:var(--text-secondary);text-decoration:none" style-hover="background:var(--secondary);color:var(--text)">Qanday ishlaydi</a>
+        <a href="#savollar" style="height:36px;padding:0 14px;display:flex;align-items:center;border-radius:999px;font-size:14px;font-weight:500;color:var(--text-secondary);text-decoration:none" style-hover="background:var(--secondary);color:var(--text)">Savollar</a>
+      </nav>
+      <button onClick="{{ toggleTheme }}" aria-label="Mavzuni almashtirish" style="width:40px;height:40px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></sc-if>
+        <sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2m-7.07-17.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></sc-if>
+      </button>
+      <sc-if value="{{ guest }}" hint-placeholder-val="{{ true }}"><a href="Login.dc.html" style="height:40px;padding:0 20px;display:flex;align-items:center;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:14px;font-weight:500;text-decoration:none">Kirish</a></sc-if>
+      <sc-if value="{{ session }}" hint-placeholder-val="{{ false }}"><a href="#" style="height:40px;padding:0 16px 0 20px;display:flex;align-items:center;gap:8px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:14px;font-weight:500;text-decoration:none">Ilovaga o‘tish<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></a></sc-if>
+    </sc-if>
+    <sc-if value="{{ mobile }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1"></div>
+      <sc-if value="{{ guest }}" hint-placeholder-val="{{ true }}"><a href="Login.dc.html" style="height:36px;padding:0 16px;display:flex;align-items:center;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:14px;font-weight:500;text-decoration:none">Kirish</a></sc-if>
+      <sc-if value="{{ session }}" hint-placeholder-val="{{ false }}"><a href="#" style="height:36px;padding:0 14px;display:flex;align-items:center;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:14px;font-weight:500;text-decoration:none">Ilovaga o‘tish</a></sc-if>
+      <button onClick="{{ toggleMenu }}" aria-label="Menyu" aria-expanded="{{ menuOpen }}" style="width:44px;height:44px;margin-right:-6px;border:0;border-radius:999px;background:transparent;color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <sc-if value="{{ menuClosed }}" hint-placeholder-val="{{ true }}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></sc-if>
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></sc-if>
+      </button>
+    </sc-if>
+  </div>
+  <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="border-top:1px solid var(--border);background:var(--background);padding:8px 16px 20px;display:flex;flex-direction:column">
+      <a href="#imkoniyatlar" onClick="{{ closeMenu }}" style="height:52px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-size:17px;font-weight:500;text-decoration:none;color:var(--text)">Imkoniyatlar<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"><path d="m9 18 6-6-6-6"></path></svg></a>
+      <a href="#qanday-ishlaydi" onClick="{{ closeMenu }}" style="height:52px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-size:17px;font-weight:500;text-decoration:none;color:var(--text)">Qanday ishlaydi<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"><path d="m9 18 6-6-6-6"></path></svg></a>
+      <a href="#savollar" onClick="{{ closeMenu }}" style="height:52px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-size:17px;font-weight:500;text-decoration:none;color:var(--text)">Savollar<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"><path d="m9 18 6-6-6-6"></path></svg></a>
+      <div style="height:60px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:15px;color:var(--text-secondary)">Mavzu</span>
+        <div style="display:flex;gap:4px;padding:4px;background:var(--secondary);border-radius:999px">
+          <button onClick="{{ setLight }}" style="height:36px;padding:0 14px;border:0;border-radius:999px;font:500 13px Onest,sans-serif;cursor:pointer;color:var(--text);background:{{ lightBg }};box-shadow:{{ lightShadow }}">Yorug‘</button>
+          <button onClick="{{ setDark }}" style="height:36px;padding:0 14px;border:0;border-radius:999px;font:500 13px Onest,sans-serif;cursor:pointer;color:var(--text);background:{{ darkBg }};box-shadow:{{ darkShadow }}">Qorong‘i</button>
+        </div>
+      </div>
+      <a href="Login.dc.html" style="height:48px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:15px;font-weight:500;text-decoration:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>Telegram orqali boshlash</a>
+    </div>
+  </sc-if>
+</header>
+
+<section style="overflow:hidden">
+  <div style="max-width:1232px;margin:0 auto;padding:clamp(32px,6cqi,88px) 16px clamp(48px,6cqi,96px);display:flex;flex-wrap:wrap;align-items:center;gap:48px">
+    <div style="flex:1 1 420px;max-width:540px;display:flex;flex-direction:column;gap:24px;position:relative;z-index:2">
+      <h1 style="margin:0;font-size:clamp(38px,4.6cqi,64px);line-height:1.06;font-weight:600;letter-spacing:-0.035em;text-wrap:balance">Pulingiz qayerga ketayotganini biling <span style="color:var(--text-muted)">— saytda ham, Telegram’da ham</span></h1>
+      <p style="margin:0;font-size:clamp(16px,1.35cqi,19px);line-height:1.5;color:var(--text-secondary);max-width:480px;text-wrap:pretty">Xarajatni botga bir jumla bilan yozing yoki saytda kiriting. FinTrack har bir so‘mni kategoriyaga ajratadi, byudjet va qarzlarni kuzatib boradi.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:12px">
+        <a href="Login.dc.html" style="height:52px;padding:0 24px;display:flex;align-items:center;gap:10px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:16px;font-weight:500;text-decoration:none" style-hover="background:var(--primary-hover);color:var(--primary-foreground)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>Telegram orqali boshlash</a>
+        <a href="https://t.me/fintrack_cwa_bot" target="_blank" rel="noopener" style="height:52px;padding:0 22px;display:flex;align-items:center;gap:10px;border-radius:999px;border:1px solid var(--input);color:var(--text);font-size:16px;font-weight:500;text-decoration:none" style-hover="background:var(--secondary);color:var(--text)">Botni ochish<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg></a>
+      </div>
+      <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Parol kerak emas · Kod Telegram’ga keladi</span>
+    </div>
+
+    <div style="flex:1 1 560px;position:relative;height:{{ v.h }}">
+      <div style="position:absolute;left:{{ v.bl }};top:{{ v.bt }};zoom:{{ v.bz }}">
+        <div style="width:880px;height:580px;border-radius:16px;overflow:hidden;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;font-size:13px;line-height:18px">
+          <div style="height:40px;flex:none;display:flex;align-items:center;gap:14px;padding:0 14px;background:var(--surface);border-bottom:1px solid var(--border)">
+            <div style="display:flex;gap:6px"><span style="width:10px;height:10px;border-radius:9px;background:var(--input)"></span><span style="width:10px;height:10px;border-radius:9px;background:var(--input)"></span><span style="width:10px;height:10px;border-radius:9px;background:var(--input)"></span></div>
+            <div style="flex:1;display:flex;justify-content:center"><span style="display:flex;align-items:center;gap:6px;height:26px;padding:0 14px;border-radius:999px;background:var(--card);border:1px solid var(--border);font-size:12px;color:var(--text-muted)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>FinTrack · Bosh sahifa</span></div>
+            <span style="width:42px"></span>
+          </div>
+          <div style="flex:1;display:grid;grid-template-columns:172px minmax(0,1fr);min-height:0">
+            <div style="background:var(--surface);border-right:1px solid var(--border);padding:16px 10px;display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 8px 16px"><svg width="22" height="22" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="var(--brand)"></rect><rect x="8" y="8" width="16" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="14.5" width="10.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="21" width="4.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect></svg><span style="font-size:14px;font-weight:600;letter-spacing:-0.02em">FinTrack</span></div>
+              <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+                <div style="height:32px;display:flex;align-items:center;gap:9px;padding:0 10px;border-radius:9px;font-size:12.5px;font-weight:{{ n.fw }};background:{{ n.bg }};box-shadow:{{ n.sh }};color:{{ n.color }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>{{ n.label }}</div>
+              </sc-for>
+            </div>
+            <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-size:18px;line-height:24px;font-weight:600;letter-spacing:-0.01em">Oktabr 2026</span><span style="height:28px;padding:0 12px;display:flex;align-items:center;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:500">Shu oy</span><span style="height:28px;padding:0 12px;display:flex;align-items:center;gap:5px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:500"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5v14"></path></svg>Qo‘shish</span></div>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+                <div style="border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px"><span style="font-size:11.5px;color:var(--text-secondary)">Jami balans</span><span style="font-size:19px;line-height:24px;font-weight:600;letter-spacing:-0.02em;white-space:nowrap">43 050 000 <span style="font-size:11px;font-weight:500;letter-spacing:0;color:var(--text-muted)">so‘m</span></span></div>
+                <div style="border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px"><span style="font-size:11.5px;color:var(--text-secondary)">Kirim</span><span style="font-size:19px;line-height:24px;font-weight:600;letter-spacing:-0.02em;white-space:nowrap;color:var(--income)">+9 700 000 <span style="font-size:11px;font-weight:500;letter-spacing:0;color:var(--text-muted)">so‘m</span></span></div>
+                <div style="border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px"><span style="font-size:11.5px;color:var(--text-secondary)">Chiqim</span><span style="font-size:19px;line-height:24px;font-weight:600;letter-spacing:-0.02em;white-space:nowrap;color:var(--expense)">−6 380 000 <span style="font-size:11px;font-weight:500;letter-spacing:0;color:var(--text-muted)">so‘m</span></span></div>
+              </div>
+              <div style="flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:10px;min-height:0">
+                <div style="border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:14px">
+                  <span style="font-size:13px;font-weight:600">Byudjetlar</span>
+                  <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;background:color-mix(in oklab, var(--chart-1) 16%, transparent)">🍔</span><span style="flex:1;font-size:12px;font-weight:500">Oziq-ovqat</span><span style="font-size:11.5px;font-weight:600;color:var(--success)">56%</span></div><div style="height:6px;border-radius:9px;background:var(--secondary)"><div style="width:56%;height:100%;border-radius:9px;background:var(--success)"></div></div></div>
+                  <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;background:color-mix(in oklab, var(--chart-3) 18%, transparent)">🚗</span><span style="flex:1;font-size:12px;font-weight:500">Transport</span><span style="font-size:11.5px;font-weight:600;color:var(--warning)">86%</span></div><div style="height:6px;border-radius:9px;background:var(--secondary)"><div style="width:86%;height:100%;border-radius:9px;background:var(--warning)"></div></div></div>
+                  <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;background:color-mix(in oklab, var(--chart-4) 16%, transparent)">🎬</span><span style="flex:1;font-size:12px;font-weight:500">Ko‘ngilochar</span><span style="font-size:11.5px;font-weight:600;color:var(--danger)">124%</span></div><div style="height:6px;border-radius:9px;background:var(--danger)"></div></div>
+                  <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;background:color-mix(in oklab, var(--chart-2) 16%, transparent)">🏠</span><span style="flex:1;font-size:12px;font-weight:500">Uy-joy</span><span style="font-size:11.5px;font-weight:600;color:var(--success)">75%</span></div><div style="height:6px;border-radius:9px;background:var(--secondary)"><div style="width:75%;height:100%;border-radius:9px;background:var(--success)"></div></div></div>
+                </div>
+                <div style="border:1px solid var(--border);border-radius:14px;padding:14px 14px 6px;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:13px;font-weight:600;padding-bottom:6px">So‘nggi tranzaksiyalar</span>
+                  <sc-for list="{{ tx }}" as="t" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:10px;height:46px"><span style="width:30px;height:30px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;background:{{ t.tint }}">{{ t.e }}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.name }}</span><span style="font-size:11px;line-height:14px;color:var(--text-muted)">{{ t.meta }}</span></div><span style="font-size:12.5px;font-weight:600;white-space:nowrap;color:{{ t.color }}">{{ t.amt }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="position:absolute;left:{{ v.pl }};top:{{ v.pt }};zoom:{{ v.pz }}">
+        <div style="width:280px;height:572px;box-sizing:border-box;padding:8px;border-radius:46px;background:#151514;box-shadow:var(--shadow-lg),0 0 0 1px rgba(255,255,255,.06) inset">
+          <div style="width:100%;height:100%;border-radius:38px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;font-size:13px;line-height:18px">
+            <div style="height:34px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-size:12px;font-weight:600"><span>9:41</span><span style="width:64px;height:20px;border-radius:999px;background:#151514;margin-bottom:-2px"></span><span style="display:flex;gap:3px;align-items:flex-end"><span style="width:3px;height:5px;border-radius:1px;background:var(--text)"></span><span style="width:3px;height:7px;border-radius:1px;background:var(--text)"></span><span style="width:3px;height:9px;border-radius:1px;background:var(--text)"></span></span></div>
+            <div style="height:52px;flex:none;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--card);border-bottom:1px solid var(--border)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2.2" stroke-linecap="round"><path d="m15 18-6-6 6-6"></path></svg>
+              <div style="width:34px;height:34px;border-radius:999px;background:var(--brand);display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="8 8 16 17.5"><rect x="8" y="8" width="16" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="14.5" width="10.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="21" width="4.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect></svg></div>
+              <div style="display:flex;flex-direction:column"><span style="font-size:13.5px;font-weight:600">FinTrack</span><span style="font-size:11px;line-height:14px;color:var(--text-muted)">bot</span></div>
+            </div>
+            <div style="flex:1;padding:12px 10px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px">
+              <span style="align-self:center;padding:2px 10px;border-radius:999px;background:var(--secondary);font-size:11px;font-weight:500;color:var(--text-secondary)">Bugun</span>
+              <div style="align-self:flex-end;display:flex;align-items:flex-end;gap:8px;padding:8px 10px 6px 12px;border-radius:16px 16px 4px 16px;background:color-mix(in oklab, var(--brand) 20%, var(--card));font-size:14px">50000 taksi<span style="font-size:10px;line-height:12px;color:var(--text-secondary)">12:04 ✓✓</span></div>
+              <div style="align-self:stretch;display:flex;flex-direction:column;gap:6px;margin-right:24px">
+                <div style="padding:10px 12px;border-radius:16px 16px 16px 4px;background:var(--card);border:1px solid var(--border);display:flex;flex-direction:column;gap:3px">
+                  <span style="font-size:11px;font-weight:600;color:var(--text-muted)">Qoralama</span>
+                  <span style="font-size:14.5px;line-height:20px;font-weight:600">Chiqim · 50 000 so‘m</span>
+                  <span style="font-size:12.5px;color:var(--text-secondary)">Kategoriya: Transport › Taksi</span>
+                  <span style="font-size:12.5px;color:var(--text-secondary)">Hisob: Humo karta</span>
+                  <span style="align-self:flex-end;font-size:10px;line-height:12px;color:var(--text-muted)">12:04</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+                  <span style="grid-column:1/-1;height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--card);border:1px solid var(--border);font-size:12.5px;font-weight:600">✅ Saqlash</span>
+                  <span style="height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--card);border:1px solid var(--border);font-size:12px;font-weight:500">📁 Kategoriya</span>
+                  <span style="height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--card);border:1px solid var(--border);font-size:12px;font-weight:500">❌ Bekor</span>
+                </div>
+              </div>
+            </div>
+            <div style="flex:none;display:flex;align-items:center;gap:6px;padding:8px 8px 20px;background:var(--card);border-top:1px solid var(--border)">
+              <span style="height:32px;padding:0 12px;display:flex;align-items:center;border-radius:999px;background:var(--brand);color:var(--brand-foreground);font-size:12px;font-weight:600">Ilova</span>
+              <span style="flex:1;height:32px;padding:0 12px;display:flex;align-items:center;border-radius:999px;background:var(--surface);font-size:12.5px;color:var(--text-muted)">Xabar</span>
+              <span style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"></path></svg></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="imkoniyatlar" style="padding:clamp(64px,7cqi,112px) 0;border-top:1px solid var(--border)">
+  <div style="max-width:1232px;margin:0 auto;padding:0 16px;display:flex;flex-direction:column;gap:40px">
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:640px">
+      <span style="font-size:14px;font-weight:500;color:var(--brand)">Imkoniyatlar</span>
+      <h2 style="margin:0;font-size:clamp(30px,3cqi,44px);line-height:1.12;font-weight:600;letter-spacing:-0.03em;text-wrap:balance">Kundalik moliya uchun kerak bo‘lgan hammasi</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:16px">
+      <sc-for list="{{ features }}" as="f" hint-placeholder-count="6">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:16px">
+          <span style="width:44px;height:44px;border-radius:12px;background:var(--secondary);color:var(--text);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ f.d }}"></path></svg></span>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:18px;line-height:24px;font-weight:600;letter-spacing:-0.01em">{{ f.title }}</span><span style="font-size:15px;line-height:22px;color:var(--text-secondary);text-wrap:pretty">{{ f.text }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</section>
+
+<section style="padding:0 0 clamp(64px,7cqi,112px)">
+  <div style="max-width:1232px;margin:0 auto;padding:0 16px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:clamp(24px,4cqi,56px);display:flex;flex-direction:column;gap:40px">
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 40px">
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:620px">
+          <span style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--brand)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>@fintrack_cwa_bot</span>
+          <h2 style="margin:0;font-size:clamp(30px,3cqi,44px);line-height:1.12;font-weight:600;letter-spacing:-0.03em">Telegram ichida moliya</h2>
+          <p style="margin:0;font-size:17px;line-height:26px;color:var(--text-secondary);text-wrap:pretty">Ilovani ochmasdan yozing: bot xabaringizni tushunadi va saqlashdan oldin tasdiqlashingizni so‘raydi.</p>
+        </div>
+        <a href="https://t.me/fintrack_cwa_bot" target="_blank" rel="noopener" style="height:44px;padding:0 20px;display:flex;align-items:center;gap:8px;border-radius:999px;border:1px solid var(--input);font-size:15px;font-weight:500;text-decoration:none;color:var(--text)" style-hover="background:var(--secondary);color:var(--text)">Botni ochish<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg></a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));gap:16px">
+
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;gap:14px;align-items:flex-start"><span style="width:40px;height:40px;flex:none;border-radius:12px;background:var(--secondary);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path></svg></span><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:17px;line-height:24px;font-weight:600">Tez yozish</span><span style="color:var(--text-secondary);text-wrap:pretty">Odatdagidek yozing — bot summa, kategoriya va sanani o‘zi ajratib oladi.</span></div></div>
+          <div style="flex:1;min-height:220px;background:var(--surface);border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;font-size:14px">
+            <span style="align-self:flex-end;padding:7px 12px;border-radius:16px 16px 4px 16px;background:color-mix(in oklab, var(--brand) 20%, var(--card))">45k tushlik</span>
+            <span style="align-self:flex-start;padding:8px 12px;border-radius:16px 16px 16px 4px;background:var(--card);border:1px solid var(--border)"><b style="font-weight:600">Chiqim · 45 000 so‘m</b> · 🍔 Oziq-ovqat</span>
+            <span style="align-self:flex-end;padding:7px 12px;border-radius:16px 16px 4px 16px;background:color-mix(in oklab, var(--brand) 20%, var(--card))">kecha 1,2 mln ijara</span>
+            <span style="align-self:flex-start;padding:8px 12px;border-radius:16px 16px 16px 4px;background:var(--card);border:1px solid var(--border)"><b style="font-weight:600">Chiqim · 1 200 000 so‘m</b> · 🏠 Uy-joy · Kecha</span>
+          </div>
+        </div>
+
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;gap:14px;align-items:flex-start"><span style="width:40px;height:40px;flex:none;border-radius:12px;background:var(--secondary);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"></path></svg></span><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:17px;line-height:24px;font-weight:600">Ovozli xabarlar</span><span style="color:var(--text-secondary);text-wrap:pretty">Gapiring — bot eshitib, qoralama tayyorlaydi. Siz faqat tasdiqlaysiz.</span></div></div>
+          <div style="flex:1;min-height:220px;background:var(--surface);border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;font-size:14px">
+            <div style="align-self:flex-end;display:flex;align-items:center;gap:10px;padding:7px 12px 7px 7px;border-radius:16px 16px 4px 16px;background:color-mix(in oklab, var(--brand) 20%, var(--card))">
+              <span style="width:28px;height:28px;border-radius:999px;background:var(--brand);color:var(--brand-foreground);display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"></path></svg></span>
+              <span style="display:flex;align-items:center;gap:2px;height:20px"><sc-for list="{{ wave }}" as="h" hint-placeholder-count="22"><span style="width:2.5px;border-radius:2px;background:var(--text-secondary);height:{{ h }}"></span></sc-for></span>
+              <span style="font-size:12px;color:var(--text-secondary)">0:03</span>
+            </div>
+            <span style="align-self:flex-start;padding:8px 12px;border-radius:16px 16px 16px 4px;background:var(--card);border:1px solid var(--border)">🎙 Eshitdim: «tushlikka qirq besh ming»</span>
+            <div style="align-self:flex-start;display:flex;flex-direction:column;gap:4px;min-width:240px">
+              <span style="padding:8px 12px;border-radius:16px 16px 16px 4px;background:var(--card);border:1px solid var(--border)"><b style="font-weight:600">Chiqim · 45 000 so‘m</b><br><span style="font-size:13px;color:var(--text-secondary)">Kategoriya: Oziq-ovqat › Tushlik</span></span>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px"><span style="height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--card);border:1px solid var(--border);font-size:13px;font-weight:600">✅ Saqlash</span><span style="height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--card);border:1px solid var(--border);font-size:13px;font-weight:500">❌ Bekor</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;gap:14px;align-items:flex-start"><span style="width:40px;height:40px;flex:none;border-radius:12px;background:var(--secondary);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></span><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:17px;line-height:24px;font-weight:600">Kunlik xulosa va eslatmalar</span><span style="color:var(--text-secondary);text-wrap:pretty">Har kuni 21:00 da kun yakuni, byudjet limiti va qarz muddatlari haqida xabar.</span></div></div>
+          <div style="flex:1;min-height:220px;background:var(--surface);border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;font-size:14px">
+            <div style="align-self:flex-start;padding:10px 12px;border-radius:16px 16px 16px 4px;background:var(--card);border:1px solid var(--border);display:flex;flex-direction:column;gap:2px;min-width:250px">
+              <span style="font-weight:600">🌙 Kun yakuni · 21:00</span>
+              <span style="display:flex;justify-content:space-between;gap:16px;color:var(--text-secondary)">Chiqim<b style="font-weight:600;color:var(--expense)">−329 000 so‘m</b></span>
+              <span style="display:flex;justify-content:space-between;gap:16px;color:var(--text-secondary)">Kirim<b style="font-weight:600;color:var(--text)">0 so‘m</b></span>
+            </div>
+            <span style="align-self:flex-start;padding:8px 12px;border-radius:16px 16px 16px 4px;background:var(--card);border:1px solid var(--border)">⚠️ Transport byudjeti <b style="font-weight:600;color:var(--warning)">86%</b> ishlatildi</span>
+            <span style="align-self:flex-start;padding:8px 12px;border-radius:16px 16px 16px 4px;background:var(--card);border:1px solid var(--border);text-wrap:pretty">⏰ Ertaga Dilnoza Rahimovaga 900 000 so‘m qaytarish muddati</span>
+          </div>
+        </div>
+
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;gap:14px;align-items:flex-start"><span style="width:40px;height:40px;flex:none;border-radius:12px;background:var(--secondary);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="M2 9h20"></path></svg></span><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:17px;line-height:24px;font-weight:600">Mini App</span><span style="color:var(--text-secondary);text-wrap:pretty">Botdagi “Ilova” tugmasi FinTrack’ni to‘liq ko‘rinishda Telegram ichida ochadi.</span></div></div>
+          <div style="flex:1;min-height:220px;background:var(--surface);border-radius:16px;padding:16px 16px 0;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;overflow:hidden">
+            <div style="align-self:center;width:100%;max-width:300px;background:var(--card);border:1px solid var(--border);border-bottom:0;border-radius:20px 20px 0 0;padding:14px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-md)">
+              <span style="align-self:center;width:32px;height:4px;border-radius:9px;background:var(--input)"></span>
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">Jami balans</span><span style="font-size:22px;line-height:28px;font-weight:600;letter-spacing:-0.02em">43 050 000 <span style="font-size:12px;font-weight:500;letter-spacing:0;color:var(--text-muted)">so‘m</span></span></div>
+              <div style="display:flex;gap:6px"><span style="flex:1;height:32px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:500">Chiqim</span><span style="flex:1;height:32px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--secondary);font-size:12px;font-weight:500">Kirim</span><span style="flex:1;height:32px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--secondary);font-size:12px;font-weight:500">O‘tkazma</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:8px;margin:0 -16px;background:var(--card);border-top:1px solid var(--border)">
+              <span style="height:32px;padding:0 12px;display:flex;align-items:center;border-radius:999px;background:var(--brand);color:var(--brand-foreground);font-size:12px;font-weight:600;box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--brand)">Ilova</span>
+              <span style="flex:1;height:32px;padding:0 12px;display:flex;align-items:center;border-radius:999px;background:var(--surface);font-size:12.5px;color:var(--text-muted)">Xabar</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="qanday-ishlaydi" style="padding:clamp(64px,7cqi,112px) 0;border-top:1px solid var(--border)">
+  <div style="max-width:1232px;margin:0 auto;padding:0 16px;display:flex;flex-direction:column;gap:40px">
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:640px">
+      <span style="font-size:14px;font-weight:500;color:var(--brand)">Qanday ishlaydi</span>
+      <h2 style="margin:0;font-size:clamp(30px,3cqi,44px);line-height:1.12;font-weight:600;letter-spacing:-0.03em">Uch qadamda boshlang</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:16px">
+      <sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:20px;padding-top:24px;border-top:2px solid var(--text)">
+          <span style="font-size:15px;font-weight:600;color:var(--text-muted)">{{ s.n }}</span>
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:22px;line-height:28px;font-weight:600;letter-spacing:-0.01em">{{ s.title }}</span><span style="font-size:15px;line-height:22px;color:var(--text-secondary);text-wrap:pretty">{{ s.text }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</section>
+
+<section style="padding:0 0 clamp(64px,7cqi,112px)">
+  <div style="max-width:1232px;margin:0 auto;padding:0 16px">
+    <div style="background:var(--primary);color:var(--primary-foreground);border-radius:28px;padding:clamp(28px,4.5cqi,64px);display:flex;flex-wrap:wrap;gap:40px 64px">
+      <div style="flex:1 1 320px;display:flex;flex-direction:column;gap:16px">
+        <span style="width:48px;height:48px;border-radius:14px;background:color-mix(in oklab, var(--primary-foreground) 12%, var(--primary));display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+        <h2 style="margin:0;font-size:clamp(30px,3cqi,44px);line-height:1.12;font-weight:600;letter-spacing:-0.03em;text-wrap:balance">Xavfsiz, chunki parol yo‘q</h2>
+        <p style="margin:0;font-size:17px;line-height:26px;color:color-mix(in oklab, var(--primary-foreground) 72%, var(--primary));max-width:420px;text-wrap:pretty">Kirish Telegram hisobingizga bog‘langan. O‘g‘irlanadigan yoki unutiladigan parol yo‘q.</p>
+      </div>
+      <div style="flex:1.4 1 420px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:28px 32px">
+        <sc-for list="{{ security }}" as="s" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:12px;padding-top:20px;border-top:1px solid color-mix(in oklab, var(--primary-foreground) 18%, var(--primary))">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ s.d }}"></path></svg>
+            <span style="font-size:17px;line-height:24px;font-weight:600;text-wrap:pretty">{{ s.title }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="savollar" style="padding:clamp(64px,7cqi,112px) 0;border-top:1px solid var(--border)">
+  <div style="max-width:1232px;margin:0 auto;padding:0 16px;display:flex;flex-wrap:wrap;gap:32px 64px">
+    <div style="flex:1 1 300px;display:flex;flex-direction:column;gap:12px">
+      <span style="font-size:14px;font-weight:500;color:var(--brand)">Savollar</span>
+      <h2 style="margin:0;font-size:clamp(30px,3cqi,44px);line-height:1.12;font-weight:600;letter-spacing:-0.03em">Ko‘p beriladigan savollar</h2>
+    </div>
+    <div style="flex:2 1 520px;display:flex;flex-direction:column;border-top:1px solid var(--border)">
+      <sc-for list="{{ faq }}" as="q" hint-placeholder-count="5">
+        <div style="border-bottom:1px solid var(--border)">
+          <button onClick="{{ q.toggle }}" aria-expanded="{{ q.open }}" style="width:100%;min-height:68px;padding:18px 0;border:0;background:transparent;color:var(--text);display:flex;align-items:center;gap:16px;text-align:left;font:600 17px/24px Onest,sans-serif;cursor:pointer">
+            <span style="flex:1;text-wrap:pretty">{{ q.q }}</span>
+            <span style="width:32px;height:32px;flex:none;border-radius:999px;background:var(--secondary);display:flex;align-items:center;justify-content:center;transition:transform 200ms cubic-bezier(.2,0,0,1);transform:{{ q.rot }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+          </button>
+          <sc-if value="{{ q.open }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:0 48px 22px 0;font-size:15px;line-height:24px;color:var(--text-secondary);text-wrap:pretty">{{ q.a }}</p></sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</section>
+
+<section style="padding:0 0 clamp(48px,6cqi,96px)">
+  <div style="max-width:1232px;margin:0 auto;padding:0 16px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:28px;padding:clamp(32px,6cqi,88px) clamp(20px,4cqi,48px);display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px">
+      <svg width="56" height="56" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="var(--brand)"></rect><rect x="8" y="8" width="16" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="14.5" width="10.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="21" width="4.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect></svg>
+      <h2 style="margin:0;font-size:clamp(30px,3.4cqi,48px);line-height:1.1;font-weight:600;letter-spacing:-0.03em;max-width:680px;text-wrap:balance">Bugundan boshlab har bir so‘mni ko‘ring</h2>
+      <p style="margin:0;font-size:17px;line-height:26px;color:var(--text-secondary);max-width:480px;text-wrap:pretty">Kirish uchun faqat Telegram kerak. Birinchi kirishda hisob o‘zi yaratiladi.</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px">
+        <a href="Login.dc.html" style="height:52px;padding:0 24px;display:flex;align-items:center;gap:10px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:16px;font-weight:500;text-decoration:none" style-hover="background:var(--primary-hover);color:var(--primary-foreground)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>Telegram orqali boshlash</a>
+        <a href="https://t.me/fintrack_cwa_bot" target="_blank" rel="noopener" style="height:52px;padding:0 22px;display:flex;align-items:center;gap:10px;border-radius:999px;border:1px solid var(--input);color:var(--text);font-size:16px;font-weight:500;text-decoration:none" style-hover="background:var(--secondary);color:var(--text)">Botni ochish<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer style="border-top:1px solid var(--border)">
+  <div style="max-width:1232px;margin:0 auto;padding:24px 16px 32px;display:flex;flex-wrap:wrap;align-items:center;gap:16px 32px">
+    <div style="display:flex;align-items:center;gap:10px;flex:1 1 auto"><svg width="24" height="24" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="var(--brand)"></rect><rect x="8" y="8" width="16" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="14.5" width="10.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="21" width="4.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect></svg><span style="font-size:14px;color:var(--text-muted)">© 2026 FinTrack</span></div>
+    <nav style="display:flex;gap:24px"><a href="Login.dc.html" style="font-size:14px;font-weight:500;text-decoration:none;color:var(--text-secondary)" style-hover="color:var(--text)">Kirish</a><a href="https://t.me/fintrack_cwa_bot" target="_blank" rel="noopener" style="font-size:14px;font-weight:500;text-decoration:none;color:var(--text-secondary)" style-hover="color:var(--text)">Telegram bot</a></nav>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;},&quot;mobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;session&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;menuOpen&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const IC = {
+  home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  updown: 'm21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16',
+  wallet: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+  pie: 'M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1zM21.21 15.89A10 10 0 1 1 8 2.83',
+  users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0',
+  repeat: 'm17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3',
+  chart: 'M3 3v18h18M18 17V9M13 17V5M8 17v-3',
+  key: 'M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4zM16 7.5a.5.5 0 1 0 1 0a.5.5 0 1 0-1 0',
+  phone: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM12 18h.01',
+  monitor: 'M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 21h8M12 17v4',
+  lock: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4',
+  swap: 'M8 3 4 7l4 4M4 7h16m-4 14 4-4-4-4m4 4H4',
+};
+const NAV = [['Bosh sahifa', 'home'], ['Tranzaksiyalar', 'updown'], ['Hisoblar', 'wallet'], ['Byudjetlar', 'pie'], ['Qarzlar', 'users'], ['Takroriy', 'repeat'], ['Hisobotlar', 'chart']];
+const FEATURES = [
+  ['updown', 'Kirim va chiqimlar', 'Har bir so‘m o‘z kategoriyasida.'],
+  ['wallet', 'Hisoblar va o‘tkazmalar', 'Karta, naqd pul va jamg‘arma bir joyda.'],
+  ['pie', 'Byudjetlar', 'Limitning 80% va 100% ida ogohlantirish.'],
+  ['users', 'Qarzlar', 'Kim kimga qarzdor, qisman to‘lovlar va muddatlar.'],
+  ['repeat', 'Takroriy to‘lovlar', 'Oylik, ijara va obunalar o‘zi yoziladi.'],
+  ['chart', 'Hisobotlar', 'Davrlarni solishtirish, CSV va Excel eksport.'],
+];
+const STEPS = [
+  ['01', 'Telegram orqali kiring', 'Bot sizga bir martalik kod yuboradi. Parol o‘ylab topish shart emas.'],
+  ['02', 'Hisoblaringizni qo‘shing', 'Karta, naqd pul va jamg‘armani boshlang‘ich balansi bilan kiriting.'],
+  ['03', 'Saytda, botda yoki ovoz bilan yozib boring', 'Qayerda qulay bo‘lsa, o‘sha yerda yozing — hammasi bir joyga tushadi.'],
+];
+const SECURITY = [
+  ['key', 'Parolsiz kirish'],
+  ['phone', 'Kod faqat sizning Telegram’ingizga keladi'],
+  ['monitor', 'Faol sessiyalarni ko‘rish va yakunlash'],
+  ['lock', 'Maʼlumotlaringiz faqat sizga ko‘rinadi'],
+];
+const FAQ = [
+  ['Telegram’siz foydalansa bo‘ladimi?', 'Yo‘q. Kirish faqat Telegram orqali: kirish kodi botimizga keladi, parol kerak emas.'],
+  ['Ovozli xabarni qanday yuboraman?', 'Botda mikrofon tugmasini bosib turing va nimaga qancha sarflaganingizni ayting, masalan «tushlikka qirq besh ming». Bot qoralama tayyorlaydi — siz uni tasdiqlaysiz yoki tuzatasiz.'],
+  ['Maʼlumotlarimni yuklab olsam bo‘ladimi?', 'Ha. Hisobotlar bo‘limida istalgan davr uchun CSV yoki Excel faylini yuklab olishingiz mumkin.'],
+  ['Qarz berish xarajat hisoblanadimi?', 'Yo‘q. Qarz berganingizda hisob balansi o‘zgaradi, lekin bu summa xarajat statistikasiga kirmaydi.'],
+  ['Bir nechta karta qo‘shsam bo‘ladimi?', 'Ha. Har bir karta, naqd pul va jamg‘arma alohida hisob bo‘ladi, ular orasida o‘tkazma qilish mumkin.'],
+];
+const TX = [
+  ['🚕', 'Taksi', 'Transport · Bugun', '−35 000', 'var(--expense)', 'var(--chart-3)'],
+  ['🍔', 'Korzinka', 'Oziq-ovqat · Kecha', '−284 000', 'var(--expense)', 'var(--chart-1)'],
+  ['💼', 'Oylik maosh', 'Oylik · 5-okt', '+8 500 000', 'var(--income)', 'var(--chart-5)'],
+  ['⇄', 'Humo → Jamg‘arma', 'O‘tkazma · 3-okt', '1 000 000', 'var(--transfer)', 'var(--chart-9)'],
+  ['🤝', 'Jasur Karimov', 'Qarz berildi · 15-avg', '2 000 000', 'var(--debt)', 'var(--debt)'],
+];
+const WAVE = [6, 10, 14, 8, 16, 18, 12, 7, 14, 20, 16, 10, 6, 12, 17, 13, 8, 11, 15, 9, 6, 4];
+
+class Component extends DCLogic {
+  state = { theme: null, faq: 0, menu: null, w: 1440 };
+  rootRef = React.createRef();
+  componentDidMount() {
+    const el = this.rootRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    this.ro = new ResizeObserver(e => { const w = Math.round(e[0].contentRect.width); if (w && w !== this.state.w) this.setState({ w }); });
+    this.ro.observe(el);
+  }
+  componentWillUnmount() { this.ro && this.ro.disconnect(); }
+  renderVals() {
+    const p = this.props, s = this.state;
+    const mobile = p.mobile ?? s.w < 820;
+    const theme = s.theme ?? p.theme ?? 'light';
+    const session = !!p.session;
+    const menuOpen = mobile && (s.menu ?? !!p.menuOpen);
+    const cw = Math.min(s.w, 1232) - 32;
+    const v = mobile
+      ? { h: '480px', bl: '0px', bt: '0px', bz: 0.5, pl: Math.max(cw - 222, 120) + 'px', pt: '44px', pz: 0.76 }
+      : { h: '660px', bl: '76px', bt: '10px', bz: 1, pl: '-28px', pt: '96px', pz: 1 };
+    const dark = theme === 'dark';
+    return {
+      rootRef: this.rootRef, theme, isLight: !dark, isDark: dark,
+      mobile, desktop: !mobile, session, guest: !session, menuOpen, menuClosed: !menuOpen,
+      toggleTheme: () => this.setState({ theme: dark ? 'light' : 'dark' }),
+      setLight: () => this.setState({ theme: 'light' }), setDark: () => this.setState({ theme: 'dark' }),
+      lightBg: dark ? 'transparent' : 'var(--card)', darkBg: dark ? 'var(--card)' : 'transparent',
+      lightShadow: dark ? 'none' : 'var(--shadow-sm)', darkShadow: dark ? 'var(--shadow-sm)' : 'none',
+      toggleMenu: () => this.setState({ menu: !menuOpen }), closeMenu: () => this.setState({ menu: false }),
+      v,
+      nav: NAV.map(([label, k], i) => ({ label, d: IC[k], bg: i === 0 ? 'var(--card)' : 'transparent', sh: i === 0 ? 'var(--shadow-xs)' : 'none', fw: i === 0 ? 600 : 500, color: i === 0 ? 'var(--text)' : 'var(--text-secondary)' })),
+      tx: TX.map(([e, name, meta, amt, color, c]) => ({ e, name, meta, amt: amt + ' so‘m', color, tint: `color-mix(in oklab, ${c} 16%, transparent)` })),
+      features: FEATURES.map(([k, title, text]) => ({ d: IC[k], title, text })),
+      steps: STEPS.map(([n, title, text]) => ({ n, title, text })),
+      security: SECURITY.map(([k, title]) => ({ d: IC[k], title })),
+      wave: WAVE.map(h => h + 'px'),
+      faq: FAQ.map(([q, a], i) => ({ q, a, open: s.faq === i, rot: s.faq === i ? 'rotate(180deg)' : 'none', toggle: () => this.setState({ faq: s.faq === i ? -1 : i }) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

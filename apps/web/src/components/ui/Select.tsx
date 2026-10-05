@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { Field, useFieldId } from './Field';
+import { inputClasses } from './Input';
 
 export interface SelectOption {
   value: string;
@@ -10,32 +12,23 @@ export interface SelectOption {
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
+  hint?: string;
   options?: SelectOption[];
+  wrapperClassName?: string;
 }
 
+/** Native select in the input style; used where the platform picker is the better UX (phones). */
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, id, options, children, ...props }, ref) => {
-    const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
-
+  ({ className, wrapperClassName, label, error, hint, id, options, children, ...props }, ref) => {
+    const selectId = useFieldId(id);
     return (
-      <div className="w-full space-y-1.5">
-        {label && (
-          <label
-            htmlFor={selectId}
-            className="text-xs font-semibold tracking-wide uppercase text-muted-foreground"
-          >
-            {label}
-          </label>
-        )}
+      <Field id={selectId} label={label} hint={hint} error={error} className={wrapperClassName}>
         <div className="relative">
           <select
             id={selectId}
-            className={cn(
-              'flex h-11 w-full appearance-none rounded-xl border border-input bg-surface px-3.5 py-2 text-sm text-foreground transition-all duration-150 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 pr-10',
-              error && 'border-destructive focus-visible:border-destructive focus-visible:ring-destructive/30',
-              className,
-            )}
             ref={ref}
+            aria-invalid={error ? true : undefined}
+            className={cn(inputClasses, 'appearance-none pr-10', error && 'border-danger', className)}
             {...props}
           >
             {options
@@ -46,10 +39,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                 ))
               : children}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <ChevronDown
+            className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+            aria-hidden
+          />
         </div>
-        {error && <p className="text-xs font-medium text-destructive">{error}</p>}
-      </div>
+      </Field>
     );
   },
 );

@@ -1,103 +1,164 @@
-import { Edit2, Archive, Star } from 'lucide-react';
-import { AccountResponse, AccountType } from '@fintrack/shared';
+import type { HTMLAttributes } from 'react';
+import { Archive, ArchiveRestore, ChevronRight, EllipsisVertical, GripVertical, Pencil, Star, Trash2 } from 'lucide-react';
+import type { AccountResponse } from '@fintrack/shared';
 import { Amount } from '../../../components/ui/Amount';
+import { EmojiTile } from '../../../components/ui/EmojiTile';
+import { Menu, type MenuItem } from '../../../components/ui/Menu';
 import { cn } from '../../../lib/utils';
+import { ACCOUNT_TYPES } from '../accountTypes';
+
+export interface AccountActions {
+  onOpen: (account: AccountResponse) => void;
+  onEdit: (account: AccountResponse) => void;
+  onMakeDefault: (account: AccountResponse) => void;
+  onArchive: (account: AccountResponse) => void;
+  onUnarchive: (account: AccountResponse) => void;
+  onDelete: (account: AccountResponse) => void;
+}
 
 export interface AccountCardProps {
   account: AccountResponse;
-  onEdit: (account: AccountResponse) => void;
-  onArchive: (id: string) => void;
-  isArchiving?: boolean;
+  actions: AccountActions;
+  /** Phone: a row of one list instead of a card in a grid. */
+  compact: boolean;
+  /** Reorder mode: a drag handle instead of the menu; the card does not open. */
+  handle?: HTMLAttributes<HTMLSpanElement>;
+  dragging?: boolean;
+  sortProps?: Record<string, string>;
 }
 
-const TYPE_NAMES: Record<AccountType, string> = {
-  CARD: 'Karta',
-  CASH: 'Naqd',
-  BANK: 'Bank',
-  SAVINGS: 'Jamg‘arma',
-};
+function menuItems(account: AccountResponse, actions: AccountActions): MenuItem[] {
+  return [
+    { label: 'Tahrirlash', icon: Pencil, onSelect: () => actions.onEdit(account) },
+    { label: 'Asosiy qilish', icon: Star, disabled: account.isDefault, onSelect: () => actions.onMakeDefault(account) },
+    { label: 'Arxivlash', icon: Archive, onSelect: () => actions.onArchive(account) },
+    { label: 'O‘chirish', icon: Trash2, danger: true, separatorBefore: true, onSelect: () => actions.onDelete(account) },
+  ];
+}
 
-export function AccountCard({
-  account,
-  onEdit,
-  onArchive,
-  isArchiving,
-}: AccountCardProps) {
+export function AccountCard({ account, actions, compact, handle, dragging, sortProps }: AccountCardProps) {
+  const archived = account.archivedAt !== null;
+  const reorder = handle !== undefined;
+  const type = ACCOUNT_TYPES[account.type].short;
+  const count = `Tranzaksiyalar: ${account.transactionCount} ta`;
+  const subtitle = compact
+    ? [type, account.isDefault && !archived ? '★ Asosiy' : null, archived ? 'Arxivda' : null].filter(Boolean).join(' · ')
+    : archived
+      ? `${type} · Arxivda`
+      : type;
+  const open = () => {
+    if (!reorder && !archived) actions.onOpen(account);
+  };
+
+  const balance = (
+    <div className={cn('flex flex-col gap-0.5', compact ? 'items-end' : 'items-start')}>
+      {!compact && <span className="text-[13px] text-text-muted">Joriy balans</span>}
+      <Amount
+        value={account.balance}
+        showSign={false}
+        unit="muted"
+        className={cn(
+          'leading-[1.2] tracking-[-0.02em]',
+          compact ? 'text-[15px]' : 'text-[24px]',
+          archived && BigInt(account.balance) >= 0n && 'text-text-secondary',
+        )}
+        unitClassName="text-[13px]"
+      />
+      {compact && <span className="text-[12px] text-text-muted">{count}</span>}
+    </div>
+  );
+
+  const menu = !archived && !reorder && (
+    // The card opens on click; the menu (and its phone sheet, portalled) must not reach it.
+    <div onClick={(event) => event.stopPropagation()} className="flex shrink-0">
+      <Menu
+        label="Amallar"
+        width={220}
+        items={menuItems(account, actions)}
+        trigger={(props) => (
+          <button
+            {...props}
+            type="button"
+            aria-label="Amallar"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors duration-fast hover:bg-secondary focus-ring aria-expanded:bg-secondary"
+          >
+            <EllipsisVertical className="h-[18px] w-[18px]" aria-hidden />
+          </button>
+        )}
+      />
+    </div>
+  );
+
   return (
     <div
+      {...sortProps}
+      onClick={open}
       className={cn(
-        'group relative p-5 rounded-2xl border border-border bg-surface shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between',
-        account.isDefault && 'ring-1 ring-primary/40',
+        'relative flex bg-card transition-shadow duration-fast',
+        compact
+          ? 'flex-row flex-wrap items-center gap-x-3 gap-y-2 border-b border-border py-3.5 last:border-b-0'
+          : 'flex-col gap-[18px] rounded-[20px] border border-border p-5 hover:shadow-sm',
+        !reorder && !archived && 'cursor-pointer',
+        archived && 'opacity-75',
+        dragging && 'opacity-50',
       )}
     >
-      {/* Top row: Icon, Name, Type, Badges */}
-      <div>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="h-11 w-11 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-inner"
-              style={{ backgroundColor: `${account.color}20`, color: account.color }}
-            >
-              {account.icon}
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h3 className="font-bold text-sm tracking-tight truncate">
-                  {account.name}
-                </h3>
-                {account.isDefault && (
-                  <span
-                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary"
-                    title="Asosiy hisob"
-                  >
-                    <Star className="h-2.5 w-2.5 fill-primary text-primary" />
-                    <span>Asosiy</span>
-                  </span>
-                )}
-              </div>
-              <span className="text-[11px] font-medium text-muted-foreground">
-                {TYPE_NAMES[account.type]} • {account.currency}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {handle && (
+          <span {...handle} className="flex w-6 shrink-0 justify-center rounded-sm text-text-muted focus-ring">
+            <GripVertical className="h-5 w-5" aria-hidden />
+          </span>
+        )}
+        <EmojiTile emoji={account.icon} color={account.color} size={compact ? 44 : 48} muted={archived} className="rounded-[14px] text-[22px]" />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="min-w-[72px] truncate text-[16px] font-semibold leading-[22px]">{account.name}</span>
+            {!compact && account.isDefault && !archived && (
+              <span className="inline-flex h-[22px] shrink-0 items-center gap-1 rounded-full bg-warning-soft px-2 text-[12px] font-semibold text-warning">
+                <Star className="h-3 w-3 fill-current" aria-hidden />
+                Asosiy
               </span>
-            </div>
-          </div>
-
-          {/* Quick actions */}
-          <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={() => onEdit(account)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              title="Tahrirlash"
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => onArchive(account.id)}
-              disabled={isArchiving}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              title="Arxivlash"
-            >
-              <Archive className="h-3.5 w-3.5" />
-            </button>
-          </div>
+            )}
+          </span>
+          <span className="text-[13px] leading-[18px] text-text-muted">{subtitle}</span>
         </div>
-
-        {/* Balance Display */}
-        <div className="mt-4">
-          <span className="text-xs text-muted-foreground font-medium">Joriy balans</span>
-          <div className="mt-0.5">
-            <Amount value={account.balance} showSign={false} className="text-xl" />
-          </div>
-        </div>
+        {compact && balance}
+        {menu}
       </div>
 
-      {/* Footer stats: Transaction count */}
-      <div className="mt-5 pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
-        <span>Tranzaksiyalar soni</span>
-        <span className="font-semibold text-foreground">
-          {account.transactionCount} ta
-        </span>
-      </div>
+      {!compact && balance}
+
+      {!compact && !archived && (
+        <div className="flex items-center justify-between border-t border-border pt-3.5 text-[13px] text-text-secondary">
+          <span>{count}</span>
+          {!reorder && (
+            <span className="flex items-center gap-0.5 font-medium text-text">
+              Tranzaksiyalar
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </span>
+          )}
+        </div>
+      )}
+
+      {archived && (
+        <div className={cn('flex flex-wrap gap-2', compact && 'basis-full pl-14')}>
+          <button
+            type="button"
+            onClick={() => actions.onUnarchive(account)}
+            className="flex h-9 items-center gap-1.5 rounded-full border border-input bg-card px-3.5 text-[13px] font-medium text-text hover:bg-secondary focus-ring"
+          >
+            <ArchiveRestore className="h-4 w-4" aria-hidden />
+            Arxivdan chiqarish
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.onDelete(account)}
+            className="h-9 rounded-full px-3.5 text-[13px] font-medium text-danger hover:bg-danger-soft focus-ring"
+          >
+            O‘chirish
+          </button>
+        </div>
+      )}
     </div>
   );
 }

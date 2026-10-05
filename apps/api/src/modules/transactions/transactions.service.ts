@@ -57,9 +57,10 @@ export class TransactionsService {
       this.repository.findMany(userId, query),
       this.repository.calculateSums(userId, query),
     ]);
+    const peers = await this.repository.findTransferPeers(userId, transactions);
 
     return {
-      data: transactions.map((t) => this.mapToResponse(t)),
+      data: transactions.map((t) => this.mapToResponse(t, peers.get(t.id))),
       meta: {
         page: query.page,
         limit: query.limit,
@@ -73,7 +74,8 @@ export class TransactionsService {
   async getById(userId: string, id: string): Promise<TransactionResponse> {
     const transaction = await this.repository.findById(userId, id);
     if (!transaction) throw new NotFoundDomainException('Tranzaksiya topilmadi');
-    return this.mapToResponse(transaction);
+    const peers = await this.repository.findTransferPeers(userId, [transaction]);
+    return this.mapToResponse(transaction, peers.get(transaction.id));
   }
 
   async create(userId: string, dto: CreateTransactionInput): Promise<CreateTransactionResult> {
@@ -127,8 +129,11 @@ export class TransactionsService {
     if (dto.accountId && dto.accountId !== existing.accountId) {
       await this.accountAccess.assertWritable(userId, dto.accountId);
     }
-    if (dto.categoryId !== undefined && dto.categoryId !== null) {
-      await this.assertCategory(userId, dto.categoryId, existing.type);
+    // Income can become expense and back; the category, given or kept, must match the new type.
+    const type = dto.type ?? existing.type;
+    const categoryId = dto.categoryId !== undefined ? dto.categoryId : existing.categoryId;
+    if (categoryId !== null && (dto.categoryId !== undefined || type !== existing.type)) {
+      await this.assertCategory(userId, categoryId, type);
     }
     await this.assertTags(userId, dto.tagIds);
 
@@ -138,7 +143,7 @@ export class TransactionsService {
 
     const deltas = balanceDeltas(
       [{ accountId: existing.accountId, type: existing.type, amount: existing.amount }],
-      [{ accountId, type: existing.type, amount }],
+      [{ accountId, type, amount }],
     );
 
     const updated = await this.prisma.$transaction(async (db) => {
@@ -147,7 +152,14 @@ export class TransactionsService {
         db,
         userId,
         id,
-        { accountId: dto.accountId, amount: dto.amount ? amount : undefined, categoryId: dto.categoryId, date, note: dto.note },
+        {
+          type: dto.type,
+          accountId: dto.accountId,
+          amount: dto.amount ? amount : undefined,
+          categoryId: dto.categoryId,
+          date,
+          note: dto.note,
+        },
         dto.tagIds ? [...new Set(dto.tagIds)] : undefined,
       );
     });
@@ -240,7 +252,10 @@ export class TransactionsService {
     }
   }
 
-  private mapToResponse(tx: TransactionWithRelations): TransactionResponse {
+  private mapToResponse(
+    tx: TransactionWithRelations,
+    transferPeer: TransactionResponse['transferPeer'] = null,
+  ): TransactionResponse {
     return {
       id: tx.id,
       type: tx.type as TransactionResponse['type'],
@@ -258,7 +273,9 @@ export class TransactionsService {
         : null,
       tags: tx.tags.map((item) => ({ id: item.tag.id, name: item.tag.name, color: item.tag.color })),
       debtId: tx.debtId,
+      debt: tx.debt ? { id: tx.debt.id, personName: tx.debt.personName } : null,
       transferGroupId: tx.transferGroupId,
+      transferPeer: transferPeer ?? null,
       createdAt: tx.createdAt.toISOString(),
     };
   }

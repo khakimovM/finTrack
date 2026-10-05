@@ -50,6 +50,8 @@ export type CreateTransactionInput = z.infer<typeof CreateTransactionInputSchema
 
 export const UpdateTransactionInputSchema = z
   .object({
+    /** Switch between income and expense; the category must be of the new type. */
+    type: z.enum(['INCOME', 'EXPENSE']).optional(),
     accountId: z.string().uuid('Yaroqsiz hisob ID si').optional(),
     amount: positiveTiyinSchema.optional(),
     categoryId: z.string().uuid('Yaroqsiz kategoriya ID si').optional().nullable(),
@@ -119,7 +121,11 @@ export const TransactionResponseSchema = z.object({
     }),
   ),
   debtId: z.string().uuid().nullable(),
+  /** The debt a loan row belongs to, so lists can name the person. */
+  debt: z.object({ id: z.string().uuid(), personName: z.string() }).nullable(),
   transferGroupId: z.string().nullable(),
+  /** The other leg of a transfer: "Humo karta → Jamg‘arma". */
+  transferPeer: z.object({ accountId: z.string().uuid(), name: z.string(), icon: z.string() }).nullable(),
   createdAt: z.string(),
 });
 export type TransactionResponse = z.infer<typeof TransactionResponseSchema>;
@@ -132,6 +138,9 @@ export const TransactionListMetaSchema = z.object({
   sums: z.object({
     income: z.string(),
     expense: z.string(),
+    /** How many income and expense rows the whole filter matches. */
+    incomeCount: z.number(),
+    expenseCount: z.number(),
   }),
 });
 export type TransactionListMeta = z.infer<typeof TransactionListMetaSchema>;

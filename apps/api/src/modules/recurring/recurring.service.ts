@@ -14,7 +14,7 @@ import {
   RecurringRuleWithRelations,
 } from './recurring.repository';
 import { RecurringRunnerService } from './recurring-runner.service';
-import { defaultDayOfCycle, firstOccurrenceOnOrAfter } from './recurrence';
+import { defaultDayOfCycle, firstOccurrenceOnOrAfter } from '@fintrack/shared';
 import { AccountAccessService } from '../accounts/account-access.service';
 import { BalanceGuardService } from '../accounts/balance-guard.service';
 import { CategoriesRepository } from '../categories/categories.repository';
@@ -233,7 +233,10 @@ export class RecurringService {
       category: tx.category,
       tags: tx.tags.map((t) => t.tag),
       debtId: tx.debtId,
+      // Recurring rules only write income and expense rows: no debt, no transfer leg.
+      debt: null,
       transferGroupId: tx.transferGroupId,
+      transferPeer: null,
       createdAt: tx.createdAt.toISOString(),
     };
   }

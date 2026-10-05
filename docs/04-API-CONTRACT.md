@@ -235,13 +235,19 @@ Query: `page` (1), `limit` (20, max 100), `type`, `accountId`, `categoryId`, `ta
       "account": { "id": "a1…", "name": "Humo karta", "icon": "💳" },
       "category": { "id": "c1…", "name": "Oziq-ovqat", "icon": "🍔", "color": "#ef4444" },
       "tags": [{ "id": "g1…", "name": "oila", "color": "#94a3b8" }],
-      "debtId": null, "transferGroupId": null, "createdAt": "2026-08-15T10:23:00.000Z" }
+      "debtId": null, "debt": null,
+      "transferGroupId": null, "transferPeer": null,
+      "createdAt": "2026-08-15T10:23:00.000Z" }
   ],
   "meta": { "page": 1, "limit": 20, "total": 137, "totalPages": 7,
-            "sums": { "income": "500000000", "expense": "437500000" } }
+            "sums": { "income": "500000000", "expense": "437500000",
+                      "incomeCount": 12, "expenseCount": 118 } }
 }
 ```
-`meta.sums` — **filtr bo'yicha** jami (joriy sahifa emas).
+`meta.sums` — **filtr bo'yicha** jami va yozuvlar soni (joriy sahifa emas).
+`debt` — qarz yozuvlarida `{ "id", "personName" }`; `transferPeer` — o'tkazma yozuvlarida ikkinchi
+tomonning hisobi `{ "accountId", "name", "icon" }`; boshqa yozuvlarda ikkalasi ham `null`.
+Ota kategoriya bo'yicha `categoryId` filtri uning subkategoriyalarini ham qamrab oladi (ro'yxat, `sums` va eksport).
 
 ### `POST /transactions`
 ```json
@@ -257,6 +263,11 @@ Query: `page` (1), `limit` (20, max 100), `type`, `accountId`, `categoryId`, `ta
   "budgetAlert": { "categoryId": "c1…", "percent": 92.4, "limit": "200000000", "spent": "184800000" } } }
 ```
 `budgetAlert` — faqat chegara oshganda, aks holda `null`.
+
+### `PATCH /transactions/:id`
+O'zgaradigan maydonlar ixtiyoriy: `type` (`INCOME`↔`EXPENSE`), `accountId`, `amount`, `categoryId`, `date`,
+`note`, `tagIds`. Tur almashtirilsa, berilgan yoki saqlanib qolgan kategoriya yangi turga mos bo'lishi
+shart (`422 INVALID_CATEGORY_TYPE`); balans o'zgarishi Qatʼiy rejimda tekshiriladi.
 
 **Boshqariladigan yozuvlar.** `PATCH`, `DELETE`, `bulk-delete` va `restore` faqat `INCOME`/`EXPENSE`
 uchun. O'tkazma va qarz yozuvlari uchun `422 MANAGED_TRANSACTION` (`details.transferGroupId` yoki
@@ -283,6 +294,13 @@ uchun. O'tkazma va qarz yozuvlari uchun `422 MANAGED_TRANSACTION` (`details.tran
 ortiqcha summa — `422 DEBT_OVERPAYMENT`, **hech narsa o'zgarmaydi**; to'langan qarz — `409 DEBT_ALREADY_PAID`.
 `POST /debts/:id/settle` — `{ accountId, paidAt?, note? }`, qoldiqning hammasi.
 `DELETE /debts/:id/payments/:paymentId` — to'lov va uning ledger yozuvi atomar bekor qilinadi, status qayta hisoblanadi.
+
+To'lov obyekti (`payment` va `GET /debts/:id/payments`, yangisi birinchi):
+```json
+{ "id": "p1…", "amount": "20000000", "paidAt": "2026-08-29", "note": "birinchi qism",
+  "account": { "id": "a1…", "name": "Humo karta", "icon": "💳" }, "createdAt": "2026-08-29T10:15:00.000Z" }
+```
+`account` — to'lovning ledger yozuvi qaysi hisobda turgani (pul shu hisobga tushgan yoki undan chiqqan).
 
 ### `GET /debts`
 Query: `direction`, `status`, `overdue=true`, `page`, `limit`. `meta.summary`:

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fintrack-tokens.css">
+</helmet>
+<div data-theme="light" style="min-height:100vh;background:var(--background);color:var(--text);font-family:Onest,system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased">
+<div ref="{{ lightRef }}" data-theme="light" style="display:none"></div>
+<div ref="{{ darkRef }}" data-theme="dark" style="display:none"></div>
+<main style="max-width:1280px;margin:0 auto;padding:48px 32px 120px;display:flex;flex-direction:column;gap:56px">
+  <header style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 32px">
+    <div style="flex:1 1 480px;display:flex;flex-direction:column;gap:8px">
+      <span style="display:flex;align-items:center;gap:10px"><svg width="28" height="28" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="var(--brand)"></rect><rect x="8" y="8" width="16" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="14.5" width="10.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="21" width="4.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect></svg><span style="font-size:15px;font-weight:600">FinTrack · Handoff</span></span>
+      <h1 style="margin:0;font-size:40px;line-height:48px;font-weight:600;letter-spacing:-0.03em">Tokenlar va komponentlar</h1>
+      <p style="margin:0;color:var(--text-secondary);max-width:640px;text-wrap:pretty">Har bir CSS o‘zgaruvchisi Tailwind kalitiga bittadan-bitta mos keladi. Qiymatlar <code>fintrack-tokens.css</code> faylidan jonli o‘qiladi; <code>:root</code> = yorug‘, <code>.dark</code> = qorong‘i.</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onClick="{{ copyCss }}" style="height:44px;padding:0 18px;border:1px solid var(--input);border-radius:999px;background:var(--card);color:var(--text);font:500 14px Onest,sans-serif;cursor:pointer;white-space:nowrap;flex:none">{{ cssLabel }}</button>
+      <button onClick="{{ copyTw }}" style="height:44px;padding:0 18px;border:0;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font:500 14px Onest,sans-serif;cursor:pointer;white-space:nowrap;flex:none">{{ twLabel }}</button>
+    </div>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <h2 style="margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em">1 · Rang tokenlari</h2>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.3fr) minmax(0,0.9fr) minmax(0,0.9fr);gap:12px;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text-muted)"><span>CSS o‘zgaruvchisi</span><span>Tailwind kaliti → klass</span><span>Qayerda</span><span>Yorug‘</span><span>Qorong‘i</span></div>
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="6">
+        <div style="padding:14px 20px 6px;font-size:13px;font-weight:600;color:var(--text-secondary);border-bottom:1px solid var(--border)">{{ g.title }}</div>
+        <sc-for list="{{ g.rows }}" as="t" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.3fr) minmax(0,0.9fr) minmax(0,0.9fr);gap:12px;align-items:center;padding:9px 20px;border-bottom:1px solid var(--border);font-size:13px">
+            <code style="font-weight:600">--{{ t.name }}</code>
+            <span style="display:flex;flex-direction:column;min-width:0"><code style="color:var(--text-secondary)">{{ t.tw }}</code><code style="font-size:12px;color:var(--text-muted)">{{ t.cls }}</code></span>
+            <span style="color:var(--text-secondary);line-height:18px">{{ t.use }}</span>
+            <span style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:24px;height:24px;flex:none;border-radius:7px;background:{{ t.light }};box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)"></span><code style="font-size:12px">{{ t.light }}</code></span>
+            <span style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:24px;height:24px;flex:none;border-radius:7px;background:{{ t.dark }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 0 0 1px rgba(0,0,0,.25)"></span><code style="font-size:12px">{{ t.dark }}</code></span>
+          </div>
+        </sc-for>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <h2 style="margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em">2 · O‘lcham, soya va harakat tokenlari</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px">
+      <sc-for list="{{ scales }}" as="g" hint-placeholder-count="3">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:8px 20px 12px">
+          <div style="padding:10px 0;font-size:14px;font-weight:600;border-bottom:1px solid var(--border)">{{ g.title }}</div>
+          <sc-for list="{{ g.rows }}" as="t" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.4fr);gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px"><code style="font-weight:600">--{{ t.name }}</code><code style="color:var(--text-secondary)">{{ t.tw }}</code><code style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ t.light }}">{{ t.value }}</code></div></sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <h2 style="margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em">3 · Tailwind konfiguratsiyasi</h2>
+    <pre style="margin:0;padding:20px;background:var(--card);border:1px solid var(--border);border-radius:20px;font:12.5px/19px ui-monospace,Menlo,monospace;color:var(--text-secondary);overflow:auto;white-space:pre">{{ twConfig }}</pre>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h2 style="margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em">4 · Komponentlar ro‘yxati</h2><span style="font-size:14px;color:var(--text-muted)">{{ compCount }} ta komponent · variantlar, holatlar, o‘lchamlar va qayerda ishlatilgani</span></div>
+    <sc-for list="{{ comps }}" as="g" hint-placeholder-count="6">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:13px;font-weight:600;color:var(--text-muted)">{{ g.title }}</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px">
+          <sc-for list="{{ g.items }}" as="c" hint-placeholder-count="4">
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px"><span style="font-size:16px;font-weight:600">{{ c.name }}</span><code style="font-size:12px;color:var(--text-muted)">{{ c.code }}</code></div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px"><sc-for list="{{ c.variants }}" as="v" hint-placeholder-count="3"><span style="height:22px;padding:0 8px;display:inline-flex;align-items:center;border-radius:7px;background:var(--secondary);font-size:12px;font-weight:500;color:var(--text-secondary)">{{ v }}</span></sc-for></div>
+              <span style="font-size:13px;line-height:18px;color:var(--text-secondary);text-wrap:pretty">{{ c.spec }}</span>
+              <span style="font-size:12px;line-height:16px;color:var(--text-muted)">{{ c.used }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const COLORS = [
+  ['Sirtlar', [['background', 'bg-background', 'Ilova foni'], ['surface', 'bg-surface', 'Ichki zona, jadval sarlavhasi, disabled'], ['card', 'bg-card', 'Kartalar, inputlar, jadval'], ['popover', 'bg-popover', 'Menyu, popover, modal, sheet, toast'], ['border', 'border-border', 'Ajratgichlar, karta chegarasi'], ['input', 'border-input', 'Input va kontrol chegarasi'], ['ring', 'ring-ring', 'Fokus halqasi, faol input']]],
+  ['Matn', [['text', 'text-text', 'Sarlavha, asosiy matn, summa'], ['text-secondary', 'text-text-secondary', 'Label, ikkilamchi matn'], ['text-muted', 'text-text-muted', 'Izoh, placeholder, meta']]],
+  ['Amallar', [['primary', 'bg-primary', 'Asosiy tugma, tanlangan sahifa'], ['primary-hover', 'hover:bg-primary-hover', 'Asosiy tugma hover'], ['primary-foreground', 'text-primary-foreground', 'Primary ustidagi matn'], ['secondary', 'bg-secondary', 'Ikkilamchi tugma, chip, trek'], ['secondary-hover', 'hover:bg-secondary-hover', 'Ghost / qator hover']]],
+  ['Holat', [['success', 'text-success', 'Meʼyorida, to‘langan'], ['success-soft', 'bg-success-soft', 'Success chip foni'], ['warning', 'text-warning', '80–100%, 3 kun qoldi'], ['warning-soft', 'bg-warning-soft', 'Warning chip foni'], ['danger', 'text-danger', 'Xato, oshib ketdi, muddati o‘tgan'], ['danger-soft', 'bg-danger-soft', 'Danger chip foni'], ['danger-hover', 'hover:bg-danger-hover', 'Destructive hover'], ['danger-foreground', 'text-danger-foreground', 'Danger ustidagi matn'], ['info', 'text-info', 'Info, o‘qilmagan nuqta'], ['info-soft', 'bg-info-soft', 'Info chip foni']]],
+  ['Moliya', [['income', 'text-income', 'Kirim, “+”'], ['expense', 'text-expense', 'Chiqim, “−”'], ['transfer', 'text-transfer', 'O‘tkazma (ishorasiz)'], ['debt', 'text-debt', 'Qarz harakatlari (ishorasiz)'], ['debt-soft', 'bg-debt-soft', 'Qarz chip / plitka'], ['brand', 'bg-brand', 'Logo belgisi, bot avatari, Ilova tugmasi'], ['brand-foreground', 'text-brand-foreground', 'Belgi ichidagi chiziqlar']]],
+  ['Grafik / kategoriya', [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => ['chart-' + n, `bg-chart-${n}`, ['Yashil', 'Ko‘k', 'Sariq', 'Binafsha', 'Moviy', 'Marjon', 'Pushti', 'Zaytun', 'Kulrang'][n - 1] + ' · plitka foni 16% color-mix'])],
+  ['Overlay', [['overlay', 'bg-overlay', 'Modal / sheet orqa foni']]],
+];
+const SCALES = [
+  ['Radius', [['radius-sm', 'rounded-sm'], ['radius-md', 'rounded-md'], ['radius-lg', 'rounded-lg'], ['radius-xl', 'rounded-xl'], ['radius-2xl', 'rounded-2xl'], ['radius-full', 'rounded-full']]],
+  ['Soya (yorug‘ qiymat; qorong‘ida .dark ichida)', [['shadow-xs', 'shadow-xs'], ['shadow-sm', 'shadow-sm'], ['shadow-md', 'shadow-md'], ['shadow-lg', 'shadow-lg']]],
+  ['Harakat', [['duration-fast', 'duration-fast'], ['duration-base', 'duration-base'], ['duration-slow', 'duration-slow'], ['ease-standard', 'ease-standard'], ['ease-out', 'ease-out'], ['ease-in', 'ease-in']]],
+];
+const C = (name, code, variants, spec, used) => ({ name, code, variants, spec, used });
+const COMPS = [
+  ['Asosiy', [
+    C('Button', '<Button>', ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link', 'sm 32', 'md 40/44', 'lg 48–56', 'icon'], 'Pill (rounded-full). Holatlar: hover, focus-visible (2px oraliq + ring), disabled 40%, loading (kenglik saqlanadi, loader-circle).', 'Hamma ekranlar'),
+    C('Input', '<Input>', ['default', 'focus', 'error', 'disabled', 'hisoblagich'], '44–48px, rounded-md, label 13/500, xato qatori ikonka bilan.', 'Formalar, qidiruv, sozlamalar'),
+    C('MoneyInput', '<MoneyInput>', ['lg 60–64', 'compact 44', 'error', 'tez chip “Hammasi”'], 'inputmode=numeric, bo‘sh joy bilan guruhlash, o‘ngda “so‘m”, tabular-nums.', 'Tranzaksiya, o‘tkazma, qarz, byudjet, takroriy'),
+    C('Textarea', '<Textarea>', ['500 belgi hisoblagich'], '2 qator, resize yo‘q.', 'Izoh maydonlari'),
+    C('Segmented', '<Segmented>', ['2–5 variant', 'rangli faol', 'qulflangan'], 'Trek secondary, faol karta + shadow-sm.', 'Davr filtri, tur, chastota, mavzu'),
+    C('Tabs', '<Tabs>', ['soni bilan', 'pastki chiziq'], 'Ko‘rinishlarni almashtirish; role=tablist.', 'Hisoblar, kategoriyalar, takroriy, bildirishnomalar'),
+    C('Switch', '<Switch>', ['on', 'off', 'disabled'], '44×26, butun qator bosiladi (≥44).', 'Sozlamalar, hisob formasi'),
+    C('Checkbox', '<Checkbox>', ['checked', 'indeterminate', 'focus', 'disabled'], '20px, rounded 6.', 'Jadvalda tanlash'),
+    C('OTP input', '<OtpInput>', ['default', 'focus', 'error', 'expired'], '6 quti, bitta yashirin input, paste, 6-raqamda yuboriladi.', 'Kirish'),
+  ]],
+  ['Tanlash', [
+    C('Dropdown select', '<Select>', ['emoji/belgili', 'ichki daraja', '✓ tanlangan'], 'Tugma + popover ro‘yxat; mobil varaqda joyida ochiladi.', 'Tranzaksiya filtrlari, saralash, vaqt zonasi'),
+    C('Category combobox', '<CategoryPicker>', ['qidiruv', 'ota → bola', 'turga qarab'], 'Faqat tanlangan turdagi kategoriyalar, bola 28px surilgan.', 'Tranzaksiya formasi'),
+    C('Account picker', '<AccountPicker>', ['balans bilan', 'disabled (jo‘natuvchi)'], 'Emoji plitka + nom + balans.', 'Formalar, o‘tkazma'),
+    C('Choice grid', '<ChoiceGrid>', ['ro‘yxat', 'kompakt (kun, hafta kuni)'], 'Radio tugmalar to‘ri, faol: ring + 6% fon.', 'Qarz, byudjet, takroriy formalari'),
+    C('Date / range picker', '<DatePicker>', ['Bugun/Kecha chip', 'Muddatsiz', 'oraliq', 'kelajak bloklangan'], 'Dushanbadan boshlanadi; ko‘rsatish “3-oktabr, 2026”.', 'Bosh sahifa, formalar, hisobotlar'),
+    C('Emoji picker / swatch', '<EmojiGrid> <Swatches>', ['8 yoki 9 rang', '✓ belgisi'], '42px katakchalar.', 'Hisob, kategoriya, teg formalari'),
+  ]],
+  ['Maʼlumot ko‘rsatish', [
+    C('Amount', '<Amount>', ['income +', 'expense −', 'transfer', 'debt', 'manfiy ⚠'], 'Ishora va ikonka maʼno beradi, rang faqat kuchaytiradi; U+00A0 va U+2212.', 'Hamma joyda'),
+    C('Chip / Badge', '<Chip>', ['status nuqtali', 'o‘zgarish ↑↓', 'yangi', 'teg #', 'filtr (o‘chiriladigan)', 'Asosiy ★', 'Standart'], '22–26px, rounded-full (teg 8).', 'Hamma joyda'),
+    C('KPI card', '<KpiCard>', ['skelet', 'o‘zgarish badge', 'izoh qatori'], 'Label 14, qiymat 25/17px, “so‘m” muted.', 'Bosh sahifa, hisobotlar, tranzaksiya jami'),
+    C('Progress', '<Progress>', ['<80 yashil', '80–100 sariq', '>100 qizil + ⚠', 'thin 6', 'lg 10'], 'Byudjet va qarz to‘lovi uchun.', 'Bosh sahifa, byudjetlar, qarzlar'),
+    C('Charts', '<AreaChart> <Donut> <BarList> <GroupedBars>', ['tooltip', 'bo‘sh holat', 'skelet'], 'Faqat tokenlar; o‘qlar “250 ming / 1,5 mln”.', 'Bosh sahifa, hisobotlar'),
+    C('Data table', '<TxTable>', ['kun guruhi + jami', 'tanlash', 'qulf', 'qator menyusi'], 'Qator 58, sarlavha 44, summa o‘ngda.', 'Tranzaksiyalar (1440)'),
+    C('List row', '<TxRow>', ['karta qator 390', 'teglar', 'overflow menyu'], 'Emoji plitka 40, sarlavha, meta, summa.', 'Tranzaksiyalar, bosh sahifa'),
+    C('Pagination', '<Pagination>', ['raqamli', '“Yana yuklash” (390)'], '“Jami 248 tadan 1–20 ko‘rsatilmoqda”.', 'Tranzaksiyalar'),
+    C('Avatar / Emoji tile', '<Avatar> <EmojiTile>', ['24–56', 'bosh harflar', 'kulrang (arxiv)'], 'Plitka foni = rang 16%.', 'Hamma joyda'),
+  ]],
+  ['Domen kartalari', [
+    C('Account card', '<AccountCard>', ['grid / ro‘yxat', 'Asosiy', 'arxiv', 'tartiblash'], 'Bosilganda filtrlangan tranzaksiyalar.', 'Hisoblar'),
+    C('Category row', '<CategoryRow>', ['ota', 'bola', 'Standart', 'sudrash'], 'Ikki daraja, + Subkategoriya.', 'Kategoriyalar'),
+    C('Tag card', '<TagCard>', ['ko‘rish', 'joyida tahrir', 'yangi'], 'Rang nuqtasi, ishlatilish soni.', 'Teglar'),
+    C('Debt card', '<DebtCard>', ['Faol', 'Qisman', 'To‘langan', 'muddati o‘tgan', 'ajratilgan', 'tarix'], 'Asl / To‘langan / Qoldiq, progress, amallar.', 'Qarzlar'),
+    C('Budget card', '<BudgetCard>', ['3 zona', 'subkategoriya izohi'], 'Limit, sarflangan, qoldiq yoki ortiqcha.', 'Byudjetlar, bosh sahifa'),
+    C('Rule card', '<RecurringCard>', ['faol', 'to‘xtatilgan', 'tugash sanasi'], 'Jadval matni, keyingi sana, amallar.', 'Takroriy to‘lovlar'),
+    C('Notification item', '<NotificationItem>', ['o‘qilgan', 'o‘qilmagan', '7 tur'], 'Tur ikonkasi, sarlavha, matn, vaqt.', 'Qo‘ng‘iroq, bildirishnomalar'),
+  ]],
+  ['Overlay va fikr-mulohaza', [
+    C('Modal / Sheet', '<Dialog>', ['modal ≥768 (520)', 'to‘liq varaq <768', 'Mini App xavfsiz zona'], 'Bir xil kontent, ikki qobiq; footer Bekor qilish / asosiy.', 'Barcha formalar'),
+    C('Confirm dialog', '<ConfirmDialog>', ['destructive', 'neytral', 'faqat OK'], 'Ikonka plitkasi, sarlavha, tavsif.', 'O‘chirish, arxivlash, bekor qilish'),
+    C('Dropdown menu', '<Menu>', ['ikonali', 'destructive pastda', 'disabled'], 'Element 40 (touch 44); mobilda varaq.', 'Qator, karta, eksport'),
+    C('Popover', '<Popover>', ['tez qo‘shish', 'bildirishnomalar', 'sana'], 'shadow-md, rounded 16–20.', 'Qobiq'),
+    C('Toast', '<Toast>', ['success', 'error', 'info', 'undo 6s'], 'Pastda markazda; undo progress chizig‘i.', 'Hamma amallar'),
+    C('Empty / Error / Skeleton', '<EmptyState> <ErrorState> <Skeleton>', ['CTA', 'filtrga mos emas', 'vidjet ichida'], 'Bitta vidjet xatosi sahifani yopmaydi.', 'Har bir ro‘yxat va grafik'),
+  ]],
+  ['Qobiq', [
+    C('Sidebar / Rail', '<Sidebar>', ['to‘liq 268', 'rail 84', 'guruhlar', 'foydalanuvchi + rejim chip'], 'Faol: secondary fon + 600.', '1440 / 1024'),
+    C('Page header', '<PageHeader>', ['h1 + izoh', 'amallar', 'sticky blur'], 'Har sahifada bitta h1.', 'Barcha sahifalar'),
+    C('Top bar + Tab bar', '<MobileTopBar> <TabBar>', ['markaziy +', 'Ko‘proq varag‘i', 'xavfsiz zona'], '56 yuqori, 64 pastki.', '390'),
+    C('Mini App chrome', '<TelegramShell>', ['Yopish', 'Orqaga', 'mavzu Telegram’dan'], 'Chiqish va mavzu tugmasi yo‘q.', 'Mini App'),
+  ]],
+];
+class Component extends DCLogic {
+  state = { light: null, dark: null, copied: '' };
+  lightRef = React.createRef(); darkRef = React.createRef();
+  componentDidMount() { this.read(); }
+  read() { const l = this.lightRef.current, d = this.darkRef.current; if (!l || !d) return setTimeout(() => this.read(), 100); this.setState({ light: getComputedStyle(l), dark: getComputedStyle(d) }); }
+  v(cs, n) { return cs ? cs.getPropertyValue('--' + n).trim() : ''; }
+  tw() {
+    const col = n => `'var(--${n})'`;
+    return `// tailwind.config.js — darkMode: 'class' (Telegram Mini App: .dark ← WebApp.colorScheme)
+module.exports = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      background: ${col('background')}, surface: ${col('surface')}, card: ${col('card')}, popover: ${col('popover')},
+      border: ${col('border')}, input: ${col('input')}, ring: ${col('ring')}, overlay: ${col('overlay')},
+      text: { DEFAULT: ${col('text')}, secondary: ${col('text-secondary')}, muted: ${col('text-muted')} },
+      primary: { DEFAULT: ${col('primary')}, hover: ${col('primary-hover')}, foreground: ${col('primary-foreground')} },
+      secondary: { DEFAULT: ${col('secondary')}, hover: ${col('secondary-hover')} },
+      success: { DEFAULT: ${col('success')}, soft: ${col('success-soft')} },
+      warning: { DEFAULT: ${col('warning')}, soft: ${col('warning-soft')} },
+      danger: { DEFAULT: ${col('danger')}, soft: ${col('danger-soft')}, hover: ${col('danger-hover')}, foreground: ${col('danger-foreground')} },
+      info: { DEFAULT: ${col('info')}, soft: ${col('info-soft')} },
+      income: ${col('income')}, expense: ${col('expense')}, transfer: ${col('transfer')},
+      debt: { DEFAULT: ${col('debt')}, soft: ${col('debt-soft')} },
+      brand: { DEFAULT: ${col('brand')}, foreground: ${col('brand-foreground')} },
+      chart: { ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `${n}: ${col('chart-' + n)}`).join(', ')} },
+    },
+    borderRadius: { sm: 'var(--radius-sm)', md: 'var(--radius-md)', lg: 'var(--radius-lg)', xl: 'var(--radius-xl)', '2xl': 'var(--radius-2xl)', full: 'var(--radius-full)' },
+    boxShadow: { xs: 'var(--shadow-xs)', sm: 'var(--shadow-sm)', md: 'var(--shadow-md)', lg: 'var(--shadow-lg)' },
+    transitionDuration: { fast: 'var(--duration-fast)', base: 'var(--duration-base)', slow: 'var(--duration-slow)' },
+    transitionTimingFunction: { standard: 'var(--ease-standard)', out: 'var(--ease-out)', in: 'var(--ease-in)' },
+    fontFamily: { sans: ['Onest', 'system-ui', 'sans-serif'] },
+  } },
+};
+// Pul: font-variant-numeric: tabular-nums; ming ajratgichi U+00A0; minus U+2212.`;
+  }
+  copy(text, key) { navigator.clipboard?.writeText(text).catch(() => {}); this.setState({ copied: key }); clearTimeout(this.t); this.t = setTimeout(() => this.setState({ copied: '' }), 1600); }
+  renderVals() {
+    const { light, dark } = this.state;
+    const groups = COLORS.map(([title, rows]) => ({ title, rows: rows.map(([name, cls, use]) => { const tw = name.startsWith('text-') && name !== 'text' ? `text.${name.slice(5)}` : name.replace(/^(\w+)-(soft|hover|foreground)$/, '$1.$2').replace(/^chart-(\d)$/, 'chart.$1'); return { name, tw, cls, use, light: this.v(light, name), dark: this.v(dark, name) }; }) }));
+    const scales = SCALES.map(([title, rows]) => ({ title, rows: rows.map(([name, tw]) => { const val = this.v(light, name); return { name, tw, value: val, light: val }; }) }));
+    const names = COLORS.flatMap(([, r]) => r.map(x => x[0]));
+    const all = names.concat(SCALES.flatMap(([, r]) => r.map(x => x[0])));
+    const css = `:root {\n${all.map(n => `  --${n}: ${this.v(light, n)};`).join('\n')}\n}\n.dark {\n${names.concat(['shadow-xs', 'shadow-sm', 'shadow-md', 'shadow-lg']).map(n => `  --${n}: ${this.v(dark, n)};`).join('\n')}\n}\n`;
+    const comps = COMPS.map(([title, items]) => ({ title, items }));
+    return { lightRef: this.lightRef, darkRef: this.darkRef, groups, scales, twConfig: this.tw(), comps, compCount: comps.reduce((a, g) => a + g.items.length, 0),
+      copyCss: () => this.copy(css, 'css'), copyTw: () => this.copy(this.tw(), 'tw'),
+      cssLabel: this.state.copied === 'css' ? 'Nusxa olindi' : 'CSS o‘zgaruvchilarni nusxalash', twLabel: this.state.copied === 'tw' ? 'Nusxa olindi' : 'Tailwind configni nusxalash' };
+  }
+}
+</script>
+</body>
+</html>

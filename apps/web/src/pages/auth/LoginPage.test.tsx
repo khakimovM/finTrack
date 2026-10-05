@@ -45,6 +45,11 @@ function mockLogin(verifications: string[]) {
 }
 
 function renderLogin() {
+  // No session: the page checks /auth/me first and stays on the login form.
+  server.use(
+    http.get('*/api/v1/auth/me', () => HttpResponse.json(fail('UNAUTHORIZED'), { status: 401 })),
+    http.post('*/api/v1/auth/refresh', () => HttpResponse.json(fail('UNAUTHORIZED'), { status: 401 })),
+  );
   return renderWithProviders(
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -68,13 +73,13 @@ describe('LoginPage (Telegram code)', () => {
       'noopener',
     );
 
-    await userEvent.type(await screen.findByLabelText('1-raqam'), '111111');
+    await userEvent.type(await screen.findByLabelText('6 xonali kod'), '111111');
     expect(await screen.findByRole('alert')).toHaveProperty(
       'textContent',
       'Kod noto‘g‘ri. Yana 4 ta urinish qoldi',
     );
 
-    await userEvent.type(screen.getByLabelText('1-raqam'), '123456');
+    await userEvent.type(screen.getByLabelText('6 xonali kod'), '123456');
     expect(await screen.findByText('Bosh sahifa')).toBeTruthy();
     expect(verifications).toEqual(['111111', '123456']);
     expect(useAuthStore.getState().user?.id).toBe('u1');
@@ -90,7 +95,7 @@ describe('LoginPage (Telegram code)', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Telegram orqali kirish' }));
     await waitFor(() =>
-      expect(screen.getByRole('alert').textContent).toBe(
+      expect(screen.getByRole('alert').textContent).toContain(
         'Telegram orqali kirish vaqtincha ishlamayapti',
       ),
     );

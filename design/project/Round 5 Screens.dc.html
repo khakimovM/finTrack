@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#DEDED9}a{color:#151514}a:hover{color:#4A4A46}</style>
+</helmet>
+<div style="padding:96px;display:flex;flex-direction:column;gap:120px;font-family:Onest,system-ui,sans-serif;color:#151514;background:#DEDED9;width:max-content">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:15px;color:#6B6B66">FinTrack · Round 5</span>
+    <span style="font-size:48px;line-height:56px;font-weight:600;letter-spacing:-0.03em">Qarzlar, byudjetlar va takroriy to‘lovlar</span>
+    <span style="font-size:17px;color:#4A4A46;max-width:1100px">Hammasi interaktiv: yo‘nalish va holat filtrlari, to‘lov kiritish / to‘liq yopish / to‘lovni o‘chirish qoldiqni qayta hisoblaydi, oy almashtirgich, byudjet formasi takror tekshiruvi bilan, qoidani to‘xtatish/davom ettirish va “Keyingi to‘lov” jonli hisoblanadi.</span>
+  </div>
+  <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="5">
+    <section data-screen-label="{{ sec.title }}" style="display:flex;flex-direction:column;gap:40px">
+      <span style="font-size:32px;line-height:40px;font-weight:600;letter-spacing:-0.02em">{{ sec.title }}</span>
+      <div style="display:flex;flex-wrap:wrap;gap:72px;align-items:flex-start;max-width:5200px">
+        <sc-for list="{{ sec.boards }}" as="a" hint-placeholder-count="4">
+          <div id="{{ a.id }}" style="display:flex;flex-direction:column;gap:14px">
+            <span style="font-size:16px;font-weight:600"><span style="padding:3px 9px;border-radius:999px;background:#151514;color:#fff;font-size:13px;margin-right:8px">{{ a.id }}</span>{{ a.label }}</span>
+            <div style="width:{{ a.w }};height:{{ a.h }};border-radius:12px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.25)">
+              <dc-import name="App" dc-props="{{ a.props }}" style="width:100%;height:100%;display:block" hint-size="390px,844px"></dc-import>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const B = (id, label, vp, props, h) => {
+  const w = vp === 'desktop' ? 1440 : vp === 'tablet' ? 1024 : 390;
+  const fit = h ? 'screen' : 'full';
+  const hh = h || 'auto';
+  return { id, label, w: w + 'px', h: typeof hh === 'number' ? hh + 'px' : hh, props: { viewport: vp, fit, framed: true, ...props } };
+};
+class Component extends DCLogic {
+  r5() {
+    const D = (id, label, vp, props, h) => B(id, label, vp, { page: 'debts', ...props }, h);
+    const G = (id, label, vp, props, h) => B(id, label, vp, { page: 'budgets', ...props }, h);
+    const R = (id, label, vp, props, h) => B(id, label, vp, { page: 'recurring', ...props }, h);
+    return [
+      { title: '1 · Qarzlar', boards: [
+        D('5a', '1440 · qarzlar', 'desktop', {}, 1200),
+        D('5b', '390 · qarzlar', 'mobile', {}, 844),
+        D('5c', '1440 · tranzaksiyadan ochilgan (?debt=2)', 'desktop', { dbFocus: 2 }, 900),
+        D('5d', '1440 · karta menyusi', 'desktop', { dbOverlay: 'menu' }, 900),
+        D('5e', '390 · to‘lovni o‘chirish', 'mobile', { dbOverlay: 'dbPayDelete' }, 844),
+        D('5f', '1440 · qarzni o‘chirish', 'desktop', { dbOverlay: 'dbDelete' }, 900),
+      ] },
+      { title: '2 · Qarz formalari', boards: [
+        D('5g', '1440 · Yangi qarz', 'desktop', { dbOverlay: 'dbNew' }, 900),
+        D('5h', '390 · Yangi qarz · xatolar', 'mobile', { dbOverlay: 'dbNewErr' }, 844),
+        D('5i', '1440 · Qarzni tahrirlash', 'desktop', { dbOverlay: 'dbEdit' }, 900),
+        D('5j', '1440 · To‘lov kiritish', 'desktop', { dbOverlay: 'dbPay' }, 900),
+        D('5k', '390 · qoldiqdan oshdi', 'mobile', { dbOverlay: 'dbPayErr' }, 844),
+        D('5l', '1440 · To‘liq yopish', 'desktop', { dbOverlay: 'dbClose' }, 900),
+      ] },
+      { title: '3 · Qarzlar holatlari', boards: [
+        D('5m', '1440 · yuklanmoqda', 'desktop', { dbState: 'loading' }, 900),
+        D('5n', '390 · xato', 'mobile', { dbState: 'error' }, 844),
+        D('5o', '390 · qarzlar yo‘q', 'mobile', { dbState: 'empty' }, 844),
+        D('5p', '390 · filtrga mos emas', 'mobile', { dbFilter: 'over', dbState: 'normal', dbOverlay: 'none', dbFocus: null, dbDirPreset: 'borrowed' }, 844),
+      ] },
+      { title: '4 · Byudjetlar', boards: [
+        G('5q', '1440 · Oktabr 2026', 'desktop', {}, 900),
+        G('5r', '390 · Oktabr 2026', 'mobile', {}, 844),
+        G('5s', '1440 · Byudjet belgilash', 'desktop', { bgOverlay: 'bgNew' }, 900),
+        G('5t', '390 · takroriy byudjet xatosi', 'mobile', { bgOverlay: 'bgDup' }, 844),
+        G('5u', '1440 · tahrirlash (kategoriya qulflangan)', 'desktop', { bgOverlay: 'bgEdit' }, 900),
+        G('5v', '1440 · Noyabr — byudjet yo‘q', 'desktop', { bgMonth: 1 }, 900),
+        G('5w', '1440 · yuklanmoqda', 'desktop', { bgState: 'loading' }, 900),
+        G('5x', '390 · xato', 'mobile', { bgState: 'error' }, 844),
+      ] },
+      { title: '5 · Takroriy to‘lovlar', boards: [
+        R('5y', '1440 · Faol', 'desktop', {}, 1000),
+        R('5z', '390 · Faol', 'mobile', {}, 844),
+        R('6a', '1440 · To‘xtatilgan', 'desktop', { rcTab: 'paused' }, 900),
+        R('6b', '1440 · Yangi qoida (har oy)', 'desktop', { rcOverlay: 'rcNew' }, 900),
+        R('6c', '390 · Yangi qoida (har hafta)', 'mobile', { rcOverlay: 'rcWeek' }, 844),
+        R('6d', '1440 · tahrirlash', 'desktop', { rcOverlay: 'rcEdit' }, 900),
+        R('6e', '390 · Hozir bajarish', 'mobile', { rcOverlay: 'rcRun' }, 844),
+        R('6f', '1440 · o‘chirish', 'desktop', { rcOverlay: 'rcDelete' }, 900),
+        R('6g', '1440 · yuklanmoqda', 'desktop', { rcState: 'loading' }, 900),
+        R('6h', '390 · xato', 'mobile', { rcState: 'error' }, 844),
+        R('6i', '390 · faol yo‘q', 'mobile', { rcState: 'empty' }, 844),
+        R('6j', '390 · to‘xtatilgan yo‘q', 'mobile', { rcState: 'empty', rcTab: 'paused' }, 844),
+      ] },
+    ];
+  }
+  r4() {
+    const A = (id, label, vp, props, h) => B(id, label, vp, { page: 'accounts', ...props }, h);
+    const K = (id, label, vp, props, h) => B(id, label, vp, { page: 'categories', ...props }, h);
+    return [
+      { title: '1 · Hisoblar', boards: [
+        A('4a', '1440 · faol hisoblar', 'desktop', {}, 900),
+        A('4b', '390 · ro‘yxat', 'mobile', {}, 844),
+        A('4c', '1440 · karta menyusi', 'desktop', { acOverlay: 'menu' }, 900),
+        A('4d', '1440 · tartibni o‘zgartirish', 'desktop', { acOverlay: 'reorder' }, 900),
+        A('4e', '1440 · Arxiv (1)', 'desktop', { acOverlay: 'archive' }, 900),
+        A('4f', '390 · arxiv', 'mobile', { acOverlay: 'archive' }, 844),
+      ] },
+      { title: '2 · Hisob tasdiqlari va formasi', boards: [
+        A('4g', '1440 · arxivlash', 'desktop', { acOverlay: 'confirmArchive' }, 900),
+        A('4h', '1440 · o‘chirish (yozuvsiz hisob)', 'desktop', { acOverlay: 'confirmDelete' }, 900),
+        A('4i', '390 · o‘chirib bo‘lmaydi → arxivlash', 'mobile', { acOverlay: 'blockedDelete' }, 844),
+        A('4j', '390 · oxirgi faol hisob', 'mobile', { acOverlay: 'lastActive' }, 844),
+        A('4k', '1440 · Yangi hisob', 'desktop', { acOverlay: 'form' }, 900),
+        A('4l', '1440 · tahrirlash (Valyuta: UZS)', 'desktop', { acOverlay: 'formEdit' }, 900),
+        A('4m', '390 · nom takrorlangan', 'mobile', { acOverlay: 'formDup' }, 844),
+      ] },
+      { title: '3 · Hisoblar holatlari', boards: [
+        A('4n', '1440 · yuklanmoqda', 'desktop', { acState: 'loading' }, 900),
+        A('4o', '1440 · xato', 'desktop', { acState: 'error' }, 900),
+        A('4p', '390 · hisoblar yo‘q', 'mobile', { acState: 'empty' }, 844),
+      ] },
+      { title: '4 · Kategoriyalar', boards: [
+        K('4q', '1440 · Chiqimlar daraxti', 'desktop', {}, 1400),
+        K('4r', '390 · Chiqimlar', 'mobile', {}, 844),
+        K('4s', '1440 · Kirimlar', 'desktop', { ctTab: 'inc' }, 900),
+        K('4t', '1440 · o‘chirishni tasdiqlash', 'desktop', { ctOverlay: 'confirmDelete' }, 900),
+        K('4u', '1440 · Yangi kategoriya', 'desktop', { ctOverlay: 'form' }, 900),
+        K('4v', '1440 · + Subkategoriya', 'desktop', { ctOverlay: 'formSub' }, 900),
+        K('4w', '390 · tahrirlash (tur qulflangan)', 'mobile', { ctOverlay: 'formEdit' }, 844),
+        K('4x', '390 · nom takrorlangan', 'mobile', { ctOverlay: 'formErr' }, 844),
+      ] },
+      { title: '5 · Teglar va holatlar', boards: [
+        K('4y', '1440 · Teglar', 'desktop', { ctTab: 'tags' }, 900),
+        K('4z', '1440 · yangi teg (joyida)', 'desktop', { ctOverlay: 'tagNew' }, 900),
+        K('5a', '390 · tegni tahrirlash', 'mobile', { ctOverlay: 'tagEdit' }, 844),
+        K('5b', '390 · tegni o‘chirish', 'mobile', { ctOverlay: 'confirmTag' }, 844),
+        K('5c', '1440 · yuklanmoqda', 'desktop', { ctState: 'loading' }, 900),
+        K('5d', '1440 · xato', 'desktop', { ctState: 'error' }, 900),
+        K('5e', '390 · kategoriyalar yo‘q', 'mobile', { ctState: 'empty' }, 844),
+        K('5f', '390 · teglar yo‘q', 'mobile', { ctTab: 'tags', ctState: 'empty' }, 844),
+      ] },
+    ];
+  }
+  r3() {
+    const T = (id, label, vp, props, h) => B(id, label, vp, { page: 'transactions', ...props }, h);
+    return [
+      { title: '1 · Ro‘yxat', boards: [
+        T('3a', '1440 · kunlar bo‘yicha guruhlangan', 'desktop', {}, 1500),
+        T('3b', '390 · karta qatorlar', 'mobile', {}, 844),
+        T('3c', '1440 · faol filtrlar (chiplar)', 'desktop', { txFilters: 'active' }, 900),
+        T('3d', '390 · “Filtrlar (3)” varag‘i', 'mobile', { txFilters: 'active', txOverlay: 'filters' }, 844),
+        T('3e', '1440 · eksport menyusi', 'desktop', { txOverlay: 'export' }, 900),
+        T('3e2', '1440 · kategoriya filtri', 'desktop', { txDropdown: 'cat' }, 900),
+        T('3e3', '390 · filtr varag‘ida tur ro‘yxati', 'mobile', { txOverlay: 'filters', txDropdown: 'type' }, 844),
+        T('3f', '390 · eksport · Yuklanmoqda...', 'mobile', { txOverlay: 'exportLoading' }, 844),
+      ] },
+      { title: '2 · Qator amallari', boards: [
+        T('3g', '1440 · o‘tkazma qatori menyusi', 'desktop', { txOverlay: 'rowMenu' }, 900),
+        T('3h', '390 · qator menyusi varag‘i', 'mobile', { txOverlay: 'rowMenu' }, 844),
+        T('3i', '1440 · 3 ta tanlandi', 'desktop', { txOverlay: 'bulk' }, 900),
+        T('3j', '1440 · o‘chirishni tasdiqlash', 'desktop', { txOverlay: 'confirmDelete' }, 900),
+        T('3k', '390 · o‘tkazmani bekor qilish', 'mobile', { txOverlay: 'confirmTransfer' }, 844),
+        T('3l', '1440 · “Qaytarish” toast', 'desktop', { txOverlay: 'toast' }, 900),
+      ] },
+      { title: '3 · Holatlar', boards: [
+        T('3m', '1440 · yuklanmoqda', 'desktop', { txState: 'loading' }, 900),
+        T('3n', '1440 · xato', 'desktop', { txState: 'error' }, 900),
+        T('3o', '1440 · hali tranzaksiya yo‘q', 'desktop', { txState: 'emptyAll' }, 900),
+        T('3p', '390 · filtrga mos kelmadi', 'mobile', { txFilters: 'noMatch' }, 844),
+      ] },
+      { title: '4 · Tranzaksiya formasi', boards: [
+        T('3q', '1440 · Yangi tranzaksiya', 'desktop', { txOverlay: 'form' }, 900),
+        T('3r', '1440 · tahrirlash (teglar bilan)', 'desktop', { txOverlay: 'formEdit' }, 900),
+        T('3s', '1440 · kategoriya qidiruvi', 'desktop', { txOverlay: 'formCat' }, 900),
+        T('3t', '1440 · Summa xatosi', 'desktop', { txOverlay: 'formAmountErr' }, 900),
+        T('3u', '1440 · Qatʼiy rejim: mablag‘ yetarli emas', 'desktop', { txOverlay: 'formStrict' }, 900),
+        T('3v', '390 · Yangi tranzaksiya (to‘liq varaq)', 'mobile', { txOverlay: 'form' }, 844),
+        T('3w', '390 · tahrirlash', 'mobile', { txOverlay: 'formEdit' }, 844),
+      ] },
+      { title: '5 · Boshqariladigan yozuvlar va o‘tkazma', boards: [
+        T('3x', '1440 · o‘tkazma — faqat bekor qilish', 'desktop', { txOverlay: 'infoTransfer' }, 900),
+        T('3y', '390 · qarz yozuvi', 'mobile', { txOverlay: 'infoDebt' }, 844),
+        T('3z', '1440 · Hisoblararo o‘tkazma', 'desktop', { txOverlay: 'transfer' }, 900),
+        T('4a', '390 · o‘tkazma', 'mobile', { txOverlay: 'transfer' }, 844),
+        T('4b', '390 · bir xil hisob xatosi', 'mobile', { txOverlay: 'transferErr' }, 844),
+      ] },
+    ];
+  }
+  renderVals() {
+    return {
+      sections: this.r5(),
+      _old: [
+        { title: '1 · Bosh sahifa', boards: [
+          B('2a', '1440 · yorug‘ · grafik tooltip', 'desktop', { showTip: true }),
+          B('2b', '1440 · qorong‘i', 'desktop', { theme: 'dark' }),
+          B('2c', '390 · yorug‘', 'mobile', {}),
+          B('2d', '390 · qorong‘i', 'mobile', { theme: 'dark' }),
+          B('2e', 'Telegram Mini App · 390', 'miniapp', {}),
+        ] },
+        { title: '2 · Qobiq', boards: [
+          B('2f', '1024 · planshet · ikonka paneli', 'tablet', {}, 768),
+          B('2g', '1024 · panel ochilgan', 'tablet', { sideOpen: true }, 768),
+          B('2h', '1440 · “Oddiy rejim” · 9+ bildirishnoma', 'desktop', { mode: 'normal', unread: 12 }, 900),
+          B('2i', '390 · “Ko‘proq” varag‘i', 'mobile', { overlay: 'more' }, 844),
+          B('2j', 'Mini App · “Ko‘proq” (chiqish va mavzusiz)', 'miniapp', { overlay: 'more' }, 844),
+        ] },
+        { title: '3 · Tez qo‘shish va davr', boards: [
+          B('2k', '1440 · “+ Qo‘shish” popover', 'desktop', { overlay: 'quickAdd' }, 900),
+          B('2l', '390 · “+” varag‘i', 'mobile', { overlay: 'quickAdd' }, 844),
+          B('2m', '1440 · “Oraliq” sana tanlash', 'desktop', { overlay: 'range' }, 900),
+          B('2n', '390 · “Oraliq” varag‘i', 'mobile', { overlay: 'range' }, 844),
+          B('2o', '1440 · Shu hafta — xarajat kirimdan ko‘p (qizil)', 'desktop', { period: 'hafta' }, 900),
+          B('2p', '1440 · Shu yil — 70% dan oshdi (sariq)', 'desktop', { period: 'yil' }, 900),
+        ] },
+        { title: '4 · Holatlar', boards: [
+          B('2q', '1440 · yuklanmoqda', 'desktop', { state: 'loading' }, 1500),
+          B('2r', '1440 · bitta vidjetda xato', 'desktop', { state: 'widgetError' }, 900),
+          B('2s', '1440 · yangi foydalanuvchi', 'desktop', { state: 'empty' }, 900),
+          B('2t', '1440 · Bugun — maʼlumot yo‘q', 'desktop', { period: 'bugun' }, 1300),
+          B('2u', '390 · yuklanmoqda', 'mobile', { state: 'loading' }, 844),
+          B('2v', '390 · yangi foydalanuvchi', 'mobile', { state: 'empty' }, 844),
+        ] },
+        { title: '5 · Bildirishnomalar', boards: [
+          B('2w', '1440 · qo‘ng‘iroq menyusi', 'desktop', { overlay: 'notifs' }, 900),
+          B('2x', '390 · to‘liq varaq', 'mobile', { overlay: 'notifs' }, 844),
+          B('2y', '1440 · /app/notifications', 'desktop', { page: 'notifications' }, 900),
+          B('2z', '390 · /app/notifications', 'mobile', { page: 'notifications' }, 844),
+          B('3a', '390 · yuklanmoqda', 'mobile', { page: 'notifications', notifState: 'loading' }, 844),
+          B('3b', '390 · bo‘sh', 'mobile', { page: 'notifications', notifState: 'empty' }, 844),
+          B('3c', '390 · xato', 'mobile', { page: 'notifications', notifState: 'error' }, 844),
+        ] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

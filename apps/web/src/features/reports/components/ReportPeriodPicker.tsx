@@ -1,60 +1,78 @@
-import { Input } from '../../../components/ui/Input';
-import { cn } from '../../../lib/utils';
+import { useState } from 'react';
+import { CircleAlert } from 'lucide-react';
+import { todayLocalIso } from '@fintrack/shared';
+import { Segmented } from '../../../components/ui/Segmented';
+import { DatePicker } from '../../../components/ui/DatePicker';
+import { Button } from '../../../components/ui/Button';
 import { DateRange, REPORT_PRESETS, ReportPreset } from '../periods';
 
 export interface ReportPeriodPickerProps {
   preset: ReportPreset;
+  /** The range in use; the inputs edit a draft until "Qo‘llash". */
   custom: DateRange;
-  customError?: string;
   onPresetChange: (preset: ReportPreset) => void;
   onCustomChange: (range: DateRange) => void;
 }
 
-export function ReportPeriodPicker({
-  preset,
-  custom,
-  customError,
-  onPresetChange,
-  onCustomChange,
-}: ReportPeriodPickerProps) {
+export function ReportPeriodPicker({ preset, custom, onPresetChange, onCustomChange }: ReportPeriodPickerProps) {
+  const today = todayLocalIso();
+  const [draft, setDraft] = useState<DateRange>(custom);
+  const [error, setError] = useState<'both' | 'order' | null>(null);
+
+  const apply = () => {
+    if (!draft.from || !draft.to) return setError('both');
+    if (draft.to < draft.from) return setError('order');
+    setError(null);
+    onCustomChange(draft);
+  };
+
   return (
-    <div className="space-y-3">
-      <div
-        className="flex flex-wrap gap-1 rounded-2xl border border-border/50 bg-muted/60 p-1"
-        role="tablist"
-      >
-        {REPORT_PRESETS.map((p) => (
-          <button
-            key={p.value}
-            role="tab"
-            aria-selected={preset === p.value}
-            onClick={() => onPresetChange(p.value)}
-            className={cn(
-              'min-h-11 flex-1 whitespace-nowrap rounded-xl px-2 text-xs font-bold transition-all sm:min-h-9 sm:flex-none sm:px-3',
-              preset === p.value
-                ? 'bg-surface text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
+    <div className="flex flex-col gap-2.5">
+      <div className="-mx-4 max-w-[100vw] overflow-x-auto px-4 scrollbar-none sm:mx-0 sm:px-0">
+        <Segmented
+          aria-label="Davr"
+          value={preset}
+          onChange={(next) => {
+            setError(null);
+            setDraft(custom);
+            onPresetChange(next);
+          }}
+          options={REPORT_PRESETS.map((p) => ({ value: p.value, label: p.label }))}
+        />
       </div>
       {preset === 'custom' && (
-        <div className="grid max-w-md grid-cols-2 gap-3">
-          <Input
-            type="date"
+        <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-card p-3">
+          <DatePicker
             label="Boshlanish"
-            value={custom.from}
-            onChange={(e) => onCustomChange({ ...custom, from: e.target.value })}
+            value={draft.from}
+            onChange={(from) => {
+              setDraft((prev) => ({ ...prev, from }));
+              setError(null);
+            }}
+            max={today}
+            today={today}
+            className="flex-[1_1_160px]"
           />
-          <Input
-            type="date"
+          <DatePicker
             label="Tugash"
-            value={custom.to}
-            error={customError}
-            onChange={(e) => onCustomChange({ ...custom, to: e.target.value })}
+            value={draft.to}
+            onChange={(to) => {
+              setDraft((prev) => ({ ...prev, to }));
+              setError(null);
+            }}
+            max={today}
+            today={today}
+            className="flex-[1_1_160px]"
           />
+          <Button onClick={apply} className="h-11">
+            Qo‘llash
+          </Button>
+          {error && (
+            <p role="alert" className="flex basis-full items-center gap-1.5 text-[13px] font-medium text-danger">
+              <CircleAlert className="h-[15px] w-[15px]" aria-hidden />
+              {error === 'both' ? 'Ikkala sanani ham tanlang' : 'Tugash sanasi boshlanishdan oldin bo‘lishi mumkin emas'}
+            </p>
+          )}
         </div>
       )}
     </div>

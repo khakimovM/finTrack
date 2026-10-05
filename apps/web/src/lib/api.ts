@@ -109,9 +109,12 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
-        resetSessionCache();
         useAuthStore.getState().setUser(null);
-        if (!window.location.pathname.startsWith('/login')) {
+        // Only the app area holds a user's data and needs a session. Public pages probe /auth/me
+        // ("Kirish" or "Ilovaga o‘tish"): clearing the cache there would wipe the login request
+        // and refetch the probe, which fails again — an endless loop.
+        if (window.location.pathname.startsWith('/app')) {
+          resetSessionCache();
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);

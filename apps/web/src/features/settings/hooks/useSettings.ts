@@ -23,7 +23,7 @@ export function useUpdateProfile() {
         queryClient.invalidateQueries({ queryKey: ['stats'] });
         queryClient.invalidateQueries({ queryKey: ['budgets'] });
       }
-      toast.success('Sozlamalar saqlandi');
+      toast.success(input.name !== undefined || input.timezone !== undefined ? 'Profil saqlandi' : 'Sozlamalar saqlandi');
     },
     onError: (err) => toast.error(apiErrorToMessage(err)),
   });
@@ -45,7 +45,6 @@ export function useRevokeSession() {
   });
 }
 
-/** Signs this device out too, so the caller should navigate to /login afterwards. */
 /**
  * Resolves to true when the user stays signed in: inside Telegram the launch is still signed by
  * Telegram, so only the other devices are signed out and this app opens a fresh session.

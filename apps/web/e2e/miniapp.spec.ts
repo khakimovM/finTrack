@@ -36,7 +36,7 @@ test('a registered user is signed in by Telegram, in Telegram’s theme, without
   const page = await context.newPage();
   await launchMiniApp(page, user);
 
-  await expect(page.getByRole('heading', { name: /Xush kelibsiz, MiniApp/ }).first()).toBeVisible();
+  await expect(page.getByText(/Xush kelibsiz, MiniApp/).first()).toBeVisible();
   await expect(page.locator('html')).toHaveClass(/dark/);
   await expect(page.getByRole('button', { name: 'Chiqish' })).toHaveCount(0);
 

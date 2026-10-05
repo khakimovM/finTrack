@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fintrack-tokens.css">
+</helmet>
+<div data-theme="{{ theme }}" style="min-height:{{ minH }};height:100%;box-sizing:border-box;display:flex;flex-direction:column;background:var(--background);color:var(--text);font-family:Onest,system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased">
+  <div style="height:56px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px;background:var(--surface);border-bottom:1px solid var(--border)">
+    <span style="height:36px;padding:0 10px;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--text-secondary)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>Yopish</span>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center"><span style="font-size:14px;line-height:18px;font-weight:600">FinTrack</span><span style="font-size:11px;line-height:14px;color:var(--text-muted)">mini ilova</span></div>
+    <span style="width:72px;display:flex;justify-content:flex-end;padding-right:10px;color:var(--text-secondary)"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></span>
+  </div>
+
+  <sc-if value="{{ isSplash }}" hint-placeholder-val="{{ false }}">
+    <div aria-busy="true" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding-bottom:56px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+        <svg width="72" height="72" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="var(--brand)"></rect><rect x="8" y="8" width="16" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="14.5" width="10.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect><rect x="8" y="21" width="4.5" height="4.5" rx="2.25" fill="var(--brand-foreground)"></rect></svg>
+        <span style="font-size:24px;font-weight:600;letter-spacing:-0.03em">FinTrack</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <div role="progressbar" aria-label="Kirilmoqda" style="width:120px;height:4px;border-radius:9px;background:var(--secondary);overflow:hidden"><div style="width:40%;height:100%;border-radius:9px;background:var(--brand);animation:ft-bar 1.2s cubic-bezier(.4,0,.2,1) infinite"></div></div>
+        <span style="font-size:13px;color:var(--text-muted)">Kirilmoqda…</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isGate }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;display:flex;flex-direction:column;padding:0 20px">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:24px 4px">
+        <span style="width:72px;height:72px;border-radius:20px;display:flex;align-items:center;justify-content:center;background:{{ g.tint }};color:{{ g.color }}"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ g.d }}"></path></svg></span>
+        <h1 style="margin:10px 0 0;font-size:22px;line-height:28px;font-weight:600;letter-spacing:-0.01em;text-wrap:balance">{{ g.title }}</h1>
+        <p style="margin:0;font-size:15px;line-height:22px;color:var(--text-secondary);max-width:320px;text-wrap:pretty">{{ g.body }}</p>
+      </div>
+      <div style="padding:16px 0 calc(16px + env(safe-area-inset-bottom, 0px) + 18px)">
+        <button style="width:100%;height:52px;border:0;border-radius:999px;background:var(--primary);color:var(--primary-foreground);display:flex;align-items:center;justify-content:center;gap:8px;font:500 16px Onest,sans-serif;cursor:pointer">{{ g.cta }}</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;splash&quot;,&quot;register&quot;,&quot;session&quot;,&quot;menu&quot;,&quot;offline&quot;],&quot;default&quot;:&quot;splash&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;}}">
+const GATES = {
+  register: { d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0M19 8v6M22 11h-6', tint: 'var(--info-soft)', color: 'var(--info)', title: 'Avval botda ro‘yxatdan o‘ting', body: 'Botga qaytib /start bosing va telefon raqamingizni ulashing. Shundan so‘ng ilovani qayta oching.', cta: 'Botga qaytish' },
+  session: { d: 'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M12 6v6l4 2', tint: 'var(--warning-soft)', color: 'var(--warning)', title: 'Ilova sessiyasi tugadi', body: 'Xavfsizlik uchun ilova sessiyasi 24 soat amal qiladi. Ilovani botdagi “Ilova” tugmasi orqali qayta oching.', cta: 'Botga qaytish' },
+  menu: { d: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM3 15h18M7 18h4', tint: 'var(--secondary)', color: 'var(--text)', title: 'Ilovani menyu tugmasi orqali oching', body: 'Botdagi “Ilova” tugmasi (xabar yozish maydoni yonida) yoki “🌐 FinTrack ilovasini ochish” tugmasidan foydalaning.', cta: 'Botga qaytish' },
+  offline: { d: 'm2 2 20 20M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07', tint: 'var(--danger-soft)', color: 'var(--danger)', title: 'Ulanib bo‘lmadi', body: 'Server bilan bog‘lanishda xatolik yuz berdi. Birozdan so‘ng qayta urinib ko‘ring.', cta: 'Qayta urinish' },
+};
+class Component extends DCLogic {
+  renderVals() {
+    const screen = this.props.screen ?? 'splash';
+    return { minH: this.props.framed ? '100%' : '100vh', theme: this.props.theme ?? 'light', isSplash: screen === 'splash', isGate: screen !== 'splash', g: GATES[screen] || GATES.register };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,222 +1,174 @@
 import { useState } from 'react';
-import { Plus, Trash2, Layers, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
-import { CategoryResponse, CategoryType } from '@fintrack/shared';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { FolderOpen, GripVertical, Plus, Tag as TagIcon } from 'lucide-react';
+import type { CategoryResponse, CategoryType, TagResponse } from '@fintrack/shared';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { CategoryModal } from '../../features/categories/components/CategoryModal';
-import { useCategories, useDeleteCategory } from '../../features/categories/hooks/useCategories';
-import { cn } from '../../lib/utils';
+import { Tabs } from '../../components/ui/Tabs';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
-import { toast } from '../../stores/toastStore';
+import { PageHeader } from '../../components/layout/PageHeader';
+import { useIsMobile } from '../../lib/useMediaQuery';
+import { CategoryModal } from '../../features/categories/components/CategoryModal';
+import { CategoryTree } from '../../features/categories/components/CategoryTree';
+import { useCategories, useDeleteCategory, useReorderCategories } from '../../features/categories/hooks/useCategories';
+import { TagsPanel } from '../../features/tags/components/TagsPanel';
+import { useDeleteTag, useTags } from '../../features/tags/hooks/useTags';
+import { AccountsSkeleton } from '../accounts/AccountsPageParts';
+
+type Tab = 'expense' | 'income' | 'tags';
+const TABS: Tab[] = ['expense', 'income', 'tags'];
+const CARD = 'rounded-[20px] border border-border bg-card';
+
+interface FormState {
+  category: CategoryResponse | null;
+  type: CategoryType;
+  parentId: string | null;
+}
 
 export function CategoriesPage() {
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const tab: Tab = TABS.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'expense';
   const [confirmDialog, confirm] = useConfirm();
-  const [activeTab, setActiveTab] = useState<CategoryType>('EXPENSE');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalParentId, setModalParentId] = useState<string | null>(null);
-
-  const { data: categories = [], isLoading, isError, error, refetch } = useCategories();
+  const categories = useCategories();
+  const tags = useTags();
   const deleteCategory = useDeleteCategory();
+  const reorderCategories = useReorderCategories();
+  const deleteTag = useDeleteTag();
+  const [form, setForm] = useState<FormState | null>(null);
+  const [newTagSignal, setNewTagSignal] = useState(0);
 
-  // Filter categories by activeTab
-  const filteredCategories = categories.filter((c) => c.type === activeTab);
+  const tree = categories.data ?? [];
+  const tagList = tags.data ?? [];
+  const expense = tree.filter((c) => c.type === 'EXPENSE');
+  const income = tree.filter((c) => c.type === 'INCOME');
+  const isTags = tab === 'tags';
+  const shown = tab === 'income' ? income : expense;
+  const type: CategoryType = tab === 'income' ? 'INCOME' : 'EXPENSE';
+  const query = isTags ? tags : categories;
 
-  const handleOpenAddParent = () => {
-    setModalParentId(null);
-    setIsModalOpen(true);
+  const openNew = () => (isTags ? setNewTagSignal((n) => n + 1) : setForm({ category: null, type, parentId: null }));
+
+  const removeCategory = async (category: CategoryResponse) => {
+    const hasChildren = (tree.find((c) => c.id === category.id)?.children ?? []).length > 0;
+    const ok = await confirm({
+      title: `“${category.name}” kategoriyasi o‘chirilsinmi?`,
+      description: `${hasChildren ? 'Uning subkategoriyalari ham o‘chiriladi. ' : ''}Tranzaksiyalar saqlanadi, lekin kategoriyasiz qoladi. Unga qo‘yilgan byudjetlar o‘chiriladi.`,
+      confirmLabel: 'O‘chirish',
+      destructive: true,
+    });
+    if (ok) await deleteCategory.mutateAsync(category.id).catch(() => undefined);
   };
 
-  const handleOpenAddSub = (parentId: string) => {
-    setModalParentId(parentId);
-    setIsModalOpen(true);
+  const removeTag = async (tag: TagResponse) => {
+    const ok = await confirm({
+      title: `“${tag.name}” tegi o‘chirilsinmi?`,
+      description: 'Teg tranzaksiyalardan olib tashlanadi, tranzaksiyalarning o‘zi qoladi.',
+      confirmLabel: 'O‘chirish',
+      destructive: true,
+    });
+    if (ok) await deleteTag.mutateAsync(tag.id).catch(() => undefined);
   };
 
-  const handleDelete = async (cat: CategoryResponse) => {
-    if (cat.isSystem) {
-      toast.error('Tizim kategoriyalarini o‘chirib bo‘lmaydi');
-      return;
-    }
-    if (
-      await confirm({
-        title: `"${cat.name}" kategoriyasi o‘chirilsinmi?`,
-        confirmLabel: 'O‘chirish',
-        destructive: true,
-      })
-    ) {
-      await deleteCategory.mutateAsync(cat.id);
-    }
-  };
+  const newLabel = isTags ? 'Yangi teg' : 'Yangi kategoriya';
+  const newButton = (
+    <Button onClick={openNew} className={isMobile ? 'h-11 basis-full' : undefined}>
+      <Plus className="h-[18px] w-[18px]" aria-hidden />
+      {newLabel}
+    </Button>
+  );
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Kategoriyalar</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Xarajatlar va daromadlaringizni guruhlash uchun kategoriyalar daraxti
-          </p>
-        </div>
-
-        <Button onClick={handleOpenAddParent} className="gap-2 shrink-0">
-          <Plus className="h-4 w-4" />
-          <span>Yangi kategoriya</span>
-        </Button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-border">
-        <button
-          onClick={() => setActiveTab('EXPENSE')}
-          className={cn(
-            'flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors',
-            activeTab === 'EXPENSE'
-              ? 'border-destructive text-destructive'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <ArrowDownLeft className="h-4 w-4" />
-          <span>Chiqimlar ({categories.filter((c) => c.type === 'EXPENSE').length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('INCOME')}
-          className={cn(
-            'flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors',
-            activeTab === 'INCOME'
-              ? 'border-success text-success'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <ArrowUpRight className="h-4 w-4" />
-          <span>Kirimlar ({categories.filter((c) => c.type === 'INCOME').length})</span>
-        </button>
-      </div>
-
-      {/* States */}
-      {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-24 w-full rounded-2xl" />
-          <Skeleton className="h-24 w-full rounded-2xl" />
-          <Skeleton className="h-24 w-full rounded-2xl" />
-        </div>
-      ) : isError ? (
-        <ErrorState
-          message={error instanceof Error ? error.message : 'Kategoriyalarni yuklab bo‘lmadi'}
-          onRetry={() => refetch()}
-        />
-      ) : filteredCategories.length === 0 ? (
+  let body;
+  if (query.isLoading) body = <AccountsSkeleton compact={isMobile} />;
+  else if (query.isError)
+    body = (
+      <ErrorState
+        title={isTags ? 'Teglarni yuklab bo‘lmadi' : 'Kategoriyalarni yuklab bo‘lmadi'}
+        onRetry={() => void query.refetch()}
+        className={CARD}
+      />
+    );
+  else if (isTags)
+    body =
+      tagList.length === 0 && newTagSignal === 0 ? (
         <EmptyState
-          title="Kategoriyalar mavjud emas"
-          description="Ushbu turdagi birinchi kategoriyangizni yarating."
-          action={<Button onClick={handleOpenAddParent}>Kategoriya yaratish</Button>}
+          icon={<TagIcon className="h-6 w-6" aria-hidden />}
+          title="Teglar yo‘q"
+          description="Tranzaksiyalarni guruhlash uchun teg yarating"
+          action={<Button onClick={openNew}>Yangi teg</Button>}
+          className={CARD}
         />
       ) : (
-        <div className="space-y-4">
-          {filteredCategories.map((parent) => (
-            <div
-              key={parent.id}
-              className="rounded-2xl border border-border bg-surface overflow-hidden shadow-sm transition-all"
-            >
-              {/* Parent Category Row */}
-              <div className="p-4 flex items-center justify-between gap-4 bg-muted/10">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="h-10 w-10 rounded-xl flex items-center justify-center text-lg shrink-0 shadow-inner"
-                    style={{
-                      backgroundColor: `${parent.color}20`,
-                      color: parent.color,
-                    }}
-                  >
-                    {parent.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm truncate">{parent.name}</h3>
-                      {parent.isSystem && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted/60 text-muted-foreground">
-                          Standart
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {parent.children?.length ?? 0} ta subkategoriya
-                    </span>
-                  </div>
-                </div>
+        <TagsPanel
+          tags={tagList}
+          compact={isMobile}
+          newTagSignal={newTagSignal}
+          onOpen={(tag) => navigate(`/app/transactions?tagId=${encodeURIComponent(tag.id)}`)}
+          onDelete={(tag) => void removeTag(tag)}
+        />
+      );
+  else if (shown.length === 0)
+    body = (
+      <EmptyState
+        icon={<FolderOpen className="h-6 w-6" aria-hidden />}
+        title="Kategoriyalar mavjud emas"
+        description="Chiqim va kirimlarni tartiblash uchun birinchi kategoriyani qo‘shing."
+        action={<Button onClick={openNew}>Yangi kategoriya</Button>}
+        className={CARD}
+      />
+    );
+  else
+    body = (
+      <CategoryTree
+        categories={shown}
+        compact={isMobile}
+        onAddChild={(parent) => setForm({ category: null, type: parent.type, parentId: parent.id })}
+        onEdit={(category) => setForm({ category, type: category.type, parentId: category.parentId })}
+        onDelete={(category) => void removeCategory(category)}
+        onReorder={(items) => reorderCategories.mutate({ items })}
+      />
+    );
 
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOpenAddSub(parent.id)}
-                    className="h-8 px-2.5 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Subkategoriya</span>
-                  </Button>
+  return (
+    <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-4">
+      <PageHeader title="Kategoriyalar va teglar" subtitle="Chiqim va kirim kategoriyalari, teglar" actions={newButton} />
 
-                  {!parent.isSystem && (
-                    <button
-                      onClick={() => handleDelete(parent)}
-                      disabled={deleteCategory.isPending}
-                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                      title="O‘chirish"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tabs
+          aria-label="Bo‘limlar"
+          value={tab}
+          fullWidth={isMobile}
+          className={isMobile ? 'basis-full' : undefined}
+          onChange={(next) => {
+            setNewTagSignal(0);
+            setParams(next === 'expense' ? {} : { tab: next }, { replace: true });
+          }}
+          items={[
+            { value: 'expense', label: 'Chiqimlar', count: expense.length },
+            { value: 'income', label: 'Kirimlar', count: income.length },
+            { value: 'tags', label: 'Teglar', count: tagList.length },
+          ]}
+        />
+        {!isMobile && <span className="flex-1" />}
+        {isMobile && newButton}
+        {!isMobile && !isTags && shown.length > 1 && (
+          <span className="flex items-center gap-1.5 text-[13px] text-text-muted">
+            <GripVertical className="h-4 w-4" aria-hidden />
+            Tartibni sudrab o‘zgartiring
+          </span>
+        )}
+      </div>
 
-              {/* Subcategories (Children) */}
-              {parent.children && parent.children.length > 0 ? (
-                <div className="p-3 pl-8 sm:pl-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border-t border-border/40">
-                  {parent.children.map((child) => (
-                    <div
-                      key={child.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-background/50 text-xs hover:bg-muted/20 transition-colors"
-                    >
-                      <span className="inline-flex items-center gap-2 truncate font-medium">
-                        <span>{child.icon}</span>
-                        <span className="truncate">{child.name}</span>
-                      </span>
+      {body}
 
-                      {!child.isSystem && (
-                        <button
-                          onClick={() => handleDelete(child)}
-                          disabled={deleteCategory.isPending}
-                          className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                          title="Subkategoriyani o‘chirish"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="px-6 py-3 border-t border-border/40 text-xs text-muted-foreground italic flex items-center gap-2">
-                  <Layers className="h-3.5 w-3.5" />
-                  <span>Subkategoriyalar yo‘q</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Category Modal */}
       <CategoryModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setModalParentId(null);
-        }}
-        defaultType={activeTab}
-        defaultParentId={modalParentId}
+        isOpen={form !== null}
+        onClose={() => setForm(null)}
+        initialCategory={form?.category ?? null}
+        defaultType={form?.type ?? type}
+        defaultParentId={form?.parentId ?? null}
       />
       {confirmDialog}
     </div>
