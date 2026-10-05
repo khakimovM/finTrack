@@ -74,11 +74,16 @@ ishchi bazangizga tegmaydi.
 ## Production: Railway
 
 Bitta servis: API + fon ishlari (BullMQ) + web (API `apps/web/dist` ni o'zi beradi — sayt va API bitta
-domenda, shuning uchun cookie'lar first-party va CORS kerak emas). Konfiguratsiya: `Dockerfile`, `railway.json`
-(pre-deploy'da `prisma migrate deploy`, healthcheck `/api/v1/health/ready`).
+domenda, shuning uchun cookie'lar first-party va CORS kerak emas). Konfiguratsiya: `Dockerfile` va
+`.railway/railway.ts` (Railway Infrastructure as Code: Dockerfile builder, pre-deploy'da `prisma migrate deploy`,
+healthcheck `/api/v1/health/ready`, restart siyosati). O'zgaruvchilar u yerda `preserve()` — qiymatlari faqat
+Railway'da saqlanadi, git'ga tushmaydi.
+
+Konfiguratsiyani o'zgartirish: faylni tahrirlang → `railway config plan` (faqat ko'rsatadi) → `railway config apply`.
+Fayl butun loyihani tasvirlaydi: undan o'chirilgan resurs (masalan, Postgres) apply'da **o'chib ketadi**.
 
 1. Railway'da loyiha → **PostgreSQL** va **Redis** qo'shing.
-2. GitHub repodan servis yarating (root papka; `railway.json` avtomatik o'qiladi).
+2. GitHub repodan servis yarating (root papka), so'ng `railway config apply` bilan sozlamalarni qo'llang.
 3. Servisga domen bering (Settings → Networking → Generate Domain yoki o'z domeningiz).
 4. O'zgaruvchilar (Variables):
 
