@@ -1,13 +1,10 @@
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, Lock, Trash2, Undo2 } from 'lucide-react';
-import {
-  TransactionResponse,
-  TransactionType,
-  isUserManagedTransactionType,
-} from '@fintrack/shared';
+import { TransactionResponse, isUserManagedTransactionType } from '@fintrack/shared';
 import { Amount } from '../../components/ui/Amount';
 import { cn } from '../../lib/utils';
 import { formatDate } from '../../lib/format';
+import { TYPE_LABELS } from '../../features/transactions/typeLabels';
 
 export interface TransactionTableProps {
   transactions: TransactionResponse[];
@@ -20,17 +17,6 @@ export interface TransactionTableProps {
   isDeleting?: boolean;
 }
 
-const TYPE_LABELS: Record<TransactionType, string> = {
-  INCOME: 'Kirim',
-  EXPENSE: 'Chiqim',
-  TRANSFER_IN: 'O‘tkazma (kirim)',
-  TRANSFER_OUT: 'O‘tkazma (chiqim)',
-  LOAN_GIVEN: 'Qarz berildi',
-  LOAN_TAKEN: 'Qarz olindi',
-  LOAN_REPAY_IN: 'Qarz qaytarildi',
-  LOAN_REPAY_OUT: 'Qarz to‘landi',
-  ADJUSTMENT: 'Tuzatish',
-};
 
 const ACTION_CLASS =
   'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-colors md:h-8 md:w-8';

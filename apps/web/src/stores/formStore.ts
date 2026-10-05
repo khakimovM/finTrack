@@ -4,7 +4,8 @@ import { create } from 'zustand';
 export type GlobalForm =
   | { kind: 'transaction'; type: 'INCOME' | 'EXPENSE' }
   | { kind: 'transfer' }
-  | { kind: 'debt'; direction?: 'I_LENT' | 'I_BORROWED' };
+  | { kind: 'debt'; direction?: 'I_LENT' | 'I_BORROWED' }
+  | { kind: 'account' };
 
 interface FormState {
   form: GlobalForm | null;

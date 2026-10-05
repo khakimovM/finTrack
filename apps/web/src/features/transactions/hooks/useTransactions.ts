@@ -6,10 +6,11 @@ import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { invalidateAfter } from '../../../lib/invalidation';
 
-export function useTransactions(filters?: Partial<ListTransactionsQuery>) {
+export function useTransactions(filters?: Partial<ListTransactionsQuery>, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.transactions.list(filters),
     queryFn: () => transactionsApi.list(filters),
+    enabled: options.enabled ?? true,
     placeholderData: keepPreviousData,
     staleTime: 15_000,
   });

@@ -2,6 +2,7 @@ import { useFormStore } from '../../stores/formStore';
 import { TransactionModal } from '../../features/transactions/components/TransactionModal';
 import { TransferModal } from '../../features/accounts/components/TransferModal';
 import { DebtModal } from '../../features/debts/components/DebtModal';
+import { AccountModal } from '../../features/accounts/components/AccountModal';
 
 /** Mounts the forms opened through the form store, once, at the shell level. */
 export function GlobalForms() {
@@ -19,6 +20,7 @@ export function GlobalForms() {
         onClose={close}
         defaultDirection={form?.kind === 'debt' ? form.direction : undefined}
       />
+      <AccountModal isOpen={form?.kind === 'account'} onClose={close} />
     </>
   );
 }

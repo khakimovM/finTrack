@@ -20,7 +20,8 @@ export interface TrendPoint {
 export interface AreaTrendProps {
   data: TrendPoint[];
   series: TrendSeries[];
-  height?: number;
+  /** Pixels, or "100%" to fill a sized parent. */
+  height?: number | string;
   /** Formats a series value (so‘m) for the tooltip. */
   formatValue: (value: number, series: TrendSeries) => string;
   ariaLabel: string;

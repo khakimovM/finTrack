@@ -8,6 +8,7 @@ import {
   startOfMonth,
   endOfMonth,
   startOfYear,
+  addDays,
   TimeseriesGroupBy,
 } from '@fintrack/shared';
 
@@ -18,96 +19,43 @@ export interface PeriodState {
   from: string;
   to: string;
   groupBy: TimeseriesGroupBy;
-  setPreset: (preset: PeriodPreset) => void;
+  setPreset: (preset: Exclude<PeriodPreset, 'custom'>) => void;
   setCustomRange: (from: string, to: string) => void;
-  setGroupBy: (groupBy: TimeseriesGroupBy) => void;
 }
 
-const computePresetDates = (preset: PeriodPreset): { from: string; to: string; groupBy: TimeseriesGroupBy } => {
-  // The user's calendar day, not the UTC day (they differ for 5 hours every night in Tashkent).
-  const todayStr = todayLocalIso();
-  const now = parseIsoDate(todayStr);
+/** Bucket size for a custom range: days up to a month, weeks up to ~4 months, then months. */
+export function groupByForRange(from: string, to: string): TimeseriesGroupBy {
+  const days = Math.max(1, diffInDays(from, to));
+  return days > 120 ? 'month' : days > 31 ? 'week' : 'day';
+}
 
+/**
+ * Whole calendar periods, as the dashboard shows them: Monday–Sunday, the 1st to the last day,
+ * January–December. "Today" is the user's calendar day, not the UTC day.
+ */
+export function presetRange(preset: Exclude<PeriodPreset, 'custom'>, today = todayLocalIso()) {
+  const now = parseIsoDate(today);
   switch (preset) {
-    case 'today': {
-      return {
-        from: todayStr,
-        to: todayStr,
-        groupBy: 'day',
-      };
-    }
+    case 'today':
+      return { from: today, to: today, groupBy: 'day' as const };
     case 'this_week': {
-      const startWeek = startOfIsoWeek(now);
-      return {
-        from: formatIsoDate(startWeek),
-        to: formatIsoDate(now),
-        groupBy: 'day',
-      };
+      const start = startOfIsoWeek(now);
+      return { from: formatIsoDate(start), to: formatIsoDate(addDays(start, 6)), groupBy: 'day' as const };
     }
-    case 'this_month': {
-      const startMonth = startOfMonth(now);
-      const endMonth = endOfMonth(now);
-      return {
-        from: formatIsoDate(startMonth),
-        to: formatIsoDate(endMonth),
-        groupBy: 'day',
-      };
-    }
+    case 'this_month':
+      return { from: formatIsoDate(startOfMonth(now)), to: formatIsoDate(endOfMonth(now)), groupBy: 'week' as const };
     case 'this_year': {
-      const startYear = startOfYear(now);
-      return {
-        from: formatIsoDate(startYear),
-        to: formatIsoDate(now),
-        groupBy: 'month', // Requirement: Yillik davrda groupBy avtomatik month
-      };
-    }
-    case 'custom':
-    default: {
-      const startMonth = startOfMonth(now);
-      const endMonth = endOfMonth(now);
-      return {
-        from: formatIsoDate(startMonth),
-        to: formatIsoDate(endMonth),
-        groupBy: 'day',
-      };
+      const start = startOfYear(now);
+      return { from: formatIsoDate(start), to: `${start.getUTCFullYear()}-12-31`, groupBy: 'month' as const };
     }
   }
-};
+}
 
-const initialDates = computePresetDates('this_month');
+const initial = presetRange('this_month');
 
 export const usePeriodStore = create<PeriodState>((set) => ({
   preset: 'this_month',
-  from: initialDates.from,
-  to: initialDates.to,
-  groupBy: initialDates.groupBy,
-
-  setPreset: (preset: PeriodPreset) => {
-    if (preset === 'custom') {
-      set({ preset: 'custom' });
-      return;
-    }
-    const computed = computePresetDates(preset);
-    set({
-      preset,
-      from: computed.from,
-      to: computed.to,
-      groupBy: computed.groupBy,
-    });
-  },
-
-  setCustomRange: (from: string, to: string) => {
-    // Agar oraliq 180 kundan ko'p bo'lsa groupBy 'month' qilamiz
-    const diffDays = Math.max(1, diffInDays(from, to));
-    const groupBy: TimeseriesGroupBy = diffDays > 120 ? 'month' : diffDays > 31 ? 'week' : 'day';
-
-    set({
-      preset: 'custom',
-      from,
-      to,
-      groupBy,
-    });
-  },
-
-  setGroupBy: (groupBy: TimeseriesGroupBy) => set({ groupBy }),
+  ...initial,
+  setPreset: (preset) => set({ preset, ...presetRange(preset) }),
+  setCustomRange: (from, to) => set({ preset: 'custom', from, to, groupBy: groupByForRange(from, to) }),
 }));

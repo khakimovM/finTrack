@@ -27,8 +27,9 @@ export const dashboardApi = {
     from: string;
     to: string;
   }): Promise<StatsTimeseriesResponse> => {
-    const res = await api.get<{ data: StatsTimeseriesResponse }>('/stats/timeseries', { params });
-    return res.data.data;
+    // The envelope lifts meta to the top level, next to data: return both, not just the array.
+    const res = await api.get<StatsTimeseriesResponse>('/stats/timeseries', { params });
+    return { data: res.data.data, meta: res.data.meta };
   },
 
   getByCategory: async (params: {
@@ -44,8 +45,8 @@ export const dashboardApi = {
     from: string;
     to: string;
   }): Promise<StatsBalanceTrendResponse> => {
-    const res = await api.get<{ data: StatsBalanceTrendResponse }>('/stats/balance-trend', { params });
-    return res.data.data;
+    const res = await api.get<StatsBalanceTrendResponse>('/stats/balance-trend', { params });
+    return { data: res.data.data, meta: res.data.meta };
   },
 
   getDebts: async (): Promise<StatsDebtsResponse> => {

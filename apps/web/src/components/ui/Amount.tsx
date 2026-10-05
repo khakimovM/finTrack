@@ -58,7 +58,10 @@ export function Amount({
         {number}
         {unit === 'inline' && `${NBSP}${CURRENCY}`}
         {unit === 'muted' && (
-          <span className={cn('ml-1 text-[14px] font-medium tracking-normal text-text-muted', unitClassName)}>{CURRENCY}</span>
+          <>
+            {NBSP}
+            <span className={cn('text-[14px] font-medium tracking-normal text-text-muted', unitClassName)}>{CURRENCY}</span>
+          </>
         )}
       </span>
     </span>

@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils';
 export type ProgressTone = 'success' | 'warning' | 'danger' | 'neutral' | 'info' | 'debt' | 'brand';
 
 /** Budget zones: under 80% fine, 80–100% warning, above 100% over the limit. */
-export function budgetTone(percent: number): ProgressTone {
+export function budgetTone(percent: number): 'success' | 'warning' | 'danger' {
   if (percent > 100) return 'danger';
   if (percent >= 80) return 'warning';
   return 'success';
