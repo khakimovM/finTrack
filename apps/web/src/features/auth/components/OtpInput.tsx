@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { cn } from '../../../lib/utils';
 
 const LENGTH = 6;
@@ -10,74 +10,58 @@ export interface OtpInputProps {
   onComplete?: (value: string) => void;
   disabled?: boolean;
   invalid?: boolean;
+  autoFocus?: boolean;
 }
 
-/** Six single-digit boxes that behave like one field: paste, arrows and backspace all work. */
-export function OtpInput({ value, onChange, onComplete, disabled, invalid }: OtpInputProps) {
-  const refs = useRef<Array<HTMLInputElement | null>>([]);
+/**
+ * Six boxes drawn over one transparent input: paste, autofill of SMS/Telegram codes
+ * (autocomplete="one-time-code") and the platform keyboard all work as in a single field.
+ */
+export function OtpInput({ value, onChange, onComplete, disabled, invalid, autoFocus = true }: OtpInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [focused, setFocused] = useState(false);
   const digits = Array.from({ length: LENGTH }, (_, i) => value[i] ?? '');
-
-  const commit = (next: string) => {
-    const clean = next.replace(/\D/g, '').slice(0, LENGTH);
-    onChange(clean);
-    if (clean.length === LENGTH) onComplete?.(clean);
-    return clean;
-  };
-
-  const focus = (index: number) => refs.current[Math.max(0, Math.min(LENGTH - 1, index))]?.focus();
+  const activeIndex = Math.min(value.length, LENGTH - 1);
 
   return (
-    <div className="flex justify-center gap-2" role="group" aria-label="Tasdiqlash kodi">
-      {digits.map((digit, index) => (
-        <input
-          key={index}
-          ref={(el) => {
-            refs.current[index] = el;
-          }}
-          value={digit}
-          disabled={disabled}
-          inputMode="numeric"
-          autoComplete={index === 0 ? 'one-time-code' : 'off'}
-          maxLength={1}
-          aria-label={`${index + 1}-raqam`}
-          aria-invalid={invalid || undefined}
-          className={cn(
-            'h-14 w-11 sm:w-12 rounded-xl border bg-surface text-center text-2xl font-bold text-foreground',
-            'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-            invalid ? 'border-destructive' : 'border-input focus-visible:border-primary',
-            'disabled:opacity-50',
-          )}
-          onChange={(e) => {
-            const typed = e.target.value.replace(/\D/g, '');
-            if (!typed) return;
-            // Mobile keyboards may insert the whole code into one box.
-            const merged = (value.slice(0, index) + typed + value.slice(index + typed.length)).slice(0, LENGTH);
-            const clean = commit(merged);
-            focus(Math.min(index + typed.length, clean.length));
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Backspace') {
-              e.preventDefault();
-              if (digit) {
-                commit(value.slice(0, index) + value.slice(index + 1));
-              } else if (index > 0) {
-                commit(value.slice(0, index - 1) + value.slice(index));
-                focus(index - 1);
-              }
-            } else if (e.key === 'ArrowLeft') {
-              focus(index - 1);
-            } else if (e.key === 'ArrowRight') {
-              focus(index + 1);
-            }
-          }}
-          onPaste={(e) => {
-            e.preventDefault();
-            const clean = commit(e.clipboardData.getData('text'));
-            focus(clean.length);
-          }}
-          onFocus={(e) => e.target.select()}
-        />
-      ))}
+    <div className="relative" onClick={() => inputRef.current?.focus()}>
+      <div className="grid grid-cols-6 gap-2" aria-hidden>
+        {digits.map((digit, i) => {
+          const active = !disabled && !invalid && (focused || value.length === 0) && i === activeIndex && value.length < LENGTH;
+          return (
+            <span
+              key={i}
+              className={cn(
+                'relative flex h-[58px] items-center justify-center rounded-md border text-[24px] font-semibold tabular-nums transition-[border-color,box-shadow] duration-fast',
+                invalid ? 'border-danger' : active ? 'border-ring shadow-[0_0_0_3px_color-mix(in_oklab,var(--ring)_22%,transparent)]' : 'border-input',
+                digit || active ? 'bg-card' : 'bg-surface',
+              )}
+            >
+              {digit}
+              {active && !digit && <span className="h-6 w-[1.5px] animate-ft-caret bg-text" />}
+            </span>
+          );
+        })}
+      </div>
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => {
+          const clean = e.target.value.replace(/\D/g, '').slice(0, LENGTH);
+          onChange(clean);
+          if (clean.length === LENGTH) onComplete?.(clean);
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={LENGTH}
+        aria-label="6 xonali kod"
+        aria-invalid={invalid || undefined}
+        className="absolute inset-0 h-full w-full cursor-text bg-transparent text-[16px] text-transparent caret-transparent outline-none selection:bg-transparent disabled:cursor-not-allowed"
+      />
     </div>
   );
 }

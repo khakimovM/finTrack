@@ -10,9 +10,10 @@ import { Button } from '../../components/ui/Button';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { Scale, PlusCircle, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Scale, ArrowDownLeft, ArrowUpRight, Plus } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 type FilterStatus = 'ALL' | DebtStatus | 'OVERDUE';
 
@@ -64,29 +65,21 @@ export function DebtsPage() {
     }
   };
 
+  const newDebtButton = (
+    <Button onClick={() => setCreateModalOpen(true)}>
+      <Plus className="h-[18px] w-[18px]" aria-hidden />
+      Yangi qarz
+    </Button>
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-300 pb-12">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-            <Scale className="h-7 w-7 text-primary" />
-            Qarzlar Boshqaruvi
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Berilgan va olingan qarzlar, qisman to‘lovlar va to‘lov muddatlari nazorati
-          </p>
-        </div>
-
-        <Button
-          size="sm"
-          className="rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-          onClick={() => setCreateModalOpen(true)}
-        >
-          <PlusCircle className="mr-1.5 h-4 w-4" />
-          <span>Yangi qarz</span>
-        </Button>
-      </div>
+      <PageHeader
+        title="Qarzlar"
+        subtitle="Berilgan va olingan qarzlar, qisman to‘lovlar va muddatlar"
+        actions={newDebtButton}
+        mobileActions={newDebtButton}
+      />
 
       {/* Main Tabs: Menga qarzdor / Men qarzdorman */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

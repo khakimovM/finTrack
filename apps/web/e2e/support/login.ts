@@ -22,7 +22,7 @@ export async function signUpThroughTelegram(page: Page, firstName = 'Playwright'
   await deliver(sharedContact(user));
   const code = await waitForCode(user);
 
-  await page.getByLabel('1-raqam').pressSequentially(code);
+  await page.getByLabel('6 xonali kod').pressSequentially(code);
   await expect(page).toHaveURL(/\/app$/);
   return user;
 }

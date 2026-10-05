@@ -41,7 +41,7 @@ export function hasLaunchParams(hash: string): boolean {
   return /(^|[#&])tgWebApp(Data|Version|Platform)=/.test(hash);
 }
 
-function launchedFromTelegram(): boolean {
+export function launchedFromTelegram(): boolean {
   if (hasLaunchParams(window.location.hash)) return true;
   try {
     return sessionStorage.getItem(STORED_LAUNCH_PARAMS) !== null;

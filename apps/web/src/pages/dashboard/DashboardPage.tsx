@@ -15,13 +15,12 @@ import { BalanceTrendChart } from '../../features/dashboard/components/BalanceTr
 import { RecentTransactionsWidget } from '../../features/dashboard/components/RecentTransactionsWidget';
 import { DebtSummaryWidget } from '../../features/dashboard/components/DebtSummaryWidget';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { Button } from '../../components/ui/Button';
 import { apiErrorToMessage } from '../../lib/apiError';
-import { PlusCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 export function DashboardPage() {
   const { user } = useAuthStore();
+  const header = <PageHeader title="Bosh sahifa" subtitle={`Xush kelibsiz, ${user?.name ?? ''}!`} quickAdd />;
 
   const summaryQuery = useStatsSummary();
   const timeseriesQuery = useStatsTimeseries();
@@ -50,41 +49,19 @@ export function DashboardPage() {
       'Statistika ma’lumotlarini yuklashda xatolik yuz berdi';
 
     return (
-      <div className="py-12">
+      <>
+        {header}
         <ErrorState
           message={errorMsg}
           onRetry={handleRetryAll}
         />
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in-50 duration-300 pb-10">
-      {/* 1. Header Banner & Period Filter */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            Xush kelibsiz, {user?.name}! 👋
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Barcha moliyaviy oqimlar, kirim-chiqimlar va qarzlar boshqaruvi
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            size="sm"
-            className="rounded-xl shadow-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90"
-            asChild
-          >
-            <Link to="/app/transactions">
-              <PlusCircle className="mr-1.5 h-4 w-4" />
-              <span>Yangi tranzaksiya</span>
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6 pb-10">
+      {header}
 
       {/* Period Filter Bar */}
       <div className="bg-card/70 backdrop-blur-sm p-3 sm:p-4 rounded-2xl border border-border/60 shadow-sm">

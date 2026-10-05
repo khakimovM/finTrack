@@ -5,7 +5,7 @@ test('critical path: Telegram sign-up → income and expense → dashboard → d
   page,
 }) => {
   await signUpThroughTelegram(page, 'Dilnoza');
-  await expect(page.getByRole('heading', { name: /Xush kelibsiz, Dilnoza/ }).first()).toBeVisible();
+  await expect(page.getByText(/Xush kelibsiz, Dilnoza/).first()).toBeVisible();
 
   // Income and expense through the transaction modal.
   await page.goto('/app/transactions');
@@ -64,8 +64,10 @@ test('critical path: Telegram sign-up → income and expense → dashboard → d
 test('signing out ends the session and protects the app again', async ({ page }) => {
   await signUpThroughTelegram(page, 'Aziz');
 
+  // Signing out lands on the public front page, which offers the way back in.
   await page.getByRole('button', { name: 'Chiqish' }).click();
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('link', { name: 'Kirish', exact: true }).first()).toBeVisible();
 
   await page.goto('/app/transactions');
   await expect(page).toHaveURL(/\/login$/);

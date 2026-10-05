@@ -24,6 +24,7 @@ import {
   useBulkDeleteTransactions,
 } from '../../features/transactions/hooks/useTransactions';
 import { useDeleteTransfer } from '../../features/transfers/hooks/useTransfers';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 const FILTER_KEYS = ['search', 'type', 'accountId', 'categoryId', 'from', 'to'] as const;
 
@@ -136,21 +137,28 @@ export function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tranzaksiyalar</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Kirim va chiqimlar ro‘yxati, hisoblararo o‘tkazmalar
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <ExportMenu query={{ ...filterValues }} />
-          <Button onClick={() => setIsModalOpen(true)} className="shrink-0 gap-2">
-            <Plus className="h-4 w-4" />
-            <span>Yangi tranzaksiya</span>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Tranzaksiyalar"
+        subtitle="Kirim va chiqimlar ro‘yxati, hisoblararo o‘tkazmalar"
+        actions={
+          <>
+            <ExportMenu query={{ ...filterValues }} />
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus className="h-[18px] w-[18px]" aria-hidden />
+              Yangi tranzaksiya
+            </Button>
+          </>
+        }
+        mobileActions={
+          <>
+            <ExportMenu query={{ ...filterValues }} />
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus className="h-[18px] w-[18px]" aria-hidden />
+              Yangi tranzaksiya
+            </Button>
+          </>
+        }
+      />
 
       {meta && <TransactionSums income={meta.sums.income} expense={meta.sums.expense} />}
 

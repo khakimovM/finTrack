@@ -1,8 +1,9 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { AuthLayout } from './components/layout/AuthLayout';
-import { RootLayout } from './components/layout/RootLayout';
+import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { LoginPage } from './pages/auth/LoginPage';
+import { LandingPage } from './pages/landing/LandingPage';
+import { NotificationsPage } from './pages/notifications/NotificationsPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { TransactionsPage } from './pages/transactions/TransactionsPage';
@@ -16,24 +17,17 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorPage } from './pages/ErrorPage';
 
 export const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <AuthLayout />,
-    errorElement: <ErrorPage />,
-    children: [
-      { index: true, element: <Navigate to="/app" replace /> },
-      { path: 'login', element: <LoginPage /> },
-      // Registration happens in the Telegram bot; keep old links working.
-      { path: 'register', element: <Navigate to="/login" replace /> },
-    ],
-  },
+  { path: '/', element: <LandingPage />, errorElement: <ErrorPage /> },
+  { path: '/login', element: <LoginPage />, errorElement: <ErrorPage /> },
+  // Registration happens in the Telegram bot; keep old links working.
+  { path: '/register', element: <Navigate to="/login" replace /> },
   {
     path: '/app',
     element: <ProtectedRoute />,
     errorElement: <ErrorPage />,
     children: [
       {
-        element: <RootLayout />,
+        element: <AppShell />,
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'transactions', element: <TransactionsPage /> },
@@ -43,6 +37,7 @@ export const router = createBrowserRouter([
           { path: 'categories', element: <CategoriesPage /> },
           { path: 'recurring', element: <RecurringPage /> },
           { path: 'reports', element: <ReportsPage /> },
+          { path: 'notifications', element: <NotificationsPage /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },

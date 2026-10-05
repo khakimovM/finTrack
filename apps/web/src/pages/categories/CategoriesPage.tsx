@@ -10,6 +10,7 @@ import { useCategories, useDeleteCategory } from '../../features/categories/hook
 import { cn } from '../../lib/utils';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { toast } from '../../stores/toastStore';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 export function CategoriesPage() {
   const [confirmDialog, confirm] = useConfirm();
@@ -49,22 +50,21 @@ export function CategoriesPage() {
     }
   };
 
+  const newCategoryButton = (
+    <Button onClick={handleOpenAddParent}>
+      <Plus className="h-[18px] w-[18px]" aria-hidden />
+      Yangi kategoriya
+    </Button>
+  );
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Kategoriyalar</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Xarajatlar va daromadlaringizni guruhlash uchun kategoriyalar daraxti
-          </p>
-        </div>
-
-        <Button onClick={handleOpenAddParent} className="gap-2 shrink-0">
-          <Plus className="h-4 w-4" />
-          <span>Yangi kategoriya</span>
-        </Button>
-      </div>
+      <PageHeader
+        title="Kategoriyalar va teglar"
+        subtitle="Chiqim va kirim kategoriyalari, teglar"
+        actions={newCategoryButton}
+        mobileActions={newCategoryButton}
+      />
 
       {/* Tabs */}
       <div className="flex border-b border-border">

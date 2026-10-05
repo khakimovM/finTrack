@@ -11,6 +11,7 @@ import { AccountModal } from '../../features/accounts/components/AccountModal';
 import { TransferModal } from '../../features/accounts/components/TransferModal';
 import { useAccounts, useArchiveAccount } from '../../features/accounts/hooks/useAccounts';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 export function AccountsPage() {
   const [confirmDialog, confirm] = useConfirm();
@@ -47,35 +48,29 @@ export function AccountsPage() {
     }
   };
 
+  const headerActions = (
+    <>
+      {accounts.length >= 2 && (
+        <Button variant="outline" onClick={() => setIsTransferModalOpen(true)}>
+          <ArrowRightLeft className="h-[18px] w-[18px]" aria-hidden />
+          O‘tkazma
+        </Button>
+      )}
+      <Button onClick={handleOpenCreate}>
+        <Plus className="h-[18px] w-[18px]" aria-hidden />
+        Yangi hisob
+      </Button>
+    </>
+  );
+
   return (
     <div className="space-y-6">
-      {/* Header with Title & Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Hisoblar</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Barcha bank kartalari, naqd pullar va jamg‘armalar boshqaruvi
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {accounts.length >= 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setIsTransferModalOpen(true)}
-              className="gap-2"
-            >
-              <ArrowRightLeft className="h-4 w-4" />
-              <span>O‘tkazma</span>
-            </Button>
-          )}
-
-          <Button onClick={handleOpenCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
-            <span>Yangi hisob</span>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Hisoblar"
+        subtitle="Bank kartalari, naqd pul va jamg‘armalar"
+        actions={headerActions}
+        mobileActions={headerActions}
+      />
 
       {/* Total Balance Banner */}
       <div className="p-6 rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">

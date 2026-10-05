@@ -16,6 +16,7 @@ import { useStatsCompare } from '../../features/reports/useStatsCompare';
 import { ReportPeriodPicker } from '../../features/reports/components/ReportPeriodPicker';
 import { CompareSummary } from '../../features/reports/components/CompareSummary';
 import { CategoryCompareList } from '../../features/reports/components/CategoryCompareList';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 export function ReportsPage() {
   const today = todayLocalIso();
@@ -38,22 +39,18 @@ export function ReportsPage() {
   const hasActivity =
     data && (data.current.transactionCount > 0 || data.previous.transactionCount > 0);
 
+  const exportMenu = comparison ? (
+    <ExportMenu query={{ from: comparison.current.from, to: comparison.current.to }} />
+  ) : undefined;
+
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2.5 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-            <BarChart3 className="h-7 w-7 text-primary" />
-            Hisobotlar
-          </h1>
-          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-            Davrlarni solishtirish, kategoriyalar bo‘yicha o‘zgarish va eksport
-          </p>
-        </div>
-        {comparison && (
-          <ExportMenu query={{ from: comparison.current.from, to: comparison.current.to }} />
-        )}
-      </div>
+      <PageHeader
+        title="Hisobotlar"
+        subtitle="Davrlarni solishtirish, kategoriyalar bo‘yicha o‘zgarish va eksport"
+        actions={exportMenu}
+        mobileActions={exportMenu}
+      />
 
       <ReportPeriodPicker
         preset={preset}

@@ -10,13 +10,14 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Skeleton } from '../../components/ui/Skeleton';
 import {
   PieChart,
-  PlusCircle,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { formatMonth } from '../../lib/format';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 export function BudgetsPage() {
   const [confirmDialog, confirm] = useConfirm();
@@ -74,58 +75,34 @@ export function BudgetsPage() {
   const overallPercent =
     totalLimitTiyin > 0n ? Number((totalSpentTiyin * 100n) / totalLimitTiyin) : 0;
 
+  const budgetActions = (
+    <>
+      <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+        <Button variant="ghost" size="icon-xs" onClick={handlePrevMonth} aria-label="Oldingi oy">
+          <ChevronLeft className="h-4 w-4" aria-hidden />
+        </Button>
+        <span className="min-w-[110px] px-1 text-center text-[14px] font-semibold" aria-live="polite">
+          {formatMonth(currentMonth)}
+        </span>
+        <Button variant="ghost" size="icon-xs" onClick={handleNextMonth} aria-label="Keyingi oy">
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </Button>
+      </div>
+      <Button onClick={handleOpenCreate}>
+        <Plus className="h-[18px] w-[18px]" aria-hidden />
+        Byudjet belgilash
+      </Button>
+    </>
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-300 pb-12">
-      {/* Top Header & Month Navigator */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-            <PieChart className="h-7 w-7 text-primary" />
-            Oylik Byudjetlar
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Xarajat kategoriyalari bo‘yicha limitlar va xarajat nazorati
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Month Selector */}
-          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-2xl border border-border/50">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handlePrevMonth}
-              className="h-11 w-11 p-0 sm:h-8 sm:w-8"
-              aria-label="Oldingi oy"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-xs font-black px-2 min-w-[110px] text-center" aria-live="polite">
-              {formatMonth(currentMonth)}
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleNextMonth}
-              className="h-11 w-11 p-0 sm:h-8 sm:w-8"
-              aria-label="Keyingi oy"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <Button
-            size="sm"
-            className="rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-            onClick={handleOpenCreate}
-          >
-            <PlusCircle className="mr-1.5 h-4 w-4" />
-            <span>Byudjet belgilash</span>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Byudjetlar"
+        subtitle="Kategoriyalar bo‘yicha oylik limitlar"
+        actions={budgetActions}
+        mobileActions={budgetActions}
+      />
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

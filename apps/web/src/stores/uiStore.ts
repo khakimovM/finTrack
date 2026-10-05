@@ -11,6 +11,9 @@ interface UiState {
   /** Inside Telegram the colour scheme follows the Telegram app and is not user-selectable. */
   telegramTheme: boolean;
   sidebarOpen: boolean;
+  /** Explicit sidebar choice; null follows the width (full from 1200px, an icon rail below). */
+  sidebarMode: 'full' | 'rail' | null;
+  setSidebarMode: (mode: 'full' | 'rail') => void;
   setTheme: (theme: Theme) => void;
   /** Header button: flips what is on screen and remembers it as an explicit choice. */
   toggleTheme: () => void;
@@ -78,6 +81,8 @@ export const useUiStore = create<UiState>((set, get) => {
     resolvedTheme: initialResolved,
     telegramTheme: false,
     sidebarOpen: false,
+    sidebarMode: null,
+    setSidebarMode: (mode) => set({ sidebarMode: mode }),
     setTheme: (theme) => {
       saveTheme(theme);
       const resolved = resolve(theme);

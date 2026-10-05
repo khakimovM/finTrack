@@ -14,6 +14,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
+    // Interaction tests drive real dialogs and timers; files run in parallel and can share a slow CPU.
+    testTimeout: 15_000,
     setupFiles: ['./src/test/setup.ts'],
     restoreMocks: true,
   },

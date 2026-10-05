@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PlusCircle, Repeat } from 'lucide-react';
+import { Repeat, Plus } from 'lucide-react';
 import { RecurringRuleResponse, formatMoney } from '@fintrack/shared';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -17,6 +17,7 @@ import {
 import { RecurringRuleCard } from '../../features/recurring/components/RecurringRuleCard';
 import { RecurringCreateModal } from '../../features/recurring/components/RecurringCreateModal';
 import { RecurringEditModal } from '../../features/recurring/components/RecurringEditModal';
+import { PageHeader } from '../../components/layout/PageHeader';
 
 type Tab = 'active' | 'paused';
 
@@ -60,23 +61,21 @@ export function RecurringPage() {
     if (confirmed) await deleteRule.mutateAsync(rule.id);
   };
 
+  const newRuleButton = (
+    <Button onClick={() => setCreateOpen(true)}>
+      <Plus className="h-[18px] w-[18px]" aria-hidden />
+      Yangi qoida
+    </Button>
+  );
+
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2.5 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-            <Repeat className="h-7 w-7 text-primary" />
-            Takroriy to‘lovlar
-          </h1>
-          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-            Oylik, ijara, obuna kabi muntazam kirim va chiqimlar o‘z vaqtida avtomatik yoziladi
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
-          <PlusCircle className="h-4 w-4" />
-          Yangi qoida
-        </Button>
-      </div>
+      <PageHeader
+        title="Takroriy to‘lovlar"
+        subtitle="Oylik, ijara va obunalar o‘z vaqtida avtomatik yoziladi"
+        actions={newRuleButton}
+        mobileActions={newRuleButton}
+      />
 
       <div
         className="inline-flex rounded-2xl border border-border/50 bg-muted/60 p-1"
