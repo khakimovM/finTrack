@@ -6,6 +6,8 @@ export interface SwitchProps {
   onChange: (checked: boolean) => void;
   label?: React.ReactNode;
   description?: React.ReactNode;
+  /** An icon tile before the label (settings rows). */
+  lead?: React.ReactNode;
   disabled?: boolean;
   className?: string;
   id?: string;
@@ -18,6 +20,7 @@ export function Switch({
   onChange,
   label,
   description,
+  lead,
   disabled,
   className,
   id,
@@ -57,6 +60,7 @@ export function Switch({
         className,
       )}
     >
+      {lead}
       {label && (
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span id={labelId} className="text-[15px] font-medium text-text">

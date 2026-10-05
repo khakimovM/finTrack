@@ -35,12 +35,14 @@ export interface MenuProps {
   /** Phones get a bottom sheet; this goes above the actions (e.g. the row being acted on). */
   sheetHeader?: React.ReactNode;
   sheetTitle?: string;
+  /** A muted line above the items, in the popover and the sheet (the range an export covers). */
+  header?: React.ReactNode;
   label: string;
   className?: string;
 }
 
 /** Popover of actions from 640px, a bottom sheet on phones. */
-export function Menu({ trigger, items, align = 'end', width = 240, sheetHeader, sheetTitle, label, className }: MenuProps) {
+export function Menu({ trigger, items, align = 'end', width = 240, sheetHeader, sheetTitle, header, label, className }: MenuProps) {
   const [open, setOpen] = React.useState(false);
   const isMobile = useIsMobile();
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -98,6 +100,7 @@ export function Menu({ trigger, items, align = 'end', width = 240, sheetHeader, 
             align === 'end' ? 'right-0' : 'left-0',
           )}
         >
+          {header && <div className="px-2.5 pb-1 pt-2 text-[12px] text-text-muted">{header}</div>}
           {items.map((item, index) => (
             <React.Fragment key={item.label}>
               {item.separatorBefore && <div role="separator" className="mx-0 my-1 h-px bg-border" />}
@@ -126,6 +129,7 @@ export function Menu({ trigger, items, align = 'end', width = 240, sheetHeader, 
         <Sheet isOpen={open} onClose={close} title={sheetTitle} aria-label={label}>
           {sheetHeader && <div className="mb-2 border-b border-border pb-3">{sheetHeader}</div>}
           <div role="menu" aria-label={label} className="flex flex-col">
+            {header && <div className="pb-1 text-[13px] text-text-muted">{header}</div>}
             {items.map((item) => (
               <React.Fragment key={item.label}>
                 {item.separatorBefore && <div role="separator" className="my-1 h-px bg-border" />}

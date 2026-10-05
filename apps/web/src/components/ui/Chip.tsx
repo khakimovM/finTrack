@@ -41,30 +41,6 @@ export function Chip({ tone = 'neutral', dot, size = 'md', icon, className, chil
   );
 }
 
-/** Old Badge API on top of Chip, kept while pages move over. */
-export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'secondary' | 'success' | 'destructive' | 'warning' | 'outline';
-}
-
-const BADGE_TONE: Record<NonNullable<BadgeProps['variant']>, ChipTone> = {
-  default: 'info',
-  secondary: 'neutral',
-  success: 'success',
-  destructive: 'danger',
-  warning: 'warning',
-  outline: 'neutral',
-};
-
-export function Badge({ variant = 'default', className, ...props }: BadgeProps) {
-  return (
-    <Chip
-      tone={BADGE_TONE[variant]}
-      className={cn(variant === 'outline' && 'border border-border bg-transparent', className)}
-      {...props}
-    />
-  );
-}
-
 export interface ChangeChipProps {
   /** Percent change vs the previous period; null when the previous value was 0. */
   value: number | null;

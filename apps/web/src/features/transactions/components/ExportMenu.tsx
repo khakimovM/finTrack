@@ -6,8 +6,12 @@ import { useExportTransactions, type ExportFormat } from '../hooks/useExport';
 export interface ExportMenuProps {
   /** Same filters as the list on screen: the file contains exactly what the user sees. */
   query: Record<string, string | undefined>;
-  /** icon: the phone top bar. */
-  variant?: 'button' | 'icon';
+  /** icon: the phone top bar; wide: a full-width phone button. */
+  variant?: 'button' | 'icon' | 'wide';
+  /** What the file will cover, above the formats (reports: "1–31-oktabr, 2026"). */
+  heading?: string;
+  /** Toast after the download. */
+  doneMessage?: string;
 }
 
 const FORMATS: { format: ExportFormat; ext: string; label: string }[] = [
@@ -15,8 +19,8 @@ const FORMATS: { format: ExportFormat; ext: string; label: string }[] = [
   { format: 'xlsx', ext: 'XLS', label: 'Excel (XLSX) formatida' },
 ];
 
-export function ExportMenu({ query, variant = 'button' }: ExportMenuProps) {
-  const { exportData, exporting } = useExportTransactions();
+export function ExportMenu({ query, variant = 'button', heading, doneMessage }: ExportMenuProps) {
+  const { exportData, exporting } = useExportTransactions(doneMessage);
 
   const items: MenuItem[] = FORMATS.map(({ format, ext, label }) => ({
     label: exporting === format ? 'Yuklanmoqda...' : label,
@@ -33,7 +37,9 @@ export function ExportMenu({ query, variant = 'button' }: ExportMenuProps) {
     <Menu
       label="Eksport"
       sheetTitle="Eksport"
-      width={250}
+      width={heading ? 270 : 250}
+      header={heading}
+      className={variant === 'wide' ? 'flex w-full' : undefined}
       items={items}
       trigger={(props) =>
         variant === 'icon' ? (
@@ -46,7 +52,7 @@ export function ExportMenu({ query, variant = 'button' }: ExportMenuProps) {
             {exporting ? <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden /> : <Download className="h-5 w-5" aria-hidden />}
           </button>
         ) : (
-          <Button {...props} variant="outline" className="aria-expanded:bg-secondary">
+          <Button {...props} variant="outline" className={variant === 'wide' ? 'h-11 w-full aria-expanded:bg-secondary' : 'aria-expanded:bg-secondary'}>
             {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden /> : <Download className="h-4 w-4" aria-hidden />}
             {exporting ? 'Yuklanmoqda...' : 'Eksport'}
             <ChevronDown className="h-3.5 w-3.5 text-text-muted" aria-hidden />

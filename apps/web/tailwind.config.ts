@@ -36,14 +36,8 @@ const config: Config = {
     extend: {
       colors: {
         background: token('background'),
-        surface: {
-          DEFAULT: token('surface'),
-          foreground: token('text'), // legacy alias, removed with the old pages
-        },
-        card: {
-          DEFAULT: token('card'),
-          foreground: token('text'), // legacy alias
-        },
+        surface: token('surface'),
+        card: token('card'),
         popover: token('popover'),
         border: token('border'),
         input: token('input'),
@@ -62,17 +56,14 @@ const config: Config = {
         secondary: {
           DEFAULT: token('secondary'),
           hover: token('secondary-hover'),
-          foreground: token('text'), // legacy alias
         },
         success: {
           DEFAULT: token('success'),
           soft: token('success-soft'),
-          foreground: token('primary-foreground'), // legacy alias
         },
         warning: {
           DEFAULT: token('warning'),
           soft: token('warning-soft'),
-          foreground: token('primary-foreground'), // legacy alias
         },
         danger: {
           DEFAULT: token('danger'),
@@ -105,20 +96,6 @@ const config: Config = {
           7: token('chart-7'),
           8: token('chart-8'),
           9: token('chart-9'),
-        },
-        // Legacy aliases so pages not yet redesigned keep rendering in the new palette.
-        foreground: token('text'),
-        destructive: {
-          DEFAULT: token('danger'),
-          foreground: token('danger-foreground'),
-        },
-        muted: {
-          DEFAULT: token('text-muted'),
-          foreground: token('text-muted'),
-        },
-        accent: {
-          DEFAULT: token('secondary-hover'),
-          foreground: token('text'),
         },
       },
       ringColor: {

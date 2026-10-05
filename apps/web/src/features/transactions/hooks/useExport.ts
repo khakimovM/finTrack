@@ -19,7 +19,7 @@ async function exportErrorMessage(err: unknown): Promise<string> {
   return apiErrorToMessage(err);
 }
 
-export function useExportTransactions() {
+export function useExportTransactions(doneMessage = 'Fayl yuklab olindi') {
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
 
   const exportData = async (format: ExportFormat, query?: Record<string, string | undefined>) => {
@@ -28,7 +28,7 @@ export function useExportTransactions() {
     try {
       const blob = format === 'csv' ? await transactionsApi.exportCsv(query) : await transactionsApi.exportXlsx(query);
       triggerDownload(blob, `tranzaksiyalar_${todayLocalIso()}.${format}`);
-      toast.success('Fayl yuklab olindi');
+      toast.success(doneMessage);
     } catch (err: unknown) {
       toast.error(await exportErrorMessage(err));
     } finally {

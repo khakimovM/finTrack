@@ -7,7 +7,6 @@ import {
   startOfMonth,
   startOfYear,
 } from '@fintrack/shared';
-import { formatDate } from '../../lib/format';
 
 export type ReportPreset = 'this_month' | 'last_month' | 'this_year' | 'custom';
 
@@ -64,7 +63,3 @@ export function comparisonFor(preset: ReportPreset, today: string, custom?: Date
   }
 }
 
-/** "1-sentabr, 2026 – 28-sentabr, 2026", or a single date when the range is one day. */
-export function formatRange({ from, to }: DateRange): string {
-  return from === to ? formatDate(from) : `${formatDate(from)} – ${formatDate(to)}`;
-}

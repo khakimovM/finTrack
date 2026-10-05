@@ -9,7 +9,7 @@ moliyani **botning o'zidan** ham boshqarish mumkin — matn yoki ovozli xabar bi
 |---|---|
 | Monorepo | npm workspaces + Turborepo (`apps/api`, `apps/web`, `packages/shared`) |
 | Backend | NestJS 10 (Fastify), Prisma 5 + PostgreSQL 16, Redis + BullMQ, grammY (Telegram) |
-| Frontend | React 18 + Vite, TanStack Query v5, Zustand, Tailwind, Recharts |
+| Frontend | React 18 + Vite, TanStack Query v5, Zustand, Tailwind (dizayn token'lari), Recharts, Onest shrifti |
 | Ovozli yordamchi | Gemini (tekin tarif, model zanjiri) → Groq Whisper (zaxira) → ixtiyoriy Claude |
 | Testlar | Jest + Supertest (API), Vitest + Testing Library + MSW (web), Playwright (brauzer) |
 | Deploy | Bitta Docker image (API web'ni ham beradi) → Railway |
@@ -127,6 +127,7 @@ Batafsil: `AGENTS.md`, `.agents/rules/40-domain-money.md`.
 | `docs/02-ARCHITECTURE.md` | Qatlamlar, modullar, auth va deploy topologiyasi |
 | `docs/03-DATA-MODEL.md` | Ledger mantiqi, qarz hisobi, indekslar |
 | `docs/04-API-CONTRACT.md` | 77 endpoint, xato kodlari, so'rov/javob namunalari |
-| `docs/05-FRONTEND-SPEC.md` | Sahifalar, state chegarasi, invalidatsiya jadvali |
+| `docs/05-FRONTEND-SPEC.md` | Sahifalar, qobiq, dizayn tizimi, state chegarasi, invalidatsiya jadvali |
+| `design/` | Claude Design handoff: token'lar, komponentlar va barcha ekranlar |
 | `docs/06-ROADMAP.md` | Bosqichlar va qabul mezonlari |
 | `docs/07-DEFINITION-OF-DONE.md` | "Tayyor" degani nima |

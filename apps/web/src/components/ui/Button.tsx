@@ -9,8 +9,6 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: 'bg-primary text-primary-foreground hover:bg-primary-hover focus-visible:ring-ring',
-        // Old name for primary, kept while pages move over.
-        default: 'bg-primary text-primary-foreground hover:bg-primary-hover focus-visible:ring-ring',
         secondary: 'bg-secondary text-text hover:bg-secondary-hover focus-visible:ring-ring',
         outline:
           'border border-input bg-card text-text hover:bg-secondary focus-visible:ring-ring',
@@ -22,7 +20,6 @@ const buttonVariants = cva(
       size: {
         // 44 on touch screens, 40 from the tablet breakpoint (design: "md 40/44").
         md: 'h-11 px-[18px] text-[14px] sm:h-10',
-        default: 'h-11 px-[18px] text-[14px] sm:h-10',
         sm: 'h-9 px-3.5 text-[13px]',
         xs: 'h-8 px-3 text-[13px]',
         lg: 'h-12 px-6 text-[15px]',

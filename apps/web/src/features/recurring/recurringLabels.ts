@@ -1,6 +1,5 @@
-import { parseISO } from 'date-fns';
 import { RecurrenceFrequency, RecurringRuleResponse } from '@fintrack/shared';
-import { formatDate } from '../../lib/format';
+import { formatDate, weekdayIndex } from '../../lib/format';
 
 /** ISO weekday order, matching the API's dayOfCycle 1 (Monday) … 7 (Sunday). */
 export const WEEKDAYS = [
@@ -25,9 +24,9 @@ export function hasDayOfCycle(frequency: RecurrenceFrequency): boolean {
   return frequency === 'WEEKLY' || frequency === 'MONTHLY';
 }
 
+/** 1 = Monday … 7 = Sunday, like the API's dayOfCycle. */
 function isoWeekday(isoDate: string): number {
-  const day = parseISO(isoDate).getDay();
-  return day === 0 ? 7 : day;
+  return weekdayIndex(isoDate) + 1;
 }
 
 type Schedule = Pick<RecurringRuleResponse, 'frequency' | 'dayOfCycle' | 'startsAt'>;

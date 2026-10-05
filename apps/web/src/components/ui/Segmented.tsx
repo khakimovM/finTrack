@@ -65,7 +65,7 @@ export function Segmented<T extends string>({
   };
 
   return (
-    <div className={cn('flex min-w-0 max-w-full flex-col gap-1.5', fullWidth && 'w-full', className)}>
+    <div className={cn('flex min-w-0 max-w-full flex-col gap-1.5', fullWidth ? 'w-full' : 'items-start', className)}>
       <div
         role={role}
         aria-label={ariaLabel}
