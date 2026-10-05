@@ -45,7 +45,8 @@ export default defineRailway(() => {
     healthcheck: '/api/v1/health/ready',
     // First boot runs migrations and sets the Telegram webhook; two minutes covers both.
     healthcheckTimeout: 120,
-    deploy: { restartPolicyType: 'ON_FAILURE', restartPolicyMaxRetries: 5 },
+    // Restarts on failure (Railway's default policy, stored as null, so not set here) up to 5 times.
+    deploy: { restartPolicyMaxRetries: 5 },
     replicas: { sfo: 1 },
     networking: { privateNetworkEndpoint: 'fintrack' },
     // Values live in Railway only; preserve() keeps them without putting secrets in git.
