@@ -1,4 +1,4 @@
-# Self-hosting on one machine. Railway (see railway.json) is the primary deployment target.
+# Self-hosting on one machine. Railway (see .railway/railway.ts) is the primary deployment target.
 # Put a TLS-terminating proxy in front of port 80 in real use: Telegram webhooks and the
 # Mini App require HTTPS.
 services:
