@@ -14,6 +14,9 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
+/** Text that only the full panel shows: unbroken while the panel widens, fading in after it. */
+const label = 'whitespace-nowrap animate-ft-fade-in';
+
 /** 268px panel (desktop) or 84px icon rail (tablet); the user's card sits at the bottom. */
 export function Sidebar({ mode, onToggle }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
@@ -24,16 +27,23 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
   const rail = mode === 'rail';
 
   return (
-    <aside className={cn('shrink-0 py-3 pl-3', rail ? 'w-[84px]' : 'w-[268px]')} aria-label="Asosiy menyu">
+    // The width eases between rail and panel; the labels fade in once there is room for them.
+    <aside
+      className={cn(
+        'shrink-0 py-3 pl-3 transition-[width] duration-slow ease-standard motion-reduce:transition-none',
+        rail ? 'w-[84px]' : 'w-[268px]',
+      )}
+      aria-label="Asosiy menyu"
+    >
       <div
         className={cn(
-          'sticky top-3 flex h-[calc(100vh-24px)] flex-col rounded-xl border border-border bg-card',
+          'sticky top-3 flex h-[calc(100vh-24px)] flex-col overflow-hidden rounded-xl border border-border bg-card',
           rail ? 'items-center px-2 pb-2.5 pt-3.5' : 'px-3 pb-3 pt-4',
         )}
       >
         <div className={cn('flex items-center', rail ? 'flex-col gap-3 pb-4' : 'gap-2.5 pb-3.5 pl-2 pr-1')}>
           <LogoMark size={rail ? 30 : 28} />
-          {!rail && <span className="flex-1 text-[18px] font-semibold tracking-[-0.02em]">FinTrack</span>}
+          {!rail && <span className={cn('flex-1 text-[18px] font-semibold tracking-[-0.02em]', label)}>FinTrack</span>}
           <button
             type="button"
             onClick={onToggle}
@@ -51,7 +61,7 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
           {NAV_GROUPS.map((group, index) => (
             <div key={group.label ?? index} className="flex flex-col gap-0.5">
               {group.label && !rail && (
-                <span className="px-3 pb-1 text-[12px] font-medium text-text-muted">{group.label}</span>
+                <span className={cn('px-3 pb-1 text-[12px] font-medium text-text-muted', label)}>{group.label}</span>
               )}
               {group.items.map((item) => {
                 const badge = item.badge === 'notifications' ? unread : 0;
@@ -73,7 +83,7 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
                     }
                   >
                     <item.icon className={rail ? 'h-5 w-5' : 'h-[18px] w-[18px]'} aria-hidden />
-                    {!rail && <span className="flex-1 truncate">{item.label}</span>}
+                    {!rail && <span className={cn('flex-1 truncate', label)}>{item.label}</span>}
                     {badge > 0 &&
                       (rail ? (
                         <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-danger shadow-[0_0_0_2px_var(--card)]" aria-hidden />
@@ -112,7 +122,7 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
               )}
             </div>
           ) : (
-            <div className="mt-2 flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-3">
+            <div className={cn('mt-2 flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-3', label)}>
               <div className="flex items-center gap-2.5">
                 <Avatar name={user.name} size={40} />
                 <span className="flex min-w-0 flex-1 flex-col">

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
-import { ChartTooltipBox, type RechartsTooltipProps } from './ChartTooltip';
+import { useReducedMotion } from '../../lib/motion';
+import { CHART_ANIMATION_MS, ChartTooltipBox, type RechartsTooltipProps } from './ChartTooltip';
 
 export interface DonutSlice {
   name: string;
@@ -27,6 +28,7 @@ function DonutTooltip({ active, payload }: RechartsTooltipProps<DonutSlice>) {
 
 /** Expense share by category: ring at 72% inner radius with 1° gaps. Debts and transfers never go in. */
 export function Donut({ data, size = 156, center, ariaLabel }: DonutProps) {
+  const animate = !useReducedMotion();
   return (
     <div role="img" aria-label={ariaLabel} className="relative shrink-0" style={{ width: size, height: size }}>
       <PieChart width={size} height={size}>
@@ -40,7 +42,9 @@ export function Donut({ data, size = 156, center, ariaLabel }: DonutProps) {
           startAngle={90}
           endAngle={-270}
           stroke="none"
-          isAnimationActive={false}
+          isAnimationActive={animate}
+          animationDuration={CHART_ANIMATION_MS}
+          animationEasing="ease-out"
         >
           {data.map((slice) => (
             <Cell key={slice.name} fill={slice.color} />

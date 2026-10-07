@@ -176,6 +176,20 @@ const config: Config = {
           '30%': { opacity: '1', transform: 'translateY(-3px)' },
         },
         'ft-wave': { '0%, 100%': { transform: 'none' }, '50%': { transform: 'scaleY(0.3)' } },
+        // App.
+        'ft-page-in': { from: { opacity: '0', transform: shift('8px', 1) }, to: { opacity: '1', transform: 'none' } },
+        'ft-shake': {
+          '0%, 100%': { transform: 'none' },
+          '20%': { transform: 'translateX(calc(-6px * var(--motion-distance)))' },
+          '40%': { transform: 'translateX(calc(5px * var(--motion-distance)))' },
+          '60%': { transform: 'translateX(calc(-3px * var(--motion-distance)))' },
+          '80%': { transform: 'translateX(calc(2px * var(--motion-distance)))' },
+        },
+        'ft-pop': {
+          '0%': { transform: 'none' },
+          '40%': { transform: 'scale(calc(1 + 0.16 * var(--motion-distance)))' },
+          '100%': { transform: 'none' },
+        },
       },
       // Exits keep their last frame (forwards) until usePresence unmounts them.
       animation: {
@@ -203,6 +217,11 @@ const config: Config = {
         'ft-blip': 'ft-blip 900ms var(--ease-standard) both',
         'ft-typing': 'ft-typing 900ms ease-in-out 2',
         'ft-wave': 'ft-wave 700ms ease-in-out 3',
+        'ft-page-in': 'ft-page-in var(--duration-slow) var(--ease-out)',
+        // Bars (progress, bar lists) filling from the left when they first appear.
+        'ft-fill': 'ft-grow-x 700ms var(--ease-standard) backwards',
+        'ft-shake': 'ft-shake 400ms var(--ease-standard)',
+        'ft-pop': 'ft-pop var(--duration-slow) var(--ease-standard)',
       },
     },
   },

@@ -118,6 +118,16 @@ export function useCountUp(target: number, { durationMs = 900, delayMs = 0 } = {
 }
 
 /**
+ * Money counting up to `tiyin`. The frames in between are whole so‘m for the eye only (Number is
+ * fine there); the last frame is the exact BigInt the API sent.
+ */
+export function useCountingTiyin(tiyin: bigint, durationMs = 800): bigint {
+  const target = Number(tiyin);
+  const shown = useCountUp(target, { durationMs });
+  return shown === target ? tiyin : BigInt(Math.round(shown / 100) * 100);
+}
+
+/**
  * The last props an overlay was opened with. Parents often clear their data as they close
  * (`isOpen={tx !== null}`); the exit animation keeps showing what was there.
  */

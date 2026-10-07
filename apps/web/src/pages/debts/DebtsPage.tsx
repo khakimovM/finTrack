@@ -111,7 +111,7 @@ export function DebtsPage() {
     );
   else
     body = (
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[repeat(auto-fill,minmax(440px,1fr))]">
+      <div className="ft-stagger grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[repeat(auto-fill,minmax(440px,1fr))]">
         {shown.map((debt) => (
           <DebtCard
             key={debt.id}

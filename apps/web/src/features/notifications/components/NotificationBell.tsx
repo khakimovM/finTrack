@@ -52,7 +52,7 @@ function NotificationList({ onOpen }: { onOpen: (n: NotificationResponse) => voi
     );
   }
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="ft-stagger flex flex-col gap-0.5">
       {items.map((n) => (
         <NotificationItem key={n.id} notification={n} today={today} onOpen={onOpen} />
       ))}

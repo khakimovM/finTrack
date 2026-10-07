@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { TransactionList, groupByDay } from './TransactionList';
 import { renderWithProviders } from '../../../test/render';
 import { transaction } from '../../../test/fixtures';
+import { useRecentlyAdded } from '../recentlyAdded';
 
 const TODAY = '2026-09-15';
 const income = transaction({ type: 'INCOME', amount: '800000000', note: 'Oylik' });
@@ -77,6 +78,14 @@ describe('TransactionList', () => {
     await userEvent.click(within(rowOf('Jasur')).getByRole('button', { name: 'Amallar' }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'Qarzga o‘tish' }));
     expect(actions.onOpenDebt).toHaveBeenCalledWith(loan);
+  });
+
+  it('tints the row just saved from the form so the eye finds it', () => {
+    useRecentlyAdded.getState().mark(expense.id);
+    const { rowOf } = setup();
+    expect(rowOf('Taksi').className).toContain('ft-flash');
+    expect(rowOf('Oylik').className).not.toContain('ft-flash');
+    useRecentlyAdded.setState({ id: null });
   });
 
   it('locks system rows and keeps managed rows out of bulk selection', async () => {

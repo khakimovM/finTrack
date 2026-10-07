@@ -32,6 +32,20 @@
   }
 }
 
+/* Used by .ft-stagger below rather than animate-* utilities, so they are declared here. */
+@keyframes ft-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(8px * var(--motion-distance)));
+  }
+}
+
+@keyframes ft-flash {
+  from {
+    background-color: color-mix(in srgb, var(--brand) 16%, transparent);
+  }
+}
+
 /* Used with a per-toast duration from inline styles, so it cannot come from an animate-* utility. */
 @keyframes ft-shrink {
   from {
@@ -67,5 +81,44 @@
 
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /*
+   * Items of a list arrive one after another when they are inserted (first load, a new page,
+   * a new filter); items that only re-render or move keep still. Past the eighth they come together.
+   */
+  .ft-stagger > * {
+    animation: ft-row-in var(--duration-slow) var(--ease-out) backwards;
+    animation-delay: 280ms;
+  }
+  /* A row the user just added: arrives like the others, then stays tinted for a moment. */
+  .ft-stagger > .ft-flash {
+    animation:
+      ft-row-in var(--duration-slow) var(--ease-out) backwards,
+      ft-flash 1600ms var(--ease-out);
+  }
+  .ft-stagger > :nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .ft-stagger > :nth-child(2) {
+    animation-delay: 35ms;
+  }
+  .ft-stagger > :nth-child(3) {
+    animation-delay: 70ms;
+  }
+  .ft-stagger > :nth-child(4) {
+    animation-delay: 105ms;
+  }
+  .ft-stagger > :nth-child(5) {
+    animation-delay: 140ms;
+  }
+  .ft-stagger > :nth-child(6) {
+    animation-delay: 175ms;
+  }
+  .ft-stagger > :nth-child(7) {
+    animation-delay: 210ms;
+  }
+  .ft-stagger > :nth-child(8) {
+    animation-delay: 245ms;
   }
 }

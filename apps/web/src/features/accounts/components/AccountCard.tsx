@@ -94,13 +94,14 @@ export function AccountCard({ account, actions, compact, handle, dragging, sortP
       {...sortProps}
       onClick={open}
       className={cn(
-        'relative flex bg-card transition-shadow duration-fast',
+        'relative flex bg-card transition-[box-shadow,transform] duration-fast ease-standard',
         compact
           ? 'flex-row flex-wrap items-center gap-x-3 gap-y-2 border-b border-border py-3.5 last:border-b-0'
           : 'flex-col gap-[18px] rounded-[20px] border border-border p-5 hover:shadow-sm',
         !reorder && !archived && 'cursor-pointer',
         archived && 'opacity-75',
-        dragging && 'opacity-50',
+        // Lifted off the list while it is carried.
+        dragging && 'z-[1] scale-[1.02] shadow-md motion-reduce:scale-100',
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">

@@ -100,7 +100,7 @@ export function NotificationsPage() {
             groupByDay(items, today).map((group) => (
               <section key={group.label} aria-label={group.label}>
                 <h2 className="px-3 pb-1.5 pt-3 text-[12px] font-semibold text-text-muted">{group.label}</h2>
-                <div className="flex flex-col gap-0.5">
+                <div className="ft-stagger flex flex-col gap-0.5">
                   {group.items.map((n) => (
                     <NotificationItem
                       key={n.id}

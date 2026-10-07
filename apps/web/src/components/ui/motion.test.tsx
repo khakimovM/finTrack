@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { CountingAmount } from './Amount';
 import { Collapse } from './Collapse';
 import { useConfirm } from './ConfirmDialog';
 import { Modal } from './Modal';
@@ -8,6 +9,8 @@ import { Segmented } from './Segmented';
 import { ToastContainer } from './Toast';
 import { toast, useToastStore } from '../../stores/toastStore';
 import { EXIT_MS } from '../../lib/motion';
+import { NBSP } from '../../lib/money';
+import { OtpInput } from '../../features/auth/components/OtpInput';
 import { setReducedMotion } from '../../test/viewport';
 
 describe('exit animations', () => {
@@ -125,6 +128,41 @@ describe('exit animations', () => {
     expect(panel()?.hidden).toBe(false);
     act(() => vi.advanceTimersByTime(EXIT_MS.slow));
     expect(panel()?.hidden).toBe(true);
+  });
+});
+
+describe('counting money', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('counts a KPI up in whole so‘m and lands on the exact tiyin', () => {
+    setReducedMotion(false);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance'] });
+    const { container } = render(<CountingAmount value="150050" />);
+    expect(container.textContent).toBe(`0${NBSP}so‘m`);
+
+    act(() => vi.advanceTimersByTime(300));
+    // On the way: whole so‘m only, never a stray ",37".
+    expect(container.textContent).not.toContain(',');
+
+    act(() => vi.advanceTimersByTime(1000));
+    expect(container.textContent).toBe(`1${NBSP}500,50${NBSP}so‘m`);
+  });
+
+  it('shows the exact amount at once with reduced motion', () => {
+    const { container } = render(<CountingAmount value="-4305000000" />);
+    expect(container.textContent).toContain(`43${NBSP}050${NBSP}000`);
+  });
+});
+
+describe('OTP code', () => {
+  it('shakes the boxes when the code is wrong', () => {
+    const { container, rerender } = render(<OtpInput value="123456" onChange={() => undefined} />);
+    const boxes = container.querySelector('[aria-hidden]') as HTMLElement;
+    expect(boxes.className).not.toContain('animate-ft-shake');
+    rerender(<OtpInput value="123456" onChange={() => undefined} invalid />);
+    expect(boxes.className).toContain('animate-ft-shake');
   });
 });
 
