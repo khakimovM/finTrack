@@ -1,5 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useCountingTiyin } from '../../lib/motion';
 import { CURRENCY, formatAmountNumber, MINUS, NBSP, signOf, TONE_CLASS, toneOf, type AmountTone } from '../../lib/money';
 
 export interface AmountProps {
@@ -17,6 +18,20 @@ export interface AmountProps {
   unitClassName?: string;
 }
 
+function toTiyin(value: string | bigint): bigint {
+  try {
+    return typeof value === 'bigint' ? value : BigInt(value);
+  } catch {
+    return 0n;
+  }
+}
+
+/** An Amount that counts up to its value when it appears or changes (KPI figures). */
+export function CountingAmount(props: AmountProps) {
+  const shown = useCountingTiyin(toTiyin(props.value));
+  return <Amount {...props} value={shown} />;
+}
+
 /**
  * Money on screen. The sign and the icon carry the meaning; colour only reinforces it:
  * income "+" green, expense "−" red, transfers and debt movements unsigned, a negative balance
@@ -31,13 +46,7 @@ export function Amount({
   className,
   unitClassName,
 }: AmountProps) {
-  let tiyin: bigint;
-  try {
-    tiyin = typeof value === 'bigint' ? value : BigInt(value);
-  } catch {
-    tiyin = 0n;
-  }
-
+  const tiyin = toTiyin(value);
   const resolvedTone: AmountTone = type ? toneOf(type) : tone ?? 'neutral';
   const negativeBalance = !type && tiyin < 0n;
 

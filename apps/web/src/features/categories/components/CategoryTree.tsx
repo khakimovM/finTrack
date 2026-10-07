@@ -68,11 +68,12 @@ export function CategoryTree({ categories, compact, onAddChild, onEdit, onDelete
             key={id}
             {...sortable.itemProps(id)}
             className={cn(
-              'flex items-center py-1.5 pr-2.5 transition-colors duration-fast hover:bg-surface',
+              'relative flex items-center py-1.5 pr-2.5 transition-[background-color,box-shadow,transform] duration-fast ease-standard hover:bg-surface',
               compact ? 'gap-2' : 'gap-3',
               child ? cn('min-h-[52px]', compact ? 'pl-[22px]' : 'pl-9') : 'min-h-16 pl-2.5',
               !child && index > 0 && 'border-t border-border',
-              sortable.dragId === id && 'bg-surface opacity-50',
+              // Lifted off the list while it is carried.
+              sortable.dragId === id && 'z-[1] scale-[1.01] rounded-md bg-card shadow-md motion-reduce:scale-100',
             )}
           >
             <span {...sortable.handleProps(id)} className="flex w-5 shrink-0 justify-center rounded-sm text-text-muted focus-ring">

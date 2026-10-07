@@ -117,7 +117,7 @@ export function CodeForm({ code, onCodeChange, onSubmit, verifying, codeError, s
         </p>
       ) : (
         <p role="status" className="flex items-center gap-2 text-[14px] font-medium text-success">
-          <CircleCheck className="h-[18px] w-[18px]" aria-hidden /> Kod Telegram’ga yuborildi
+          <CircleCheck className="h-[18px] w-[18px] animate-ft-check-in" aria-hidden /> Kod Telegram’ga yuborildi
         </p>
       )}
       <div className="flex flex-col gap-2">

@@ -13,15 +13,17 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   testViewport.width = 1280;
+  testViewport.reducedMotion = true;
 });
 afterAll(() => server.close());
 
 // jsdom lacks matchMedia, which the theme store reads at import time and layouts read to pick
-// desktop or phone UI. Width queries answer for a desktop viewport unless a test changes it.
+// desktop or phone UI. Width queries answer for a desktop viewport unless a test changes it;
+// reduced motion answers yes unless a test turns it off.
 if (!window.matchMedia) {
   Object.defineProperty(window, 'matchMedia', {
     value: (query: string) => ({
-      matches: evaluateWidthQuery(query),
+      matches: evaluateQuery(query),
       media: query,
       onchange: null,
       addEventListener: () => undefined,
@@ -33,7 +35,8 @@ if (!window.matchMedia) {
   });
 }
 
-function evaluateWidthQuery(query: string): boolean {
+function evaluateQuery(query: string): boolean {
+  if (query.includes('prefers-reduced-motion')) return testViewport.reducedMotion;
   const width = testViewport.width;
   const min = /min-width:\s*(\d+)px/.exec(query);
   const max = /max-width:\s*(\d+)px/.exec(query);

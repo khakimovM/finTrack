@@ -7,6 +7,7 @@ import { formatDayHeader, formatShortDate, formatTime } from '../../../lib/forma
 import { formatAmount } from '../../../lib/money';
 import { cn } from '../../../lib/utils';
 import { TYPE_LABELS } from '../typeLabels';
+import { useRecentlyAdded } from '../recentlyAdded';
 import { TxTile, rowKind, rowNote, rowSubtitle, rowTitle } from '../rowView';
 import { TransactionRowMenu, type RowActions } from './TransactionRowMenu';
 
@@ -93,6 +94,7 @@ function SystemLock({ compact }: { compact?: boolean }) {
 export function TransactionList({ transactions, grouped, today, parents, actions, selection, variant }: TransactionListProps) {
   const table = variant === 'table';
   const groups = groupByDay(transactions, grouped);
+  const recentId = useRecentlyAdded((s) => s.id);
   const selectable = transactions.filter((tx) => rowKind(tx) === 'entry');
   const selectedOnPage = selectable.filter((tx) => selection?.ids.has(tx.id)).length;
   const when = (tx: TransactionResponse) => (grouped ? formatTime(tx.createdAt) : `${formatShortDate(tx.date)}, ${formatTime(tx.createdAt)}`);
@@ -129,7 +131,7 @@ export function TransactionList({ transactions, grouped, today, parents, actions
         </div>
       )}
       {groups.map((group) => (
-        <div key={group.day ?? 'all'}>
+        <div key={group.day ?? 'all'} className="ft-stagger">
           <DayHeader group={group} today={today} table={table} />
           {group.rows.map((tx) => {
             const kind = rowKind(tx);
@@ -142,7 +144,11 @@ export function TransactionList({ transactions, grouped, today, parents, actions
                 <div
                   key={tx.id}
                   onClick={() => open(tx)}
-                  className={cn('flex items-start gap-3 border-b border-border py-3', kind !== 'adjustment' && 'cursor-pointer')}
+                  className={cn(
+                    'flex items-start gap-3 border-b border-border py-3',
+                    kind !== 'adjustment' && 'cursor-pointer',
+                    tx.id === recentId && 'ft-flash',
+                  )}
                 >
                   <TxTile tx={tx} />
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -173,6 +179,7 @@ export function TransactionList({ transactions, grouped, today, parents, actions
                   TABLE_COLS,
                   kind !== 'adjustment' && 'cursor-pointer',
                   checked && 'bg-[color-mix(in_srgb,var(--info)_7%,transparent)]',
+                  tx.id === recentId && 'ft-flash',
                 )}
               >
                 {selection && kind === 'entry' ? (

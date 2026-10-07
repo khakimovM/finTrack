@@ -161,6 +161,8 @@ export function AccountsPage() {
         isMobile
           ? 'flex flex-col rounded-[20px] border border-border bg-card px-4'
           : 'grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4',
+        // Not while reordering: a moved card would replay its entrance on every step of the drag.
+        !draft && 'ft-stagger',
       )}
     >
       {shown.map((account) => (

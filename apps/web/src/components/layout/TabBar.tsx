@@ -25,7 +25,8 @@ function Tab({ item }: { item: NavItem }) {
     >
       {({ isActive }) => (
         <>
-          <item.icon className="h-[22px] w-[22px]" strokeWidth={isActive ? 2.3 : 2} aria-hidden />
+          {/* The icon gives a small hop when its tab becomes the current one. */}
+          <item.icon className={cn('h-[22px] w-[22px]', isActive && 'animate-ft-pop')} strokeWidth={isActive ? 2.3 : 2} aria-hidden />
           {item.label}
         </>
       )}
@@ -127,7 +128,7 @@ export function TabBar() {
             type="button"
             onClick={() => setQuickOpen(true)}
             aria-label="Qo‘shish"
-            className="-mt-3.5 mb-0.5 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_0_0_4px_var(--card),var(--shadow-md)] focus-ring"
+            className="-mt-3.5 mb-0.5 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_0_0_4px_var(--card),var(--shadow-md)] transition-transform duration-fast ease-standard focus-ring active:scale-95 motion-reduce:active:scale-100"
           >
             <Plus className="h-6 w-6" strokeWidth={2.2} aria-hidden />
           </button>

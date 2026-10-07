@@ -1,5 +1,8 @@
 import * as React from 'react';
 
+/** Charts draw in (areas sweep, bars grow, the ring turns) on load and when their data changes. */
+export const CHART_ANIMATION_MS = 700;
+
 export interface TooltipRow {
   label: string;
   value: React.ReactNode;

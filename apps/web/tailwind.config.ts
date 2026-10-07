@@ -13,6 +13,12 @@ function token(name: string): ColorFn {
       : `color-mix(in srgb, var(--${name}) calc(${opacityValue} * 100%), transparent)`;
 }
 
+/** A slide by `y` plus a zoom from `scale`, both shrunk to nothing when --motion-distance is 0. */
+function shift(y: string, scale: number): string {
+  const zoom = Number((1 - scale).toFixed(3));
+  return `translateY(calc(${y} * var(--motion-distance))) scale(calc(1 - ${zoom} * var(--motion-distance)))`;
+}
+
 const config: Config = {
   darkMode: ['class'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -128,36 +134,94 @@ const config: Config = {
       fontFamily: {
         sans: ['"Onest Variable"', 'Onest', 'system-ui', 'sans-serif'],
       },
+      // Slides and zooms are multiplied by --motion-distance, so reduced motion turns each one
+      // into a plain fade without a second set of keyframes.
       keyframes: {
         'ft-spin': { to: { transform: 'rotate(360deg)' } },
         'ft-pulse': { '0%, 100%': { opacity: '1' }, '50%': { opacity: '0.55' } },
         'ft-shrink': { from: { transform: 'scaleX(1)' }, to: { transform: 'scaleX(0)' } },
         'ft-bar': { '0%': { transform: 'translateX(-110%)' }, '100%': { transform: 'translateX(260%)' } },
         'ft-fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
-        'ft-pop-in': {
-          from: { opacity: '0', transform: 'translateY(-4px) scale(0.98)' },
+        'ft-fade-out': { to: { opacity: '0' } },
+        'ft-pop-in': { from: { opacity: '0', transform: shift('-6px', 0.97) }, to: { opacity: '1', transform: 'none' } },
+        'ft-pop-out': { to: { opacity: '0', transform: shift('-4px', 0.98) } },
+        'ft-sheet-in': {
+          from: { opacity: 'var(--motion-slide-opacity)', transform: 'translateY(calc(100% * var(--motion-distance)))' },
           to: { opacity: '1', transform: 'none' },
         },
-        'ft-sheet-in': { from: { transform: 'translateY(100%)' }, to: { transform: 'none' } },
-        'ft-dialog-in': {
-          from: { opacity: '0', transform: 'translateY(8px) scale(0.98)' },
+        'ft-sheet-out': {
+          to: { opacity: 'var(--motion-slide-opacity)', transform: 'translateY(calc(100% * var(--motion-distance)))' },
+        },
+        'ft-dialog-in': { from: { opacity: '0', transform: shift('16px', 0.96) }, to: { opacity: '1', transform: 'none' } },
+        'ft-dialog-out': { to: { opacity: '0', transform: shift('8px', 0.98) } },
+        'ft-toast-in': { from: { opacity: '0', transform: shift('16px', 0.96) }, to: { opacity: '1', transform: 'none' } },
+        'ft-toast-out': { to: { opacity: '0', transform: shift('8px', 0.96) } },
+        'ft-check-in': { from: { opacity: '0', transform: shift('0px', 0.5) }, to: { opacity: '1', transform: 'none' } },
+        // Landing.
+        'ft-rise': { from: { opacity: '0', transform: shift('20px', 1) }, to: { opacity: '1', transform: 'none' } },
+        'ft-slide-in': {
+          from: { opacity: '0', transform: 'translateX(calc(48px * var(--motion-distance)))' },
           to: { opacity: '1', transform: 'none' },
         },
-        'ft-toast-in': {
-          from: { opacity: '0', transform: 'translateY(12px)' },
-          to: { opacity: '1', transform: 'none' },
+        'ft-zoom-in': { from: { opacity: '0', transform: shift('0px', 0.8) }, to: { opacity: '1', transform: 'none' } },
+        'ft-grow-x': { from: { transform: 'scaleX(calc(1 - var(--motion-distance)))' }, to: { transform: 'none' } },
+        // Shown for a moment, then gone again: the bot's "typing…" bubble.
+        'ft-blip': {
+          '0%': { opacity: '0', transform: shift('6px', 0.9) },
+          '15%, 85%': { opacity: '1', transform: 'none' },
+          '100%': { opacity: '0', transform: 'none' },
+        },
+        'ft-typing': {
+          '0%, 60%, 100%': { opacity: '0.35', transform: 'none' },
+          '30%': { opacity: '1', transform: 'translateY(-3px)' },
+        },
+        'ft-wave': { '0%, 100%': { transform: 'none' }, '50%': { transform: 'scaleY(0.3)' } },
+        // App.
+        'ft-page-in': { from: { opacity: '0', transform: shift('8px', 1) }, to: { opacity: '1', transform: 'none' } },
+        'ft-shake': {
+          '0%, 100%': { transform: 'none' },
+          '20%': { transform: 'translateX(calc(-6px * var(--motion-distance)))' },
+          '40%': { transform: 'translateX(calc(5px * var(--motion-distance)))' },
+          '60%': { transform: 'translateX(calc(-3px * var(--motion-distance)))' },
+          '80%': { transform: 'translateX(calc(2px * var(--motion-distance)))' },
+        },
+        'ft-pop': {
+          '0%': { transform: 'none' },
+          '40%': { transform: 'scale(calc(1 + 0.16 * var(--motion-distance)))' },
+          '100%': { transform: 'none' },
         },
       },
+      // Exits keep their last frame (forwards) until usePresence unmounts them.
       animation: {
         'ft-spin': 'ft-spin 0.8s linear infinite',
         'ft-pulse': 'ft-pulse 1.6s ease-in-out infinite',
         'ft-caret': 'ft-pulse 1s steps(1) infinite',
         'ft-bar': 'ft-bar 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
         'ft-fade-in': 'ft-fade-in var(--duration-base) var(--ease-out)',
+        'ft-fade-out': 'ft-fade-out var(--duration-slow-exit) var(--ease-in) forwards',
         'ft-pop-in': 'ft-pop-in var(--duration-base) var(--ease-out)',
+        'ft-pop-out': 'ft-pop-out var(--duration-base-exit) var(--ease-in) forwards',
         'ft-sheet-in': 'ft-sheet-in var(--duration-slow) var(--ease-standard)',
+        'ft-sheet-out': 'ft-sheet-out var(--duration-slow-exit) var(--ease-in) forwards',
         'ft-dialog-in': 'ft-dialog-in var(--duration-slow) var(--ease-standard)',
-        'ft-toast-in': 'ft-toast-in var(--duration-base) var(--ease-out)',
+        'ft-dialog-out': 'ft-dialog-out var(--duration-slow-exit) var(--ease-in) forwards',
+        'ft-toast-in': 'ft-toast-in var(--duration-slow) var(--ease-standard)',
+        'ft-toast-out': 'ft-toast-out var(--duration-base-exit) var(--ease-in) forwards',
+        'ft-check-in': 'ft-check-in var(--duration-base) var(--ease-standard)',
+        // `backwards`, not `both`: once arrived, hover transforms work on the element again.
+        'ft-rise': 'ft-rise var(--duration-reveal) var(--ease-out) backwards',
+        'ft-slide-in': 'ft-slide-in 900ms var(--ease-out) backwards',
+        'ft-zoom-in': 'ft-zoom-in var(--duration-reveal) var(--ease-standard) backwards',
+        'ft-grow-x': 'ft-grow-x 900ms var(--ease-out) backwards',
+        'ft-sheet-up': 'ft-sheet-in 700ms var(--ease-standard) backwards',
+        'ft-blip': 'ft-blip 900ms var(--ease-standard) both',
+        'ft-typing': 'ft-typing 900ms ease-in-out 2',
+        'ft-wave': 'ft-wave 700ms ease-in-out 3',
+        'ft-page-in': 'ft-page-in var(--duration-slow) var(--ease-out)',
+        // Bars (progress, bar lists) filling from the left when they first appear.
+        'ft-fill': 'ft-grow-x 700ms var(--ease-standard) backwards',
+        'ft-shake': 'ft-shake 400ms var(--ease-standard)',
+        'ft-pop': 'ft-pop var(--duration-slow) var(--ease-standard)',
       },
     },
   },

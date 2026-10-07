@@ -38,6 +38,55 @@ const SIZE = {
   lg: { track: 'p-1 gap-1', item: 'h-10 px-4 text-[14px] font-semibold' },
 } as const;
 
+interface ThumbBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Where the active segment sits, so one card can slide between segments. Null until measured
+ * (and in jsdom, which has no layout): the active button then draws its own card.
+ */
+function useThumb(
+  refs: React.MutableRefObject<Array<HTMLButtonElement | null>>,
+  activeIndex: number,
+  count: number,
+): { box: ThumbBox | null; slides: boolean } {
+  const [box, setBox] = React.useState<ThumbBox | null>(null);
+  // The first placement jumps; only later changes of the active segment slide.
+  const [slides, setSlides] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    const measure = () => {
+      const node = refs.current[activeIndex];
+      if (!node || node.offsetWidth === 0) {
+        setBox(null);
+        return;
+      }
+      const next = { x: node.offsetLeft, y: node.offsetTop, width: node.offsetWidth, height: node.offsetHeight };
+      setBox((prev) =>
+        prev && prev.x === next.x && prev.y === next.y && prev.width === next.width && prev.height === next.height ? prev : next,
+      );
+    };
+    measure();
+    // Labels change width when the font loads or a count updates.
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    refs.current.slice(0, count).forEach((node) => node && observer.observe(node));
+    return () => observer.disconnect();
+  }, [refs, activeIndex, count]);
+
+  React.useEffect(() => {
+    if (!box || slides) return;
+    const frame = requestAnimationFrame(() => setSlides(true));
+    return () => cancelAnimationFrame(frame);
+  }, [box, slides]);
+
+  return { box, slides };
+}
+
 /** Track in secondary, the active segment lifts onto a card with shadow-sm. Arrow keys move. */
 export function Segmented<T extends string>({
   value,
@@ -54,6 +103,8 @@ export function Segmented<T extends string>({
   const refs = React.useRef<Array<HTMLButtonElement | null>>([]);
   const isTabs = role === 'tablist';
   const s = SIZE[size];
+  const activeIndex = options.findIndex((option) => option.value === value);
+  const thumb = useThumb(refs, activeIndex, options.length);
 
   const onKeyDown = (event: React.KeyboardEvent, index: number) => {
     const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
@@ -71,12 +122,26 @@ export function Segmented<T extends string>({
         aria-label={ariaLabel}
         aria-disabled={locked || undefined}
         className={cn(
-          'scrollbar-none inline-flex max-w-full overflow-x-auto rounded-full bg-secondary',
+          'scrollbar-none relative inline-flex max-w-full overflow-x-auto rounded-full bg-secondary',
           s.track,
           fullWidth && 'flex w-full',
           locked && 'cursor-not-allowed opacity-55',
         )}
       >
+        {thumb.box && (
+          <span
+            aria-hidden
+            className={cn(
+              'pointer-events-none absolute left-0 top-0 rounded-full bg-card shadow-sm',
+              thumb.slides && 'transition-[transform,width,height] duration-base ease-standard motion-reduce:transition-none',
+            )}
+            style={{
+              width: thumb.box.width,
+              height: thumb.box.height,
+              transform: `translate(${thumb.box.x}px, ${thumb.box.y}px)`,
+            }}
+          />
+        )}
         {options.map((option, index) => {
           const active = option.value === value;
           return (
@@ -94,11 +159,11 @@ export function Segmented<T extends string>({
               onClick={() => onChange(option.value)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
-                'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full transition-[background-color,color,box-shadow] duration-fast focus-ring disabled:cursor-not-allowed',
+                'relative inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full transition-[background-color,color,box-shadow] duration-fast focus-ring disabled:cursor-not-allowed',
                 s.item,
                 fullWidth && 'flex-1',
                 active
-                  ? cn('bg-card shadow-sm', option.tone ? TONE[option.tone] : 'text-text')
+                  ? cn(!thumb.box && 'bg-card shadow-sm', option.tone ? TONE[option.tone] : 'text-text')
                   : isTabs
                     ? 'text-text hover:bg-secondary-hover'
                     : 'text-text-secondary hover:text-text',

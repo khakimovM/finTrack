@@ -141,9 +141,11 @@ export function SystemChip({ className }: { className?: string }) {
 export function CountBadge({ count, className }: { count: number; className?: string }) {
   if (count <= 0) return null;
   return (
+    // Keyed by the count: a new notification makes the badge pop again.
     <span
+      key={count}
       className={cn(
-        'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[11px] font-semibold leading-none text-danger-foreground',
+        'inline-flex h-5 min-w-5 animate-ft-pop items-center justify-center rounded-full bg-danger px-1 text-[11px] font-semibold leading-none text-danger-foreground',
         className,
       )}
     >

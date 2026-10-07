@@ -50,7 +50,8 @@ export function Progress({ value, tone = 'brand', size = 'md', color, marker, cl
     >
       <div className="h-full overflow-hidden rounded-full">
         <div
-          className={cn('h-full rounded-full transition-[width] duration-slow ease-standard', !color && FILL[tone])}
+          // Fills from the left when it first shows; later changes slide the width.
+          className={cn('h-full origin-left animate-ft-fill rounded-full transition-[width] duration-slow ease-standard', !color && FILL[tone])}
           style={{ width: `${width}%`, background: color }}
         />
       </div>

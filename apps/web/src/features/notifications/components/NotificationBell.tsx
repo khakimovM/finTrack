@@ -5,6 +5,7 @@ import type { NotificationResponse } from '@fintrack/shared';
 import { todayLocalIso } from '@fintrack/shared';
 import { cn } from '../../../lib/utils';
 import { useIsMobile } from '../../../lib/useMediaQuery';
+import { EXIT_MS, popMotion, usePresence } from '../../../lib/motion';
 import { Button } from '../../../components/ui/Button';
 import { Chip, CountBadge } from '../../../components/ui/Chip';
 import { ErrorState } from '../../../components/ui/ErrorState';
@@ -51,7 +52,7 @@ function NotificationList({ onOpen }: { onOpen: (n: NotificationResponse) => voi
     );
   }
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="ft-stagger flex flex-col gap-0.5">
       {items.map((n) => (
         <NotificationItem key={n.id} notification={n} today={today} onOpen={onOpen} />
       ))}
@@ -70,6 +71,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
   const close = () => setOpen(false);
   const openItem = useOpenNotification(close);
   useDismiss([rootRef], open && !isMobile, close);
+  const popover = usePresence(open && !isMobile, EXIT_MS.base);
 
   const markAllButton = (
     <Button
@@ -118,11 +120,15 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
         )}
       </button>
 
-      {open && !isMobile && (
+      {popover.mounted && (
         <div
           role="dialog"
           aria-label="Bildirishnomalar"
-          className="absolute right-0 top-[52px] z-40 w-[420px] animate-ft-pop-in overflow-hidden rounded-xl border border-border bg-popover shadow-md"
+          aria-hidden={popover.closing || undefined}
+          className={cn(
+            'absolute right-0 top-[52px] z-40 w-[420px] origin-top-right overflow-hidden rounded-xl border border-border bg-popover shadow-md',
+            popMotion(popover.closing),
+          )}
         >
           <div className="flex items-center gap-2 px-4 pb-2.5 pt-4">
             <span className="text-[16px] font-semibold">Bildirishnomalar</span>

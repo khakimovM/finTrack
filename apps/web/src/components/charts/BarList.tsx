@@ -18,7 +18,7 @@ export function BarList({ items, className }: { items: BarListItem[]; className?
   const max = Math.max(1, ...items.map((item) => item.value));
   return (
     <ul className={cn('flex flex-col gap-3', className)}>
-      {items.map((item) => (
+      {items.map((item, index) => (
         <li
           key={item.key}
           className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[150px_1fr_auto] sm:gap-y-0"
@@ -26,8 +26,12 @@ export function BarList({ items, className }: { items: BarListItem[]; className?
           <span className="truncate text-[14px] text-text sm:col-start-1">{item.label}</span>
           <span className="col-span-2 row-start-2 h-2.5 rounded-full bg-secondary sm:col-span-1 sm:col-start-2 sm:row-start-1">
             <span
-              className="block h-full rounded-full"
-              style={{ width: `${Math.max(2, (item.value / max) * 100)}%`, background: item.color }}
+              className="block h-full origin-left animate-ft-fill rounded-full transition-[width] duration-slow ease-standard"
+              style={{
+                width: `${Math.max(2, (item.value / max) * 100)}%`,
+                background: item.color,
+                animationDelay: `${Math.min(index, 8) * 50}ms`,
+              }}
             />
           </span>
           <span className="whitespace-nowrap text-right text-[14px] font-semibold tabular-nums sm:col-start-3 sm:min-w-[96px]">{item.display}</span>

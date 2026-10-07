@@ -95,7 +95,9 @@ export function LoginPage() {
   const finished = state === 'CANCELLED' || state === 'EXPIRED';
 
   let body;
+  let phase: 'start' | 'finished' | 'code' | 'waiting';
   if (!request || state === 'CONSUMED') {
+    phase = 'start';
     body = (
       <>
         {startError && <ErrorBanner message={startError} />}
@@ -103,8 +105,10 @@ export function LoginPage() {
       </>
     );
   } else if (finished) {
+    phase = 'finished';
     body = <FinishedRow cancelled={state === 'CANCELLED'} onRestart={() => void begin()} restarting={start.isPending} />;
   } else if (state === 'CODE_SENT') {
+    phase = 'code';
     body = (
       <CodeForm
         code={code}
@@ -121,6 +125,7 @@ export function LoginPage() {
       />
     );
   } else {
+    phase = 'waiting';
     body = (
       <WaitingSteps botUsername={request.botUsername} deepLink={request.deepLink} awaitingContact={state === 'AWAITING_CONTACT'} />
     );
@@ -130,7 +135,7 @@ export function LoginPage() {
     <div className="flex min-h-screen flex-col bg-background text-text">
       <PublicHeader back />
       <main className="flex flex-1 items-center justify-center px-4 pb-16 pt-4">
-        <div className="flex w-full max-w-[440px] flex-col gap-6 rounded-2xl border border-border bg-card px-5 pb-5 pt-6 shadow-sm sm:px-9 sm:pb-7 sm:pt-9">
+        <div className="flex w-full max-w-[440px] animate-ft-page-in flex-col gap-6 rounded-2xl border border-border bg-card px-5 pb-5 pt-6 shadow-sm sm:px-9 sm:pb-7 sm:pt-9">
           <div className="flex flex-col gap-3">
             <LogoMark size={48} />
             <h1 className="mt-1 text-[26px] font-semibold leading-8 tracking-[-0.02em]">FinTrack’ga kirish</h1>
@@ -138,7 +143,10 @@ export function LoginPage() {
               Parol shart emas: kirish kodi Telegram’dagi botimizga keladi. Birinchi marta kirsangiz, hisob avtomatik yaratiladi.
             </p>
           </div>
-          {body}
+          {/* Keyed by phase: start → waiting → code each fade up in place of the last. */}
+          <div key={phase} className="flex animate-ft-page-in flex-col gap-6">
+            {body}
+          </div>
           <p className="flex items-start gap-2.5 border-t border-border pt-[18px] text-[13px] leading-[18px] text-text-muted">
             <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
             Kodni hech kimga bermang — FinTrack xodimlari uni hech qachon so‘ramaydi.

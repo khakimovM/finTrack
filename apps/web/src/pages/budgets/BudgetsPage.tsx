@@ -131,7 +131,7 @@ export function BudgetsPage() {
           </div>
           <Progress value={percent} size="lg" tone={budgetTone(percent)} aria-label={`Limitdan ${Math.round(percent)}% sarflandi`} />
         </section>
-        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[repeat(auto-fill,minmax(360px,1fr))]">
+        <div className="ft-stagger grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[repeat(auto-fill,minmax(360px,1fr))]">
           {budgets.map((budget) => (
             <BudgetCard
               key={budget.id}

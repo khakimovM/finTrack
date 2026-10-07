@@ -25,7 +25,8 @@ export function OtpInput({ value, onChange, onComplete, disabled, invalid, autoF
 
   return (
     <div className="relative" onClick={() => inputRef.current?.focus()}>
-      <div className="grid grid-cols-6 gap-2" aria-hidden>
+      {/* A wrong code shakes the boxes, the way a rejected password field does. */}
+      <div className={cn('grid grid-cols-6 gap-2', invalid && 'animate-ft-shake')} aria-hidden>
         {digits.map((digit, i) => {
           const active = !disabled && !invalid && (focused || value.length === 0) && i === activeIndex && value.length < LENGTH;
           return (

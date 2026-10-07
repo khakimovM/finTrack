@@ -90,7 +90,7 @@ export function RecurringPage() {
     );
   else
     body = (
-      <div className="flex flex-col gap-2.5">
+      <div className="ft-stagger flex flex-col gap-2.5">
         {shown.map((rule) => (
           <RecurringRuleCard
             key={rule.id}

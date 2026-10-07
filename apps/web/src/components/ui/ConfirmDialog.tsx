@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useId, useRef, useState } from 'react';
 import { Info, Trash2, type LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { EXIT_MS, usePresence } from '../../lib/motion';
 import { Button } from './Button';
 import { Portal, useOverlay } from './overlay';
 
@@ -23,19 +24,33 @@ interface PendingConfirm extends ConfirmOptions {
   resolve: (confirmed: boolean) => void;
 }
 
-function ConfirmPanel({ pending, answer }: { pending: PendingConfirm; answer: (confirmed: boolean) => void }) {
+interface ConfirmPanelProps {
+  pending: PendingConfirm;
+  answer: (confirmed: boolean) => void;
+  /** Answered and animating out: focus has gone back, clicks no longer count. */
+  closing: boolean;
+}
+
+function ConfirmPanel({ pending, answer, closing }: ConfirmPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descriptionId = useId();
-  useOverlay(panelRef, true, () => answer(false));
+  useOverlay(panelRef, !closing, () => answer(false));
   const destructive = pending.destructive ?? false;
   const Icon = pending.icon ?? (destructive ? Trash2 : Info);
   const hasCancel = pending.hasCancel ?? true;
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
-        <div className="absolute inset-0 animate-ft-fade-in bg-overlay" onClick={() => answer(false)} aria-hidden="true" />
+      <div
+        className={cn('fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6', closing && 'pointer-events-none')}
+        aria-hidden={closing || undefined}
+      >
+        <div
+          className={cn('absolute inset-0 bg-overlay', closing ? 'animate-ft-fade-out' : 'animate-ft-fade-in')}
+          onClick={() => answer(false)}
+          aria-hidden="true"
+        />
         <div
           ref={panelRef}
           role="alertdialog"
@@ -43,7 +58,10 @@ function ConfirmPanel({ pending, answer }: { pending: PendingConfirm; answer: (c
           aria-labelledby={titleId}
           aria-describedby={pending.description ? descriptionId : undefined}
           tabIndex={-1}
-          className="relative flex w-full flex-col gap-2 rounded-t-2xl bg-popover p-6 text-text shadow-lg outline-none animate-ft-sheet-in sm:max-w-[440px] sm:animate-ft-dialog-in sm:rounded-[24px]"
+          className={cn(
+            'relative flex w-full flex-col gap-2 rounded-t-2xl bg-popover p-6 text-text shadow-lg outline-none sm:max-w-[440px] sm:rounded-[24px]',
+            closing ? 'animate-ft-sheet-out sm:animate-ft-dialog-out' : 'animate-ft-sheet-in sm:animate-ft-dialog-in',
+          )}
           style={{ paddingBottom: 'max(24px, calc(16px + env(safe-area-inset-bottom, 0px)))' }}
         >
           <div
@@ -89,17 +107,25 @@ function ConfirmPanel({ pending, answer }: { pending: PendingConfirm; answer: (c
  */
 export function useConfirm(): [ReactNode, (options: ConfirmOptions) => Promise<boolean>] {
   const [pending, setPending] = useState<PendingConfirm | null>(null);
+  // Separate from `pending`: the answered dialog stays on screen while it animates out.
+  const [open, setOpen] = useState(false);
+  const { mounted, closing } = usePresence(open, EXIT_MS.slow);
 
   const confirm = useCallback(
-    (options: ConfirmOptions) => new Promise<boolean>((resolve) => setPending({ ...options, resolve })),
+    (options: ConfirmOptions) =>
+      new Promise<boolean>((resolve) => {
+        setPending({ ...options, resolve });
+        setOpen(true);
+      }),
     [],
   );
 
   const answer = (confirmed: boolean) => {
+    if (!open) return;
     pending?.resolve(confirmed);
-    setPending(null);
+    setOpen(false);
   };
 
-  const dialog = pending ? <ConfirmPanel pending={pending} answer={answer} /> : null;
+  const dialog = pending && mounted ? <ConfirmPanel pending={pending} answer={answer} closing={closing} /> : null;
   return [dialog, confirm];
 }

@@ -28,7 +28,8 @@ export function KpiCard({ label, value, change, vsText, sub, subClassName, loadi
     );
   }
   return (
-    <div className={cn('flex min-w-0 flex-col gap-2 rounded-xl border border-border bg-card p-4 sm:px-6 sm:py-5', className)}>
+    // Fades in as the figures take the skeleton's place.
+    <div className={cn('flex min-w-0 animate-ft-fade-in flex-col gap-2 rounded-xl border border-border bg-card p-4 sm:px-6 sm:py-5', className)}>
       <span className="text-[14px] leading-5 text-text-secondary">{label}</span>
       <div className="truncate text-[17px] font-semibold leading-[1.2] tracking-[-0.02em] sm:text-[24px] xl:text-[25px]">
         {value}

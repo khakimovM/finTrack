@@ -58,9 +58,18 @@
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-slow: 320ms;
+  /* Exits run at 0.75× the enter duration (design system, "Motion"). */
+  --duration-base-exit: 150ms;
+  --duration-slow-exit: 240ms;
+  /* Landing only: sections and the hero scene arriving, slower than any control. */
+  --duration-reveal: 640ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  /* Scales every slide and zoom in the keyframes; reduced motion sets it to 0. */
+  --motion-distance: 1;
+  /* Where a sliding panel's opacity starts: sheets slide in solid, reduced motion fades them. */
+  --motion-slide-opacity: 1;
 }
 
 .dark,
@@ -114,11 +123,23 @@
   --shadow-lg: 0 28px 64px -16px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
+/*
+ * Design: "slides and scales become a 120ms fade; skeleton pulse stops; numbers don't count up".
+ * Spinners keep turning: they say work is happening. Count-ups and exits check the same query in JS.
+ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0s !important;
-    transition: none !important;
+  :root {
+    --duration-fast: 120ms;
+    --duration-base: 120ms;
+    --duration-slow: 120ms;
+    --duration-base-exit: 0ms;
+    --duration-slow-exit: 0ms;
+    --duration-reveal: 120ms;
+    --motion-distance: 0;
+    --motion-slide-opacity: 0;
+  }
+
+  .animate-ft-pulse {
+    animation: none;
   }
 }

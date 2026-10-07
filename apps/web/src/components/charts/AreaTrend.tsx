@@ -1,6 +1,7 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { shortSom } from '../../lib/money';
-import { ChartTooltipBox, type RechartsTooltipProps, type TooltipRow } from './ChartTooltip';
+import { useReducedMotion } from '../../lib/motion';
+import { CHART_ANIMATION_MS, ChartTooltipBox, type RechartsTooltipProps, type TooltipRow } from './ChartTooltip';
 
 export interface TrendSeries {
   key: string;
@@ -45,6 +46,7 @@ function TrendTooltip({
 
 /** Smoothed area + line per series, dashed horizontal grid, axis values as "1,5 mln". */
 export function AreaTrend({ data, series, height = 220, formatValue, ariaLabel }: AreaTrendProps) {
+  const animate = !useReducedMotion();
   return (
     <div role="img" aria-label={ariaLabel} style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -83,7 +85,9 @@ export function AreaTrend({ data, series, height = 220, formatValue, ariaLabel }
               fill={s.color}
               fillOpacity={series.length > 1 ? 0.1 : 0.12}
               activeDot={{ r: 5, fill: 'var(--card)', stroke: s.color, strokeWidth: 2.5 }}
-              isAnimationActive={false}
+              isAnimationActive={animate}
+              animationDuration={CHART_ANIMATION_MS}
+              animationEasing="ease-out"
             />
           ))}
         </AreaChart>

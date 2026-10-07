@@ -182,7 +182,24 @@ Har bir ma'lumotli ko'rinishda: **loading skeleton**, **error + qayta urinish**,
 Jadval → kartalar; sidebar → tab bar va "Ko'proq"; modal → pastdan to'liq sheet; menyular → sheet;
 tap maydoni ≥ 44px; gorizontal scroll yo'q.
 
+## Harakat (`lib/motion.ts`)
+
+- **Davomiylik** (dizayn tizimi, "Motion"): `fast 120` hover/bosish/switch, `base 200` popover/menyu/toast,
+  `slow 320` modal/sheet/progress. Chiqish — kirishning 0,75 qismi, `ease-in`. Landing'da `reveal 640`.
+  Faqat `transform` va `opacity` animatsiya qilinadi.
+- **Kamroq harakat** (`prefers-reduced-motion`): `--motion-distance: 0` — siljish va kattalashish 120ms
+  fade'ga aylanadi; skeleton to'xtaydi; yopilish darhol; raqamlar sanalmaydi; grafiklar chizilmaydi;
+  landing darhol yakuniy holatda. Spinner aylanadi (u holat ko'rsatkichi).
+- `usePresence` — overlay chiqish animatsiyasi tugaguncha DOM'da turadi; `useOpenSnapshot` — yopilayotgan
+  modal oxirgi kontentini ko'rsatadi. `Collapse` — balandlik (FAQ, qarz to'lovlari tarixi, landing menyusi).
+- `useCountUp` / `useCountingTiyin` / `CountingAmount` — KPI raqamlari sanaladi; oraliq kadrlar butun
+  so'm, oxirgi kadr API'dan kelgan aniq BigInt.
+- Ro'yxatlar: `.ft-stagger` — qo'shilgan elementlar navbat bilan chiqadi; yangi saqlangan tranzaksiya
+  qatori `.ft-flash` bilan bir lahza yorishadi. Sahifalar `pathname` bo'yicha fade bo'lib ochiladi.
+- Testlar: Vitest'da kamroq harakat yoqilgan (`setReducedMotion(false)` bilan o'chiriladi), Playwright
+  ham `reducedMotion: 'reduce'` bilan; `motion.spec.ts` animatsiyaning o'zini tekshiradi.
+
 ## Tekshiruv
 
 `npm run verify` (lint, typecheck, unit — Vitest + MSW), `npm run test:e2e` (API e2e + Playwright:
-`critical-path`, `mobile`, `miniapp`, `reorder`).
+`critical-path`, `mobile`, `miniapp`, `reorder`, `motion`).

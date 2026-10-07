@@ -1,9 +1,10 @@
 import { forwardRef } from 'react';
-import { CalendarDays, ChevronDown, ChevronUp, EllipsisVertical, HandCoins, Pencil, Trash2 } from 'lucide-react';
+import { CalendarDays, ChevronDown, EllipsisVertical, HandCoins, Pencil, Trash2 } from 'lucide-react';
 import type { DebtPaymentResponse, DebtResponse } from '@fintrack/shared';
 import { Avatar } from '../../../components/ui/Avatar';
 import { Button } from '../../../components/ui/Button';
 import { Chip } from '../../../components/ui/Chip';
+import { Collapse } from '../../../components/ui/Collapse';
 import { Menu } from '../../../components/ui/Menu';
 import { Progress } from '../../../components/ui/Progress';
 import { formatDate } from '../../../lib/format';
@@ -84,7 +85,6 @@ export const DebtCard = forwardRef<HTMLElement, DebtCardProps>(function DebtCard
   const percent = paidPercent(debt);
   const remaining = BigInt(debt.remainingAmount);
   const payments = useDebtPayments(debt.id, { enabled: historyOpen });
-  const Chevron = historyOpen ? ChevronUp : ChevronDown;
 
   return (
     <article
@@ -182,11 +182,16 @@ export const DebtCard = forwardRef<HTMLElement, DebtCardProps>(function DebtCard
           className="flex h-9 items-center gap-1 whitespace-nowrap rounded-full pl-2.5 pr-1.5 text-[13px] font-medium text-text-secondary hover:bg-secondary hover:text-text focus-ring"
         >
           To‘lovlar tarixi{payments.data ? ` (${payments.data.length})` : ''}
-          <Chevron className="h-4 w-4" aria-hidden />
+          <ChevronDown
+            className={cn('h-4 w-4 transition-transform duration-base ease-standard', historyOpen && 'rotate-180')}
+            aria-hidden
+          />
         </button>
       </div>
 
-      {historyOpen && <History debt={debt} onDelete={(payment) => actions.onDeletePayment(debt, payment)} />}
+      <Collapse open={historyOpen}>
+        <History debt={debt} onDelete={(payment) => actions.onDeletePayment(debt, payment)} />
+      </Collapse>
     </article>
   );
 });

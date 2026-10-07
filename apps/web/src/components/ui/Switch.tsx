@@ -36,10 +36,15 @@ export function Switch({
       aria-hidden
       className={cn(
         'flex h-[26px] w-11 shrink-0 items-center rounded-full p-[3px] transition-colors duration-fast',
-        checked ? 'justify-end bg-primary' : 'justify-start bg-input',
+        checked ? 'bg-primary' : 'bg-input',
       )}
     >
-      <span className="h-5 w-5 rounded-full bg-card shadow-sm" />
+      <span
+        className={cn(
+          'h-5 w-5 rounded-full bg-card shadow-sm transition-transform duration-fast ease-standard',
+          checked && 'translate-x-[18px]',
+        )}
+      />
     </span>
   );
 

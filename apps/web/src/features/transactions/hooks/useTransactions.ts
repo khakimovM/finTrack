@@ -5,6 +5,7 @@ import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { invalidateAfter } from '../../../lib/invalidation';
+import { useRecentlyAdded } from '../recentlyAdded';
 
 export function useTransactions(filters?: Partial<ListTransactionsQuery>, options: { enabled?: boolean } = {}) {
   return useQuery({
@@ -33,7 +34,8 @@ export function useCreateTransaction() {
 
   return useMutation({
     mutationFn: transactionsApi.create,
-    onSuccess: () => {
+    onSuccess: (created) => {
+      useRecentlyAdded.getState().mark(created.id);
       void invalidateAfter(queryClient, 'transaction');
       toast.success('Tranzaksiya saqlandi');
     },

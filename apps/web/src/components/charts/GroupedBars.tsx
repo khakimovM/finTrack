@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { shortSom } from '../../lib/money';
-import { ChartTooltipBox, type RechartsTooltipProps } from './ChartTooltip';
+import { useReducedMotion } from '../../lib/motion';
+import { CHART_ANIMATION_MS, ChartTooltipBox, type RechartsTooltipProps } from './ChartTooltip';
 
 export interface GroupedPoint {
   label: string;
@@ -49,6 +50,11 @@ export function GroupedBars({
   formatValue,
   ariaLabel,
 }: GroupedBarsProps) {
+  const animation = {
+    isAnimationActive: !useReducedMotion(),
+    animationDuration: CHART_ANIMATION_MS,
+    animationEasing: 'ease-out',
+  } as const;
   return (
     <div role="img" aria-label={ariaLabel} style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -74,8 +80,8 @@ export function GroupedBars({
               />
             )}
           />
-          <Bar dataKey="previous" name="Oldin" fill={previousColor} radius={[6, 6, 0, 0]} barSize={barSize} isAnimationActive={false} />
-          <Bar dataKey="current" name="Hozir" fill={currentColor} radius={[6, 6, 0, 0]} barSize={barSize} isAnimationActive={false} />
+          <Bar dataKey="previous" name="Oldin" fill={previousColor} radius={[6, 6, 0, 0]} barSize={barSize} {...animation} />
+          <Bar dataKey="current" name="Hozir" fill={currentColor} radius={[6, 6, 0, 0]} barSize={barSize} {...animation} />
         </BarChart>
       </ResponsiveContainer>
     </div>
