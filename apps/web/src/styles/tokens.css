@@ -61,6 +61,8 @@
   /* Exits run at 0.75× the enter duration (design system, "Motion"). */
   --duration-base-exit: 150ms;
   --duration-slow-exit: 240ms;
+  /* Landing only: sections and the hero scene arriving, slower than any control. */
+  --duration-reveal: 640ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
@@ -132,6 +134,7 @@
     --duration-slow: 120ms;
     --duration-base-exit: 0ms;
     --duration-slow-exit: 0ms;
+    --duration-reveal: 120ms;
     --motion-distance: 0;
     --motion-slide-opacity: 0;
   }

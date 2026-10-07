@@ -51,6 +51,73 @@ export function popMotion(closing: boolean): string {
 }
 
 /**
+ * True once the element has scrolled into view (and stays true). Without IntersectionObserver
+ * it answers true at once, so content never waits for an event that will not come.
+ */
+export function useInView<T extends Element>(rootMargin = '0px 0px -12% 0px'): [React.RefCallback<T>, boolean] {
+  const [node, setNode] = React.useState<T | null>(null);
+  const [inView, setInView] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!node || inView) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setInView(true);
+      },
+      { rootMargin },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [node, inView, rootMargin]);
+
+  return [setNode, inView];
+}
+
+/**
+ * A number counting up to `target` over `durationMs` (ease-out), starting after `delayMs`.
+ * The last frame is exactly `target`; reduced motion shows `target` from the start.
+ */
+export function useCountUp(target: number, { durationMs = 900, delayMs = 0 } = {}): number {
+  const reduced = useReducedMotion();
+  const [value, setValue] = React.useState(reduced ? target : 0);
+  // Where the next count starts: a new target continues from what is on screen.
+  const shownRef = React.useRef(value);
+
+  React.useEffect(() => {
+    if (reduced) {
+      shownRef.current = target;
+      setValue(target);
+      return;
+    }
+    const from = shownRef.current;
+    if (from === target) return;
+    let frame = 0;
+    let start: number | null = null;
+    const tick = (now: number) => {
+      if (start === null) start = now;
+      const t = Math.min(1, (now - start) / durationMs);
+      const next = t === 1 ? target : from + (target - from) * (1 - (1 - t) ** 3);
+      shownRef.current = next;
+      setValue(next);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    const timer = window.setTimeout(() => {
+      frame = requestAnimationFrame(tick);
+    }, delayMs);
+    return () => {
+      window.clearTimeout(timer);
+      cancelAnimationFrame(frame);
+    };
+  }, [target, durationMs, delayMs, reduced]);
+
+  return value;
+}
+
+/**
  * The last props an overlay was opened with. Parents often clear their data as they close
  * (`isOpen={tx !== null}`); the exit animation keeps showing what was there.
  */

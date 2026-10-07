@@ -157,6 +157,25 @@ const config: Config = {
         'ft-toast-in': { from: { opacity: '0', transform: shift('16px', 0.96) }, to: { opacity: '1', transform: 'none' } },
         'ft-toast-out': { to: { opacity: '0', transform: shift('8px', 0.96) } },
         'ft-check-in': { from: { opacity: '0', transform: shift('0px', 0.5) }, to: { opacity: '1', transform: 'none' } },
+        // Landing.
+        'ft-rise': { from: { opacity: '0', transform: shift('20px', 1) }, to: { opacity: '1', transform: 'none' } },
+        'ft-slide-in': {
+          from: { opacity: '0', transform: 'translateX(calc(48px * var(--motion-distance)))' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        'ft-zoom-in': { from: { opacity: '0', transform: shift('0px', 0.8) }, to: { opacity: '1', transform: 'none' } },
+        'ft-grow-x': { from: { transform: 'scaleX(calc(1 - var(--motion-distance)))' }, to: { transform: 'none' } },
+        // Shown for a moment, then gone again: the bot's "typing…" bubble.
+        'ft-blip': {
+          '0%': { opacity: '0', transform: shift('6px', 0.9) },
+          '15%, 85%': { opacity: '1', transform: 'none' },
+          '100%': { opacity: '0', transform: 'none' },
+        },
+        'ft-typing': {
+          '0%, 60%, 100%': { opacity: '0.35', transform: 'none' },
+          '30%': { opacity: '1', transform: 'translateY(-3px)' },
+        },
+        'ft-wave': { '0%, 100%': { transform: 'none' }, '50%': { transform: 'scaleY(0.3)' } },
       },
       // Exits keep their last frame (forwards) until usePresence unmounts them.
       animation: {
@@ -175,6 +194,15 @@ const config: Config = {
         'ft-toast-in': 'ft-toast-in var(--duration-slow) var(--ease-standard)',
         'ft-toast-out': 'ft-toast-out var(--duration-base-exit) var(--ease-in) forwards',
         'ft-check-in': 'ft-check-in var(--duration-base) var(--ease-standard)',
+        // `backwards`, not `both`: once arrived, hover transforms work on the element again.
+        'ft-rise': 'ft-rise var(--duration-reveal) var(--ease-out) backwards',
+        'ft-slide-in': 'ft-slide-in 900ms var(--ease-out) backwards',
+        'ft-zoom-in': 'ft-zoom-in var(--duration-reveal) var(--ease-standard) backwards',
+        'ft-grow-x': 'ft-grow-x 900ms var(--ease-out) backwards',
+        'ft-sheet-up': 'ft-sheet-in 700ms var(--ease-standard) backwards',
+        'ft-blip': 'ft-blip 900ms var(--ease-standard) both',
+        'ft-typing': 'ft-typing 900ms ease-in-out 2',
+        'ft-wave': 'ft-wave 700ms ease-in-out 3',
       },
     },
   },

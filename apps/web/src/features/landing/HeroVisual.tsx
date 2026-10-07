@@ -1,7 +1,9 @@
 import { ArrowUpDown, ChartColumn, ChartPie, ChevronLeft, House, Lock, Mic, Plus, Repeat, Users, Wallet } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { LogoBars, LogoMark } from '../../components/brand/Logo';
-import { MINUS, NBSP } from '../../lib/money';
+import { formatAmountNumber, MINUS, NBSP } from '../../lib/money';
+import { useCountUp, useReducedMotion } from '../../lib/motion';
+import { useEntrance } from './reveal';
 
 const nb = (text: string) => text.replace(/ /g, NBSP);
 const tint = (n: number, amount = 16) => `color-mix(in oklab, var(--chart-${n}) ${amount}%, transparent)`;
@@ -34,8 +36,28 @@ const TX = [
 const BAR = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-danger' } as const;
 const PCT = { success: 'text-success', warning: 'text-warning', danger: 'text-danger' } as const;
 
+const KPI = [
+  { label: 'Jami balans', som: 43_050_000, sign: '', colour: 'text-text' },
+  { label: 'Kirim', som: 9_700_000, sign: '+', colour: 'text-income' },
+  { label: 'Chiqim', som: 6_380_000, sign: MINUS, colour: 'text-expense' },
+];
+
+/**
+ * Delays of the hero scene, which plays once on load in about three seconds (ms after mount):
+ * browser 150 → figures count from 600 → budgets fill from 800 → rows from 850;
+ * phone 450 → "50000 taksi" 1300 → bot typing 1650–2550 → draft 2450 → buttons 2650.
+ * Its last frame is the static design, which is all reduced motion shows.
+ */
+type At = ReturnType<typeof useEntrance>;
+
+/** A KPI figure counting up from zero; display only, the mock's numbers are made up. */
+function CountingSom({ som, delayMs }: { som: number; delayMs: number }) {
+  const shown = useCountUp(som, { durationMs: 1100, delayMs });
+  return <>{formatAmountNumber(Math.round(shown) * 100)}</>;
+}
+
 /** The app's home screen in a browser frame, drawn at 880×580 and scaled with zoom on phones. */
-function BrowserMock() {
+function BrowserMock({ at }: { at: At }) {
   return (
     <div className="flex h-[580px] w-[880px] flex-col overflow-hidden rounded-lg border border-border bg-card text-[13px] leading-[18px] shadow-lg">
       <div className="flex h-10 shrink-0 items-center gap-3.5 border-b border-border bg-surface px-3.5">
@@ -75,52 +97,58 @@ function BrowserMock() {
             </span>
           </div>
           <div className="grid grid-cols-3 gap-2.5">
-            {[
-              { label: 'Jami balans', value: '43 050 000', colour: 'text-text' },
-              { label: 'Kirim', value: '+9 700 000', colour: 'text-income' },
-              { label: 'Chiqim', value: `${MINUS}6 380 000`, colour: 'text-expense' },
-            ].map((kpi) => (
-              <div key={kpi.label} className="flex flex-col gap-1 rounded-[14px] border border-border px-3.5 py-3">
-                <span className="text-[11.5px] text-text-secondary">{kpi.label}</span>
-                <span className={cn('whitespace-nowrap text-[19px] font-semibold leading-6 tracking-[-0.02em]', kpi.colour)}>
-                  {nb(kpi.value)}
-                  <span className="ml-1 text-[11px] font-medium tracking-normal text-text-muted">so‘m</span>
-                </span>
-              </div>
-            ))}
+            {KPI.map((kpi, i) => {
+              const card = at(450 + i * 80, 'flex flex-col gap-1 rounded-[14px] border border-border px-3.5 py-3');
+              return (
+                <div key={kpi.label} className={card.className} style={card.style}>
+                  <span className="text-[11.5px] text-text-secondary">{kpi.label}</span>
+                  <span className={cn('whitespace-nowrap text-[19px] font-semibold leading-6 tracking-[-0.02em]', kpi.colour)}>
+                    {kpi.sign}
+                    <CountingSom som={kpi.som} delayMs={600 + i * 80} />
+                    <span className="ml-1 text-[11px] font-medium tracking-normal text-text-muted">so‘m</span>
+                  </span>
+                </div>
+              );
+            })}
           </div>
           <div className="grid min-h-0 flex-1 grid-cols-[1fr_1.25fr] gap-2.5">
             <div className="flex flex-col gap-3.5 rounded-[14px] border border-border p-3.5">
               <span className="text-[13px] font-semibold">Byudjetlar</span>
-              {BUDGETS.map((b) => (
-                <div key={b.name} className="flex flex-col gap-1.5">
-                  <span className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-[7px] text-[12px]" style={{ background: b.tint }}>
-                      {b.emoji}
+              {BUDGETS.map((b, i) => {
+                const fill = at(800 + i * 110, cn('block h-full origin-left rounded-[9px]', BAR[b.tone]), 'animate-ft-grow-x');
+                return (
+                  <div key={b.name} className="flex flex-col gap-1.5">
+                    <span className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-[7px] text-[12px]" style={{ background: b.tint }}>
+                        {b.emoji}
+                      </span>
+                      <span className="flex-1 text-[12px] font-medium">{b.name}</span>
+                      <span className={cn('text-[11.5px] font-semibold', PCT[b.tone])}>{b.pct}%</span>
                     </span>
-                    <span className="flex-1 text-[12px] font-medium">{b.name}</span>
-                    <span className={cn('text-[11.5px] font-semibold', PCT[b.tone])}>{b.pct}%</span>
-                  </span>
-                  <span className="h-1.5 overflow-hidden rounded-[9px] bg-secondary">
-                    <span className={cn('block h-full rounded-[9px]', BAR[b.tone])} style={{ width: `${Math.min(100, b.pct)}%` }} />
-                  </span>
-                </div>
-              ))}
+                    <span className="h-1.5 overflow-hidden rounded-[9px] bg-secondary">
+                      <span className={fill.className} style={{ ...fill.style, width: `${Math.min(100, b.pct)}%` }} />
+                    </span>
+                  </div>
+                );
+              })}
             </div>
             <div className="flex flex-col rounded-[14px] border border-border px-3.5 pb-1.5 pt-3.5">
               <span className="pb-1.5 text-[13px] font-semibold">So‘nggi tranzaksiyalar</span>
-              {TX.map((t) => (
-                <div key={t.name} className="flex h-[46px] items-center gap-2.5">
-                  <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] text-[14px]" style={{ background: t.tint }}>
-                    {t.emoji}
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-[12.5px] font-medium">{t.name}</span>
-                    <span className="text-[11px] leading-[14px] text-text-muted">{t.meta}</span>
-                  </span>
-                  <span className={cn('whitespace-nowrap text-[12.5px] font-semibold', t.colour)}>{nb(`${t.amount} so‘m`)}</span>
-                </div>
-              ))}
+              {TX.map((t, i) => {
+                const row = at(850 + i * 90, 'flex h-[46px] items-center gap-2.5');
+                return (
+                  <div key={t.name} className={row.className} style={row.style}>
+                    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] text-[14px]" style={{ background: t.tint }}>
+                      {t.emoji}
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-[12.5px] font-medium">{t.name}</span>
+                      <span className="text-[11px] leading-[14px] text-text-muted">{t.meta}</span>
+                    </span>
+                    <span className={cn('whitespace-nowrap text-[12.5px] font-semibold', t.colour)}>{nb(`${t.amount} so‘m`)}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -129,8 +157,38 @@ function BrowserMock() {
   );
 }
 
+/** Three dots in a bot bubble, shown only while the bot "thinks" and drawn over the draft's spot. */
+function Typing() {
+  return (
+    <span
+      className="absolute left-0 top-0 flex h-[34px] animate-ft-blip items-center gap-1 rounded-[16px_16px_16px_4px] border border-border bg-card px-3.5"
+      style={{ animationDelay: '1650ms' }}
+    >
+      {[0, 150, 300].map((offset) => (
+        <span
+          key={offset}
+          className="h-1.5 w-1.5 animate-ft-typing rounded-full bg-text-secondary"
+          style={{ animationDelay: `${1650 + offset}ms` }}
+        />
+      ))}
+    </span>
+  );
+}
+
 /** Telegram chat on a phone: "50000 taksi" and the bot's draft card with its inline buttons. */
-function PhoneMock() {
+function PhoneMock({ at, play }: { at: At; play: boolean }) {
+  const day = at(1150, 'self-center rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-text-secondary');
+  const message = at(
+    1300,
+    'origin-bottom-right self-end rounded-[16px_16px_4px_16px] bg-[color-mix(in_oklab,var(--brand)_20%,var(--card))] py-1.5 pl-3 pr-2.5 text-[14px]',
+    'animate-ft-zoom-in',
+  );
+  const draft = at(
+    2450,
+    'flex origin-bottom-left flex-col gap-[3px] rounded-[16px_16px_16px_4px] border border-border bg-card px-3 py-2.5',
+    'animate-ft-zoom-in',
+  );
+  const buttons = at(2650, 'mr-6 grid grid-cols-2 gap-1');
   return (
     <div className="h-[572px] w-[280px] rounded-[46px] bg-[#151514] p-2 shadow-[var(--shadow-lg),inset_0_0_0_1px_rgba(255,255,255,.06)]">
       <div className="flex h-full flex-col overflow-hidden rounded-[38px] bg-surface text-[13px] leading-[18px]">
@@ -154,18 +212,24 @@ function PhoneMock() {
           </span>
         </div>
         <div className="flex flex-1 flex-col justify-end gap-2 px-2.5 py-3">
-          <span className="self-center rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-text-secondary">Bugun</span>
-          <div className="self-end rounded-[16px_16px_4px_16px] bg-[color-mix(in_oklab,var(--brand)_20%,var(--card))] py-1.5 pl-3 pr-2.5 text-[14px]">
+          <span className={day.className} style={day.style}>
+            Bugun
+          </span>
+          <div className={message.className} style={message.style}>
             50000 taksi <span className="ml-1 text-[10px] leading-3 text-text-secondary">12:04 ✓✓</span>
           </div>
-          <div className="mr-6 flex flex-col gap-[3px] rounded-[16px_16px_16px_4px] border border-border bg-card px-3 py-2.5">
-            <span className="text-[11px] font-semibold text-text-muted">Qoralama</span>
-            <span className="text-[14.5px] font-semibold leading-5">{nb('Chiqim · 50 000 so‘m')}</span>
-            <span className="text-[12.5px] text-text-secondary">Kategoriya: Transport › Taksi</span>
-            <span className="text-[12.5px] text-text-secondary">Hisob: Humo karta</span>
-            <span className="self-end text-[10px] text-text-muted">12:04</span>
+          {/* The draft keeps its place from the start, so nothing above it moves when it arrives. */}
+          <div className="relative mr-6">
+            {play && <Typing />}
+            <div className={draft.className} style={draft.style}>
+              <span className="text-[11px] font-semibold text-text-muted">Qoralama</span>
+              <span className="text-[14.5px] font-semibold leading-5">{nb('Chiqim · 50 000 so‘m')}</span>
+              <span className="text-[12.5px] text-text-secondary">Kategoriya: Transport › Taksi</span>
+              <span className="text-[12.5px] text-text-secondary">Hisob: Humo karta</span>
+              <span className="self-end text-[10px] text-text-muted">12:04</span>
+            </div>
           </div>
-          <div className="mr-6 grid grid-cols-2 gap-1">
+          <div className={buttons.className} style={buttons.style}>
             <span className="col-span-2 flex h-[34px] items-center justify-center rounded-[10px] border border-border bg-card text-[12.5px] font-semibold">
               ✅ Saqlash
             </span>
@@ -187,17 +251,21 @@ function PhoneMock() {
 
 /** Browser bleeding off the right edge with the phone in front; scaled down below 820px. */
 export function HeroVisual() {
+  const at = useEntrance();
+  const play = !useReducedMotion();
+  const browser = at(150, 'absolute left-0 top-0 [zoom:0.5] min-[820px]:left-[76px] min-[820px]:top-2.5 min-[820px]:[zoom:1]', 'animate-ft-slide-in');
+  const phone = at(450, 'absolute right-2 top-[58px] [zoom:0.76] min-[820px]:-left-7 min-[820px]:right-auto min-[820px]:top-24 min-[820px]:[zoom:1]');
   return (
     <div
       role="img"
       aria-label="FinTrack bosh sahifasi va Telegram botda “50000 taksi” xabaridan tayyorlangan qoralama"
       className="relative h-[480px] min-w-0 flex-[1_1_560px] min-[820px]:h-[660px]"
     >
-      <div aria-hidden className="absolute left-0 top-0 [zoom:0.5] min-[820px]:left-[76px] min-[820px]:top-2.5 min-[820px]:[zoom:1]">
-        <BrowserMock />
+      <div aria-hidden className={browser.className} style={browser.style}>
+        <BrowserMock at={at} />
       </div>
-      <div aria-hidden className="absolute right-2 top-[58px] [zoom:0.76] min-[820px]:-left-7 min-[820px]:right-auto min-[820px]:top-24 min-[820px]:[zoom:1]">
-        <PhoneMock />
+      <div aria-hidden className={phone.className} style={phone.style && { ...phone.style, animationDuration: '900ms' }}>
+        <PhoneMock at={at} play={play} />
       </div>
     </div>
   );
