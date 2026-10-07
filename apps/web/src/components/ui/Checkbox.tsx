@@ -32,9 +32,9 @@ export function Checkbox({ checked, indeterminate, onChange, disabled, className
       {...aria}
     >
       {indeterminate ? (
-        <Minus className="h-3 w-3" strokeWidth={3.2} aria-hidden />
+        <Minus className="h-3 w-3 animate-ft-check-in" strokeWidth={3.2} aria-hidden />
       ) : checked ? (
-        <Check className="h-3 w-3" strokeWidth={3.2} aria-hidden />
+        <Check className="h-3 w-3 animate-ft-check-in" strokeWidth={3.2} aria-hidden />
       ) : null}
     </button>
   );

@@ -4,6 +4,8 @@ import { todayLocalIso } from '@fintrack/shared';
 import { usePeriodStore, type PeriodPreset } from '../../../stores/periodStore';
 import { formatRange } from '../../../lib/format';
 import { useIsMobile } from '../../../lib/useMediaQuery';
+import { EXIT_MS, popMotion, usePresence } from '../../../lib/motion';
+import { cn } from '../../../lib/utils';
 import { Segmented } from '../../../components/ui/Segmented';
 import { RangePicker } from '../../../components/ui/RangePicker';
 import { Sheet } from '../../../components/ui/Sheet';
@@ -18,6 +20,7 @@ export function DashboardPeriod() {
   const rootRef = useRef<HTMLDivElement>(null);
   const close = () => setPickerOpen(false);
   useDismiss([rootRef], pickerOpen && !isMobile, close);
+  const popover = usePresence(pickerOpen && !isMobile, EXIT_MS.base);
 
   const onChange = (value: PeriodPreset) => {
     if (value === 'custom') setPickerOpen(true);
@@ -53,11 +56,15 @@ export function DashboardPeriod() {
         <Calendar className="h-4 w-4" aria-hidden />
         {formatRange(from, to)}
       </span>
-      {pickerOpen && !isMobile && (
+      {popover.mounted && (
         <div
           role="dialog"
           aria-label="Oraliqni tanlang"
-          className="absolute left-0 top-full z-40 mt-2 w-[316px] animate-ft-pop-in rounded-xl border border-border bg-popover p-3 shadow-md"
+          aria-hidden={popover.closing || undefined}
+          className={cn(
+            'absolute left-0 top-full z-40 mt-2 w-[316px] origin-top-left rounded-xl border border-border bg-popover p-3 shadow-md',
+            popMotion(popover.closing),
+          )}
         >
           {picker}
         </div>

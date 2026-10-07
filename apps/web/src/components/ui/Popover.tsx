@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
+import { EXIT_MS, popMotion, usePresence } from '../../lib/motion';
 
 /** Closes on a pointer press outside every given element, or on Escape. */
 export function useDismiss(
@@ -48,17 +49,20 @@ export interface PopoverProps {
 export function Popover({ open, onClose, trigger, children, align = 'start', className, panelClassName, label }: PopoverProps) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   useDismiss([rootRef], open, onClose);
+  const { mounted, closing } = usePresence(open, EXIT_MS.base);
 
   return (
     <div ref={rootRef} className={cn('relative inline-flex', className)}>
       {trigger}
-      {open && (
+      {mounted && (
         <div
           role="dialog"
           aria-label={label}
+          aria-hidden={closing || undefined}
           className={cn(
-            'absolute top-full z-40 mt-2 animate-ft-pop-in rounded-xl border border-border bg-popover text-text shadow-md',
+            'absolute top-full z-40 mt-2 rounded-xl border border-border bg-popover text-text shadow-md',
             align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
+            popMotion(closing),
             panelClassName,
           )}
         >

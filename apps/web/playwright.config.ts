@@ -18,6 +18,8 @@ export default defineConfig({
     baseURL: API_URL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // Overlays close at once, so a spec never clicks through a fading one; motion.spec.ts opts back in.
+    reducedMotion: 'reduce',
   },
   projects: [
     { name: 'desktop', testIgnore: /mobile\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { EXIT_MS, useOpenSnapshot, usePresence } from '../../lib/motion';
 import { Portal, useOverlay } from './overlay';
 
 export interface SheetProps {
@@ -41,35 +42,42 @@ export function Sheet({
   const panelRef = React.useRef<HTMLDivElement>(null);
   const titleId = React.useId();
   useOverlay(panelRef, isOpen, onClose);
+  const { mounted, closing } = usePresence(isOpen, EXIT_MS.slow);
+  const view = useOpenSnapshot(isOpen, { title, headerExtra, children, footer });
 
-  if (!isOpen) return null;
+  if (!mounted) return null;
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-50">
-        <div className="absolute inset-0 animate-ft-fade-in bg-overlay" onClick={onClose} aria-hidden="true" />
+      <div className={cn('fixed inset-0 z-50', closing && 'pointer-events-none')} aria-hidden={closing || undefined}>
+        <div
+          className={cn('absolute inset-0 bg-overlay', closing ? 'animate-ft-fade-out' : 'animate-ft-fade-in')}
+          onClick={onClose}
+          aria-hidden="true"
+        />
         <div
           ref={panelRef}
           role="dialog"
           aria-modal="true"
-          aria-labelledby={title ? titleId : undefined}
-          aria-label={title ? undefined : ariaLabel}
+          aria-labelledby={view.title ? titleId : undefined}
+          aria-label={view.title ? undefined : ariaLabel}
           tabIndex={-1}
           className={cn(
-            'absolute inset-x-0 bottom-0 z-[51] flex max-h-[calc(100%-12px)] flex-col animate-ft-sheet-in rounded-t-2xl bg-popover text-text shadow-lg outline-none',
+            'absolute inset-x-0 bottom-0 z-[51] flex max-h-[calc(100%-12px)] flex-col rounded-t-2xl bg-popover text-text shadow-lg outline-none',
+            closing ? 'animate-ft-sheet-out' : 'animate-ft-sheet-in',
             full && 'top-3',
             className,
           )}
         >
           <div className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-input" aria-hidden />
-          {(title || showClose) && (
+          {(view.title || showClose) && (
             <div className="flex shrink-0 items-center gap-2.5 px-4 pb-2 pt-3">
-              {title && (
+              {view.title && (
                 <h2 id={titleId} className="text-[20px] font-semibold leading-7">
-                  {title}
+                  {view.title}
                 </h2>
               )}
-              {headerExtra}
+              {view.headerExtra}
               {showClose && (
                 <button
                   type="button"
@@ -84,16 +92,16 @@ export function Sheet({
           )}
           <div
             className={cn('min-h-0 flex-1 overflow-y-auto px-4', bodyClassName)}
-            style={footer ? undefined : { paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}
+            style={view.footer ? undefined : { paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}
           >
-            {children}
+            {view.children}
           </div>
-          {footer && (
+          {view.footer && (
             <div
               className={cn('grid shrink-0 grid-cols-2 gap-2.5 border-t border-border px-4 pt-3 [&>*]:h-12', footerClassName)}
               style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
             >
-              {footer}
+              {view.footer}
             </div>
           )}
         </div>

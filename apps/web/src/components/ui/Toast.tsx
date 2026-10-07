@@ -34,7 +34,11 @@ function ToastCard({ toast, onClose }: { toast: ToastItem; onClose: () => void }
   return (
     <div
       role={isError ? 'alert' : 'status'}
-      className="pointer-events-auto relative w-max max-w-full animate-ft-toast-in overflow-hidden rounded-lg bg-primary text-primary-foreground shadow-lg"
+      aria-hidden={toast.leaving || undefined}
+      className={cn(
+        'relative w-max max-w-full overflow-hidden rounded-lg bg-primary text-primary-foreground shadow-lg',
+        toast.leaving ? 'pointer-events-none animate-ft-toast-out' : 'pointer-events-auto animate-ft-toast-in',
+      )}
     >
       <div className="flex min-h-[52px] items-center gap-3 py-2.5 pl-4 pr-2.5">
         <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />

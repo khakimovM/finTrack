@@ -2,6 +2,7 @@ import * as React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useIsMobile } from '../../lib/useMediaQuery';
+import { EXIT_MS, popMotion, usePresence } from '../../lib/motion';
 import { useDismiss } from './Popover';
 import { Sheet } from './Sheet';
 
@@ -51,6 +52,7 @@ export function Menu({ trigger, items, align = 'end', width = 240, sheetHeader, 
 
   const close = React.useCallback(() => setOpen(false), []);
   useDismiss([rootRef], open && !isMobile, close);
+  const popover = usePresence(open && !isMobile, EXIT_MS.base);
 
   React.useEffect(() => {
     if (open && !isMobile) itemRefs.current.find((node) => node && !node.disabled)?.focus();
@@ -89,15 +91,17 @@ export function Menu({ trigger, items, align = 'end', width = 240, sheetHeader, 
   return (
     <div ref={rootRef} className={cn('relative inline-flex', className)}>
       {triggerNode}
-      {open && !isMobile && (
+      {popover.mounted && (
         <div
           role="menu"
           aria-label={label}
+          aria-hidden={popover.closing || undefined}
           onKeyDown={onKeyDown}
           style={{ width }}
           className={cn(
-            'absolute top-full z-40 mt-1.5 animate-ft-pop-in rounded-lg border border-border bg-popover p-1.5 shadow-md',
-            align === 'end' ? 'right-0' : 'left-0',
+            'absolute top-full z-40 mt-1.5 rounded-lg border border-border bg-popover p-1.5 shadow-md',
+            align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
+            popMotion(popover.closing),
           )}
         >
           {header && <div className="px-2.5 pb-1 pt-2 text-[12px] text-text-muted">{header}</div>}

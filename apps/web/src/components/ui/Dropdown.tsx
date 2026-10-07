@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { EXIT_MS, popMotion, usePresence } from '../../lib/motion';
 import { Field, useFieldId } from './Field';
 import { useDismiss } from './Popover';
 
@@ -70,6 +71,8 @@ export function Dropdown({
 
   const close = React.useCallback(() => setOpen(false), []);
   useDismiss([rootRef], open && !inline, close);
+  // An inline list sits in the page flow, so it just appears and goes; a floating one pops.
+  const floating = usePresence(open && !inline, EXIT_MS.base);
 
   const selected = options.find((o) => o.value === value);
   const isSet = emptyValue !== undefined ? value !== emptyValue : Boolean(selected);
@@ -198,16 +201,23 @@ export function Dropdown({
       </button>
     );
 
-  const list = open && (
+  const list = (inline ? open : floating.mounted) && (
     <ul
       ref={listRef}
       id={listId}
       role="listbox"
       aria-labelledby={fieldId}
+      aria-hidden={floating.closing || undefined}
       tabIndex={-1}
       className={cn(
         'max-h-[380px] overflow-y-auto rounded-lg border border-border bg-popover p-1.5',
-        inline ? 'mt-2' : cn('absolute top-full z-40 mt-1.5 min-w-[240px] animate-ft-pop-in shadow-md', align === 'end' ? 'right-0' : 'left-0'),
+        inline
+          ? 'mt-2'
+          : cn(
+              'absolute top-full z-40 mt-1.5 min-w-[240px] shadow-md',
+              align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
+              popMotion(floating.closing),
+            ),
         listClassName,
       )}
     >
