@@ -24,7 +24,11 @@ export function LandingPage() {
     };
   }, [reduced]);
 
-  const title = at(60, 'text-[clamp(38px,4.6vw,64px)] font-semibold leading-[1.06] tracking-[-0.035em] [text-wrap:balance]');
+  // From 820px the headline also shrinks with the window's height, so the hero fits one screen.
+  const title = at(
+    60,
+    'text-[clamp(38px,4.6vw,64px)] font-semibold leading-[1.06] tracking-[-0.035em] [text-wrap:balance] min-[820px]:text-[clamp(36px,min(4.6vw,7.2vh),64px)]',
+  );
   const lead = at(160, 'max-w-[480px] text-[clamp(16px,1.35vw,19px)] leading-[1.5] text-text-secondary');
   const ctas = at(260);
   const note = at(360, 'flex items-center gap-2 text-[13px] text-text-muted');
@@ -34,8 +38,12 @@ export function LandingPage() {
       <LandingHeader session={Boolean(session.data)} />
       <main>
         <section className="overflow-hidden">
-          <div className="mx-auto flex max-w-[1232px] flex-wrap items-center gap-12 px-4 pb-12 pt-8 min-[820px]:pb-[clamp(48px,6vw,96px)] min-[820px]:pt-[clamp(32px,6vw,88px)]">
-            <div className="relative z-[2] flex max-w-[540px] flex-[1_1_420px] flex-col gap-6">
+          {/*
+            From 820px the hero is exactly one screen under the 65px header: its padding follows the
+            window's height (--hero-pad), and HeroVisual sizes its scene to the space that is left.
+          */}
+          <div className="mx-auto flex max-w-[1232px] flex-wrap items-center gap-12 px-4 pb-12 pt-8 [--hero-pad:clamp(24px,5vh,56px)] min-[820px]:min-h-[calc(100svh-65px)] min-[820px]:py-[var(--hero-pad)]">
+            <div className="relative z-[2] flex max-w-[540px] flex-[1_1_420px] flex-col gap-6 min-[820px]:gap-[clamp(16px,3vh,24px)]">
               <h1 className={title.className} style={title.style}>
                 Pulingiz qayerga ketayotganini biling{' '}
                 <span className="text-text-muted">— saytda ham, Telegram’da ham</span>

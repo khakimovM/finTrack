@@ -1,8 +1,10 @@
+import * as React from 'react';
 import { ArrowUpDown, ChartColumn, ChartPie, ChevronLeft, House, Lock, Mic, Plus, Repeat, Users, Wallet } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { LogoBars, LogoMark } from '../../components/brand/Logo';
 import { formatAmountNumber, MINUS, NBSP } from '../../lib/money';
 import { useCountUp, useReducedMotion } from '../../lib/motion';
+import { useMediaQuery } from '../../lib/useMediaQuery';
 import { useEntrance } from './reveal';
 
 const nb = (text: string) => text.replace(/ /g, NBSP);
@@ -249,23 +251,62 @@ function PhoneMock({ at, play }: { at: At; play: boolean }) {
   );
 }
 
+/** Height the desktop scene is drawn at; the phone's bottom edge sits at 668. */
+const SCENE_HEIGHT = 660;
+
+/**
+ * From 820px the scene shrinks to the height the hero leaves it (one screen minus header and
+ * padding), so short laptop screens see it whole; it never grows past its drawn size.
+ */
+function useSceneScale(box: React.RefObject<HTMLDivElement | null>): number {
+  const wide = useMediaQuery('(min-width: 820px)');
+  const [scale, setScale] = React.useState(1);
+
+  React.useLayoutEffect(() => {
+    const node = box.current;
+    if (!wide || !node) {
+      setScale(1);
+      return;
+    }
+    const fit = () => {
+      // No layout (jsdom, display: none): keep the drawn size rather than collapse to nothing.
+      if (node.clientHeight > 0) setScale(Math.min(1, node.clientHeight / SCENE_HEIGHT));
+    };
+    fit();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(fit);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [box, wide]);
+
+  return wide ? scale : 1;
+}
+
 /** Browser bleeding off the right edge with the phone in front; scaled down below 820px. */
 export function HeroVisual() {
   const at = useEntrance();
   const play = !useReducedMotion();
+  const boxRef = React.useRef<HTMLDivElement>(null);
+  const scale = useSceneScale(boxRef);
   const browser = at(150, 'absolute left-0 top-0 [zoom:0.5] min-[820px]:left-[76px] min-[820px]:top-2.5 min-[820px]:[zoom:1]', 'animate-ft-slide-in');
   const phone = at(450, 'absolute right-2 top-[58px] [zoom:0.76] min-[820px]:-left-7 min-[820px]:right-auto min-[820px]:top-24 min-[820px]:[zoom:1]');
   return (
     <div
+      ref={boxRef}
       role="img"
       aria-label="FinTrack bosh sahifasi va Telegram botda “50000 taksi” xabaridan tayyorlangan qoralama"
-      className="relative h-[480px] min-w-0 flex-[1_1_560px] min-[820px]:h-[660px]"
+      className="relative h-[480px] min-w-0 flex-[1_1_560px] min-[820px]:h-[clamp(400px,calc(100svh-65px-2*var(--hero-pad,0px)),660px)]"
     >
-      <div aria-hidden className={browser.className} style={browser.style}>
-        <BrowserMock at={at} />
-      </div>
-      <div aria-hidden className={phone.className} style={phone.style && { ...phone.style, animationDuration: '900ms' }}>
-        <PhoneMock at={at} play={play} />
+      <div
+        className="absolute inset-0 origin-top-left min-[820px]:bottom-auto min-[820px]:h-[660px]"
+        style={scale < 1 ? { transform: `scale(${scale})` } : undefined}
+      >
+        <div aria-hidden className={browser.className} style={browser.style}>
+          <BrowserMock at={at} />
+        </div>
+        <div aria-hidden className={phone.className} style={phone.style && { ...phone.style, animationDuration: '900ms' }}>
+          <PhoneMock at={at} play={play} />
+        </div>
       </div>
     </div>
   );

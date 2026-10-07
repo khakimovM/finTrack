@@ -38,10 +38,10 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
       <div
         className={cn(
           'sticky top-3 flex h-[calc(100vh-24px)] flex-col overflow-hidden rounded-xl border border-border bg-card',
-          rail ? 'items-center px-2 pb-2.5 pt-3.5' : 'px-3 pb-3 pt-4',
+          rail ? 'items-center px-2 pb-2 pt-3' : 'px-3 pb-2.5 pt-3',
         )}
       >
-        <div className={cn('flex items-center', rail ? 'flex-col gap-3 pb-4' : 'gap-2.5 pb-3.5 pl-2 pr-1')}>
+        <div className={cn('flex items-center', rail ? 'flex-col gap-2.5 pb-3' : 'gap-2.5 pb-2.5 pl-2 pr-1')}>
           <LogoMark size={rail ? 30 : 28} />
           {!rail && <span className={cn('flex-1 text-[18px] font-semibold tracking-[-0.02em]', label)}>FinTrack</span>}
           <button
@@ -57,11 +57,12 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-3.5 overflow-y-auto scrollbar-none">
+        {/* Sized to fit a 768px laptop screen whole; it scrolls only on shorter windows. */}
+        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto scrollbar-none">
           {NAV_GROUPS.map((group, index) => (
             <div key={group.label ?? index} className="flex flex-col gap-0.5">
               {group.label && !rail && (
-                <span className={cn('px-3 pb-1 text-[12px] font-medium text-text-muted', label)}>{group.label}</span>
+                <span className={cn('px-3 pb-1 text-[12px] font-medium leading-4 text-text-muted', label)}>{group.label}</span>
               )}
               {group.items.map((item) => {
                 const badge = item.badge === 'notifications' ? unread : 0;
@@ -75,7 +76,7 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
                     className={({ isActive }) =>
                       cn(
                         'relative flex items-center rounded-md text-[14px] transition-colors duration-fast focus-ring',
-                        rail ? 'h-11 w-12 justify-center' : 'h-10 gap-3 px-3',
+                        rail ? 'h-10 w-12 justify-center' : 'h-9 gap-3 px-3',
                         isActive
                           ? 'bg-secondary font-semibold text-text'
                           : 'font-medium text-text-secondary hover:bg-secondary hover:text-text',
@@ -99,9 +100,9 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
 
         {user &&
           (rail ? (
-            <div className="mt-2 flex flex-col items-center gap-2 pt-2">
+            <div className="mt-2 flex flex-col items-center gap-1.5 pt-1.5">
               <span className="relative" title={user.name}>
-                <Avatar name={user.name} size={40} />
+                <Avatar name={user.name} size={36} />
                 <span
                   className={cn(
                     'absolute -bottom-[3px] -right-[3px] h-[18px] w-[18px] rounded-full shadow-[0_0_0_2px_var(--card)]',
@@ -115,16 +116,16 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
                   type="button"
                   onClick={() => void logout()}
                   aria-label="Chiqish"
-                  className="flex h-10 w-11 items-center justify-center rounded-[10px] text-text-secondary hover:bg-danger-soft hover:text-danger focus-ring"
+                  className="flex h-9 w-11 items-center justify-center rounded-[10px] text-text-secondary hover:bg-danger-soft hover:text-danger focus-ring"
                 >
                   <LogOut className="h-[18px] w-[18px]" aria-hidden />
                 </button>
               )}
             </div>
           ) : (
-            <div className={cn('mt-2 flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-3', label)}>
+            <div className={cn('mt-2 flex flex-col gap-2 rounded-lg border border-border bg-surface p-2.5', label)}>
               <div className="flex items-center gap-2.5">
-                <Avatar name={user.name} size={40} />
+                <Avatar name={user.name} size={36} />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-[14px] font-semibold leading-5">{user.name}</span>
                   <span className="truncate text-[12px] leading-4 text-text-muted">{userHandle(user)}</span>
