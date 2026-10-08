@@ -6,6 +6,9 @@ import { AdminAuthService } from './admin-auth.service';
 import { AdminCookiesService } from './admin-cookies.service';
 import { AdminGuard } from './admin.guard';
 import { AdminSessionService } from './admin-session.service';
+import { AdminStatsController } from './stats/admin-stats.controller';
+import { AdminStatsRepository } from './stats/admin-stats.repository';
+import { AdminStatsService } from './stats/admin-stats.service';
 
 /**
  * The owner's admin panel (docs/09-ADMIN-PANEL.md). The only module allowed to read across
@@ -13,7 +16,14 @@ import { AdminSessionService } from './admin-session.service';
  */
 @Module({
   imports: [AuthModule, AdminCoreModule],
-  controllers: [AdminAuthController],
-  providers: [AdminAuthService, AdminSessionService, AdminCookiesService, AdminGuard],
+  controllers: [AdminAuthController, AdminStatsController],
+  providers: [
+    AdminAuthService,
+    AdminSessionService,
+    AdminCookiesService,
+    AdminGuard,
+    AdminStatsService,
+    AdminStatsRepository,
+  ],
 })
 export class AdminModule {}

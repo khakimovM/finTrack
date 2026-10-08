@@ -1,20 +1,14 @@
 import { createTestApp, TestApp } from './helpers/app';
 import { ApiClient, newUser } from './helpers/api-client';
-import { FakeTgUser, contactUpdate, textUpdate } from './helpers/fake-telegram';
-
-/** The admin id set in test-env.ts (ADMIN_TELEGRAM_IDS). */
-const OWNER: FakeTgUser = { id: 100_000_001, first_name: 'Ega', username: 'fintrack_owner' };
+import { textUpdate } from './helpers/fake-telegram';
+import { OWNER, registerOwner, signInAsAdmin as adminBrowser } from './helpers/admin';
 
 describe('Admin panel sign-in (e2e)', () => {
   let ctx: TestApp;
 
   beforeAll(async () => {
     ctx = await createTestApp();
-    // The owner is an ordinary registered user first, like in production.
-    const web = new ApiClient(ctx);
-    const start = await web.post('/auth/telegram/start');
-    await ctx.deliver(textUpdate(OWNER, `/start ${String(start.body.data.deepLink).split('start=')[1]}`));
-    await ctx.deliver(contactUpdate(OWNER, OWNER.id, '998901000001'));
+    await registerOwner(ctx);
   });
 
   afterAll(async () => {
@@ -27,14 +21,7 @@ describe('Admin panel sign-in (e2e)', () => {
     return { requestId: res.body.data.requestId, payload: String(res.body.data.deepLink).split('start=')[1] };
   }
 
-  async function signInAsAdmin(): Promise<ApiClient> {
-    const browser = new ApiClient(ctx);
-    const { requestId, payload } = await startAdmin(browser);
-    await ctx.deliver(textUpdate(OWNER, `/start ${payload}`));
-    const verify = await browser.post('/admin/auth/telegram/verify', { requestId, code: ctx.telegram.lastCode(OWNER.id) });
-    expect(verify.status).toBe(200);
-    return browser;
-  }
+  const signInAsAdmin = () => adminBrowser(ctx);
 
   it('signs the owner in with an admin code from the bot, distinct from the user code', async () => {
     const browser = new ApiClient(ctx);

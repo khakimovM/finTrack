@@ -161,6 +161,11 @@ token bilan yaratiladi, faqat sessiyalar ro'yxatida ko'rinishi va bekor qilinish
 `(userId, status, deletedAt)`, `(userId, dueDate)`, `(transferGroupId)`,
 `(nextRunAt, isActive)`.
 
+Admin statistikasi (0007) — egasi bo'yicha emas, butun jadval bo'ylab sanaydi, shuning uchun
+`userId` dan boshlanmaydi: `transactions (createdAt, type)` (davr bo'yicha yozuvlar soni, faqat
+indeksdan) va `user_activity_days (day, userId)` (davr bo'yicha faol foydalanuvchilar, faqat indeksdan).
+`users (createdAt)` — 0006 dan.
+
 Yangi filtr qo'shsangiz — mos indeks ham qo'shiladi. Kompozit indeks tartibi:
 `(userId, filtr, saralash)`.
 

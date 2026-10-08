@@ -27,4 +27,16 @@ export class DailyMetricsService {
     const day = this.clock.todayIn(this.timeZone);
     await this.redis.incrWithTtl(`metrics:${day}:${metric}`, METRICS_RETENTION_SECONDS);
   }
+
+  /** Each metric summed over `days` (YYYY-MM-DD); days past retention simply count zero. */
+  async sum(metrics: string[], days: string[]): Promise<Map<string, number>> {
+    const keys = metrics.flatMap((metric) => days.map((day) => `metrics:${day}:${metric}`));
+    const values = await this.redis.getMany(keys);
+    const totals = new Map<string, number>(metrics.map((m) => [m, 0]));
+    keys.forEach((key, i) => {
+      const metric = key.split(':').slice(2).join(':');
+      totals.set(metric, (totals.get(metric) ?? 0) + Number(values[i] ?? 0));
+    });
+    return totals;
+  }
 }

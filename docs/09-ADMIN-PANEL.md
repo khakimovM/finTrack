@@ -99,10 +99,22 @@ yozuvlar soni; botni bloklaganlar; bloklanganlar), `GET /admin/stats/growth?from
 teg, 2+ hisob; ovozli yordamchi provayderlari va xatolar), `GET /admin/stats/funnel` (ro'yxatdan o'tdi →
 birinchi yozuv → 5+ yozuv → 2-haftada qaytdi). `$queryRaw`, bo'sh bucket'lar 0, Redis kesh 60 s.
 
-**Qabul mezonlari**
-- [ ] Hech bir javobda summa, balans yoki matnli maydon yo'q (snapshot testi)
-- [ ] Bucket va kogorta chegaralari Toshkent vaqtida to'g'ri (off-by-one testlari)
-- [ ] 10 000 foydalanuvchi / 500 000 yozuvda har endpoint < 500 ms
+**Qabul mezonlari** (bajarildi, 2026-10-08; bitta istisno pastda)
+- [x] Hech bir javobda summa, balans yoki matnli maydon yo'q (`test/admin-stats.e2e-spec.ts` har javobni aylanib chiqadi)
+- [x] Bucket va kogorta chegaralari Toshkent vaqtida to'g'ri (23:59 / 00:00 testlari, kun, hafta, oy)
+- [~] 10 000 foydalanuvchi / 500 000 yozuvda har endpoint < 500 ms (`ADMIN_PERF=1`,
+  `test/admin-stats-perf.e2e-spec.ts`): overview ~440, kunlik o'sish ~100, retention ~200, usage ~140,
+  funnel (bir yil) ~470 ms. **Istisno:** bir yillik haftalik o'sish birinchi marta ~750 ms, keyingi
+  safar ~400 ms.
+
+Rejadan farqlar: (1) yangi indekslar (0007): `transactions (createdAt, type)`,
+`user_activity_days (day, userId)`; statistika so'rovlari `work_mem = 64MB` bilan ishlaydi;
+(2) haftalik/oylik turli faol foydalanuvchilarni kunlardan qo'shib bo'lmaydi va ular eng og'ir so'rov
+(bir yil haftalab, 10 000 kishi: `COUNT(DISTINCT)` bilan 2,7 s). Ikki yechim qo'llandi: so'rov "avval
+DISTINCT, keyin COUNT" ko'rinishida (hash, 4 marta tezroq) va **tugagan bucket'lar keshi**: oraliq
+ichida to'liq yotgan va bugundan oldin tugagan hafta/oy sanog'i Redis hash'da
+(`admin:stats:closed-active:{groupBy}`) bir hafta saqlanadi, keyingi so'rov faqat qolganlarini
+hisoblaydi.
 
 ### J4 — Foydalanuvchilar va tizim API
 `GET /admin/users?q&sort&status&page` (ism, @username, telefon niqoblangan `+998 •• ••• •• 12`,

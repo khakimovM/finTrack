@@ -58,7 +58,7 @@ Sxemalarning manbasi: `packages/shared/src/schemas/*` (Zod), hujjat ular bilan m
 
 ---
 
-## Endpointlar ro'yxati (83 ta)
+## Endpointlar ro'yxati (88 ta)
 
 ✅ — sessiya kerak · ❌ — ochiq · 🍪 — refresh cookie · 🤖 — Telegram webhook sirli tokeni ·
 🛡 — admin sessiyasi (`ft_admin` cookie)
@@ -141,6 +141,15 @@ Email/parol bilan ro'yxatdan o'tish va kirish **yo'q**: hisob faqat Telegram orq
 | POST | `/admin/auth/logout` | 🛡 | admin sessiyasini yakunlash (muddati o'tgan bo'lsa ham cookie o'chadi) |
 | GET | `/admin/auth/me` | 🛡 | `{ admin: { id, name, telegramUsername }, expiresAt }` |
 
+### Admin statistika (5)
+| Metod | Yo'l | Auth | Vazifasi |
+|---|---|---|---|
+| GET | `/admin/stats/overview` | 🛡 | foydalanuvchilar va yozuvlar: jami, bugun, 7/30 kun va oldingi davr |
+| GET | `/admin/stats/growth?from&to&groupBy` | 🛡 | kun/hafta/oy bo'yicha yangi, jami, faol foydalanuvchilar va yozuvlar |
+| GET | `/admin/stats/retention?cohorts` | 🛡 | haftalik kogortalar, 0–8 hafta |
+| GET | `/admin/stats/usage?from&to` | 🛡 | kanallar, yozuv manbalari, funksiyalar, AI yordamchi |
+| GET | `/admin/stats/funnel?from&to` | 🛡 | ro'yxatdan o'tish → birinchi yozuv → 5+ yozuv → 2-haftada qaytish |
+
 Batafsil: "Admin panel" bo'limi va `docs/09-ADMIN-PANEL.md`.
 
 ---
@@ -218,6 +227,42 @@ yo'llari `404`. Kirish oddiy kod oqimi bilan bir xil, uch farqi bor:
   Foydalanuvchi va admin so'rovlari bir-birining endpointlarida `404`.
 
 Bot buyrug'i `/id` — yozuvchining Telegram ID'sini qaytaradi (`ADMIN_TELEGRAM_IDS` ni to'ldirish uchun).
+
+### Statistika (`/admin/stats/*`)
+
+Javoblarda **faqat sonlar, sanalar va qat'iy kalitlar** bor: summa, balans, izoh, ism yoki boshqa matn
+yo'q (e2e testi har javobni shunday tekshiradi). Kunlar — Toshkent kunlari; hafta dushanbadan.
+"Yozuv" — `ADJUSTMENT` (boshlang'ich qoldiq) va `TRANSFER_IN` dan boshqa har qanday tranzaksiya
+(o'tkazma bitta yozuv). Javob 60 soniya keshlanadi. Sanalar `YYYY-MM-DD`; `to < from` yoki juda
+uzun oraliq → `400 VALIDATION_ERROR`.
+
+- `GET /admin/stats/overview` — `AdminOverviewResponse`:
+  ```json
+  { "today": "2026-10-08",
+    "users": { "total": 412, "newToday": 3, "new7d": { "current": 21, "previous": 17 },
+               "new30d": { "current": 80, "previous": 64 }, "activeToday": 57,
+               "active7d": { "current": 160, "previous": 151 }, "active30d": { "current": 260, "previous": 240 },
+               "botBlocked": 9, "banned": 0, "deleted": 4 },
+    "entries": { "total": 18250, "today": 140, "last7d": { "current": 1010, "previous": 960 } } }
+  ```
+  `previous` — xuddi shu uzunlikdagi oldingi davr. `total` — o'chirilmagan foydalanuvchi va yozuvlar.
+- `GET /admin/stats/growth?from&to&groupBy=day|week|month` (standart `day`; eng uzun oraliq: 400 kun,
+  3 yil, 10 yil) — `{ groupBy, points: [{ bucket, newUsers, registeredUsers, activeUsers, entries }] }`.
+  `bucket` — bucket'ning birinchi kuni (oraliqdan oldin bo'lishi mumkin, lekin sanoq faqat oraliq
+  ichida); bo'sh bucket'lar `0`. `registeredUsers` — bucket oxirigacha ro'yxatdan o'tgan hamma
+  (keyin o'chirilganlar ham). `activeUsers` — bucket'da kamida bir kun faol bo'lgan turli foydalanuvchilar.
+- `GET /admin/stats/retention?cohorts=1..26` (standart 12) — `{ weeks: 9, cohorts: [{ week, size, active }] }`:
+  `week` — ro'yxatdan o'tish haftasining dushanbasi (eng yangisi oxirida), `active[n]` — kogortadan
+  n-haftada faol bo'lganlar; hali boshlanmagan haftalar `null`.
+- `GET /admin/stats/usage?from&to` (standart oxirgi 30 kun, eng uzuni 400) — `AdminUsageResponse`:
+  `activeUsers { total, web, miniApp, bot, unknown }` (bir odam bir nechta kanalda bo'lishi mumkin),
+  `entries { total, web, miniApp, bot, voice, recurring, unknown }` (`unknown` — manba yozilmagan
+  eski yozuvlar), `features` (hozirgi foydalanuvchilardan nechtasida qarz, byudjet, takroriy to'lov,
+  teg, 2+ hisob, o'z kategoriyasi, qat'iy rejim, kunlik xulosa, Telegram bildirishnomalari bor),
+  `assistant { voice, text: { ok, limit, unavailable }, providers: [{ name, ok, failed, failures }] }`.
+- `GET /admin/stats/funnel?from&to` (standart oxirgi 30 kun) — davrda ro'yxatdan o'tganlar:
+  `{ from, to, registered, firstEntry, fiveEntries, returnedWeek2 }` (`returnedWeek2` — ro'yxatdan
+  o'tgandan keyingi 7–13-kunlarda faol bo'lganlar).
 
 ## Users
 

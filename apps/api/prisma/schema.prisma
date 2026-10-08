@@ -139,7 +139,8 @@ model UserActivityDay {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, day, channel])
-  @@index([day])
+  /// (day, user_id): distinct users per period read from the index alone.
+  @@index([day, userId])
   @@map("user_activity_days")
 }
 
@@ -386,7 +387,8 @@ model Transaction {
   @@index([accountId, date])
   @@index([categoryId])
   @@index([transferGroupId])
-  @@index([createdAt])
+  /// (created_at, type): the admin panel counts entries per period from the index alone.
+  @@index([createdAt, type])
   @@map("transactions")
 }
 
