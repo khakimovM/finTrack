@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Transaction } from '@prisma/client';
+import { Transaction, TransactionSource } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { Db } from '../../infra/prisma/prisma.types';
@@ -10,6 +10,7 @@ export interface CreateTransferRepoData {
   amount: bigint;
   date: Date;
   note?: string | null;
+  source: TransactionSource;
 }
 
 export interface CreatedTransferResult {
@@ -25,7 +26,7 @@ export class TransfersRepository {
   /** Both legs in the caller's transaction: a transfer never exists half-written. */
   async createTransfer(db: Db, userId: string, data: CreateTransferRepoData): Promise<CreatedTransferResult> {
     const transferGroupId = `tg_${randomUUID()}`;
-    const common = { userId, amount: data.amount, transferGroupId, date: data.date, note: data.note };
+    const common = { userId, amount: data.amount, transferGroupId, date: data.date, note: data.note, source: data.source };
 
     const outTx = await db.transaction.create({
       data: { ...common, accountId: data.fromAccountId, type: 'TRANSFER_OUT' },

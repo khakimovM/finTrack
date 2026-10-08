@@ -8,6 +8,7 @@ import { EntryHandlers } from '../handlers/entry.handlers';
 import { MenuHandlers } from '../handlers/menu.handlers';
 import { VoiceHandlers } from '../handlers/voice.handlers';
 import { TelegramLifecycleService } from '../telegram-lifecycle.service';
+import { ActivityService } from '../../activity/activity.service';
 
 const PROD_WEBHOOK = 'https://fintrack.example.com/api/v1/telegram/webhook';
 
@@ -40,6 +41,7 @@ function setup(env: Record<string, string | undefined>, existingWebhook: string)
     handlers as unknown as DebtHandlers,
     handlers as unknown as EntryHandlers,
     handlers as unknown as VoiceHandlers,
+    { touchTelegram: jest.fn() } as unknown as ActivityService,
   );
   return { lifecycle, telegram, api, start };
 }

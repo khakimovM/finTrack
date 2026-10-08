@@ -117,6 +117,20 @@ kod ham `HMAC(requestId:code, OTP_SECRET)` — ochiq holda hech qayerda yo'q. Ko
 `status`: `PENDING` → `AWAITING_CONTACT` → `CODE_SENT` → `CONSUMED` | `CANCELLED` | `EXPIRED`.
 `purpose`: `LOGIN` (sayt), `LINK` (eski hisobga Telegram ulash), `ADMIN` (admin panel, 0005 migratsiyasi).
 
+## Faollik va manba (admin statistikasi uchun, 0006)
+
+- `Transaction.source` — yozuv qayerdan kiritilgan: `WEB` (sayt, cookie), `MINIAPP` (Bearer token),
+  `BOT` (matn), `VOICE` (ovozli xabar qoralamasi), `RECURRING` (takroriy qoida). Servis metodlari uni
+  majburiy parametr sifatida oladi; 0006 dan oldingi qatorlarda `null`.
+- `UserActivityDay` — `(userId, day, channel)` kaliti: foydalanuvchi o'sha kuni (Asia/Tashkent) shu
+  kanaldan foydalangan. `ActivityService` JWT guard'dan (`WEB`/`MINIAPP`) va bot middleware'idan (`BOT`)
+  chaqiriladi; Redis `SET NX` kaliti tufayli bazaga kuniga bir marta yoziladi. `UNKNOWN` — 0006
+  migratsiyasi tranzaksiyalar va refresh tokenlardan tiklagan tarixiy kunlar (kanal noma'lum).
+- `User.lastSeenAt` — oxirgi so'rov, 5 daqiqada ko'pi bilan bir marta yoziladi; `bannedAt`/`banReason`
+  — admin bloklashi uchun (J4).
+- AI yordamchi hisoblagichlari bazada emas, Redis'da: `metrics:<kun>:ai.<voice|text>.<ok|limit|unavailable>`
+  va `metrics:<kun>:ai.provider.<nom>.<ok|fail.<sabab>>`, 120 kun saqlanadi.
+
 ## Admin panel — `AdminSession`, `AdminAuditLog`
 
 - `AdminSession` — foydalanuvchi sessiyalaridan alohida. Cookie'dagi tasodifiy token faqat SHA-256

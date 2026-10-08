@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Transaction, TransactionType } from '@prisma/client';
+import { Transaction, TransactionSource, TransactionType } from '@prisma/client';
 import {
   TransactionResponse,
   TransactionListMeta,
@@ -78,7 +78,8 @@ export class TransactionsService {
     return this.mapToResponse(transaction, peers.get(transaction.id));
   }
 
-  async create(userId: string, dto: CreateTransactionInput): Promise<CreateTransactionResult> {
+  /** `source`: where the entry was made (site, Mini App, bot, voice), for the admin statistics. */
+  async create(userId: string, dto: CreateTransactionInput, source: TransactionSource): Promise<CreateTransactionResult> {
     if (!isUserManagedTransactionType(dto.type)) throw new InvalidTransactionTypeException();
 
     await this.clock.assertNotFuture(userId, dto.date);
@@ -97,7 +98,7 @@ export class TransactionsService {
       return this.repository.create(
         db,
         userId,
-        { type, accountId: dto.accountId, amount, categoryId: dto.categoryId, date, note: dto.note },
+        { type, accountId: dto.accountId, amount, categoryId: dto.categoryId, date, note: dto.note, source },
         [...new Set(dto.tagIds ?? [])],
       );
     });

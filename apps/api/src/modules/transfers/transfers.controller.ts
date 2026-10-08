@@ -8,7 +8,9 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { TransactionSource } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequestSource } from '../../common/decorators/request-source.decorator';
 import { TransfersService } from './transfers.service';
 import { CreateTransferDto } from './dto/transfer.dto';
 
@@ -24,8 +26,9 @@ export class TransfersController {
   async create(
     @CurrentUser('id') userId: string,
     @Body() dto: CreateTransferDto,
+    @RequestSource() source: TransactionSource,
   ) {
-    return this.service.create(userId, dto);
+    return this.service.create(userId, dto, source);
   }
 
   @Delete(':groupId')

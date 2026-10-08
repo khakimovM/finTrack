@@ -11,6 +11,7 @@ import { AccountsRepository } from '../../accounts/accounts.repository';
 import { RedisService } from '../../../infra/redis/redis.service';
 import { ClockService } from '../../../infra/clock/clock.service';
 import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
+import { DailyMetricsService } from '../../activity/daily-metrics.service';
 
 const user = { id: 'user-1', timezone: 'Asia/Tashkent' } as User;
 const voice = { data: Buffer.from('OggS'), mimeType: 'audio/ogg', fileName: 'voice.ogg' };
@@ -39,6 +40,13 @@ function memoryRedis() {
   };
 }
 
+/** The day's metrics counters, by metric name: `metrics:<day>:<metric>` keys. */
+function metricsOf(store: Map<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    [...store].filter(([key]) => key.startsWith('metrics:')).map(([key, value]) => [key.split(':').slice(2).join(':'), value]),
+  );
+}
+
 function setup(opts: { gemini?: boolean; groq?: boolean; claude?: boolean; limits?: Record<string, number> } = {}) {
   const gemini = { enabled: opts.gemini ?? true, extractFromAudio: jest.fn(), extractFromText: jest.fn() };
   const groq = { enabled: opts.groq ?? true, transcribe: jest.fn() };
@@ -52,6 +60,8 @@ function setup(opts: { gemini?: boolean; groq?: boolean; claude?: boolean; limit
   };
   const accounts = { findAll: jest.fn(async () => [{ name: 'Naqd pul' }]) };
   const config = { get: (key: string) => opts.limits?.[key] } as unknown as ConfigService;
+  const clock = clockStub() as unknown as ClockService;
+  const metrics = new DailyMetricsService(redis as unknown as RedisService, clock, config);
 
   const service = new AssistantService(
     gemini as unknown as GeminiClient,
@@ -60,7 +70,8 @@ function setup(opts: { gemini?: boolean; groq?: boolean; claude?: boolean; limit
     categories as unknown as CategoriesRepository,
     accounts as unknown as AccountsRepository,
     redis as unknown as RedisService,
-    clockStub() as unknown as ClockService,
+    clock,
+    metrics,
     config,
   );
   return { service, gemini, groq, claude, redis };
@@ -97,6 +108,12 @@ describe('AssistantService.fromVoice', () => {
     expect(redis.store.has('ai:cooldown:gemini')).toBe(false);
     // No AI text extractor answered: the local parser reads the single amount.
     expect(outcome).toMatchObject({ status: 'ok', result: { entries: [{ amount: 2_000_000n, type: 'EXPENSE' }] } });
+    // The admin panel sees the request and what each provider did, by day.
+    expect(metricsOf(redis.store)).toEqual({
+      'ai.voice.ok': '1',
+      'ai.provider.gemini.fail.rate_limited': '2',
+      'ai.provider.groq.ok': '1',
+    });
   });
 
   it('pauses Groq for its Retry-After when it is rate limited', async () => {

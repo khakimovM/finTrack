@@ -30,6 +30,7 @@ function leg(overrides: Partial<Transaction>): Transaction {
     debtId: null,
     transferGroupId: 'tg_1',
     recurringRuleId: null,
+    source: null,
     date: new Date('2026-09-01T00:00:00Z'),
     note: null,
     createdAt: new Date(),
@@ -76,7 +77,7 @@ describe('TransfersService', () => {
       inTx: leg({ id: 'in', type: 'TRANSFER_IN', accountId: TO }),
     });
 
-    const res = await t.service.create(USER, dto);
+    const res = await t.service.create(USER, dto, 'WEB');
 
     expect(t.prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(t.guard.assertCanDebit).toHaveBeenCalledWith(t.prisma.tx, USER, FROM, 5_000_000n);
@@ -92,14 +93,14 @@ describe('TransfersService', () => {
 
   it('rejects a transfer to the same account', async () => {
     const t = setup();
-    await expect(t.service.create(USER, { ...dto, toAccountId: FROM })).rejects.toBeInstanceOf(
+    await expect(t.service.create(USER, { ...dto, toAccountId: FROM }, 'WEB')).rejects.toBeInstanceOf(
       SameAccountTransferException,
     );
   });
 
   it('rejects a future date', async () => {
     const t = setup();
-    await expect(t.service.create(USER, { ...dto, date: '2999-01-01' })).rejects.toBeInstanceOf(
+    await expect(t.service.create(USER, { ...dto, date: '2999-01-01' }, 'WEB')).rejects.toBeInstanceOf(
       FutureDateException,
     );
   });
@@ -107,7 +108,7 @@ describe('TransfersService', () => {
   it('writes nothing when strict mode refuses the debit', async () => {
     const t = setup();
     t.guard.assertCanDebit.mockRejectedValue(new InsufficientBalanceException());
-    await expect(t.service.create(USER, dto)).rejects.toBeInstanceOf(InsufficientBalanceException);
+    await expect(t.service.create(USER, dto, 'WEB')).rejects.toBeInstanceOf(InsufficientBalanceException);
     expect(t.repository.createTransfer).not.toHaveBeenCalled();
   });
 

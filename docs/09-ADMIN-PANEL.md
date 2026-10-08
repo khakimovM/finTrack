@@ -51,15 +51,15 @@ va **to'xtash**; oxirida bitta PR.
   expiresAt, revokedAt.
 - `AdminAuditLog`: id, adminUserId, action, targetUserId?, meta (JSON), ipAddress, createdAt.
 - `User` += `lastSeenAt`, `bannedAt`, `banReason`.
-- `UserActivityDay`: (userId, day DATE, channel WEB|MINIAPP|BOT) unique — DAU/WAU/MAU va kogortalar uchun.
+- `UserActivityDay`: (userId, day DATE, channel WEB|MINIAPP|BOT|UNKNOWN) unique — DAU/WAU/MAU va kogortalar uchun.
 - `Transaction` += `source` (WEB | MINIAPP | BOT | VOICE | RECURRING), nullable — eski yozuvlar "noma'lum".
 - `Broadcast`: id, adminUserId, text, segment, total, sent, failed, blocked, status, createdAt, finishedAt.
 - Ovozli yordamchi so'rovlari: Redis kunlik hisoblagichlar (provayder × ok/xato), 120 kun TTL.
 
 Faollik yozish: autentifikatsiyalangan so'rov (JwtAuthGuard) va bot xabari → Redis `SET NX`
-(`act:{userId}:{day}:{channel}`, 26 soat) → birinchi marta bo'lsa `UserActivityDay` upsert +
-`lastSeenAt`. Har so'rovda DB'ga yozilmaydi. Tarixiy ma'lumot: `transactions.created_at` va
-`refresh_tokens.created_at` dan bir martalik backfill (kanal noma'lum → WEB).
+(`activity:day:{day}:{channel}:{userId}`, 26 soat) → birinchi marta bo'lsa `UserActivityDay` upsert;
+`lastSeenAt` 5 daqiqada ko'pi bilan bir marta. Har so'rovda DB'ga yozilmaydi. Tarixiy ma'lumot:
+`transactions.created_at` va `refresh_tokens.created_at` dan 0006 migratsiyasining o'zida (kanal `UNKNOWN`).
 
 ## Bosqichlar
 
@@ -79,13 +79,17 @@ Env (`ADMIN_TELEGRAM_IDS`, Zod), migratsiya (`ADMIN` purpose, `AdminSession`, `A
 
 ### J2 — Faollik ma'lumotlari
 Migratsiya (`lastSeenAt`, `UserActivityDay`, `Transaction.source`, `bannedAt`), faollik yozuvchi
-(guard + bot), tranzaksiya yaratish joylarida `source`, ovozli yordamchi hisoblagichlari, backfill skripti
-(`npm run admin:backfill-activity`, idempotent).
+(guard + bot), tranzaksiya yaratish joylarida `source`, ovozli yordamchi hisoblagichlari, tarixiy
+faollikni to'ldirish (0006 migratsiyasida, idempotent).
 
-**Qabul mezonlari**
-- [ ] Bir kunda 100 so'rov → bitta `UserActivityDay` qatori (Redis throttle testi)
-- [ ] Sayt, Mini App, bot, ovoz, takroriy to'lov — har biri to'g'ri `source` bilan
-- [ ] Backfill ikki marta ishlasa ham dublikat yo'q
+**Qabul mezonlari** (bajarildi, 2026-10-08)
+- [x] Bir kunda 100 so'rov → bitta `UserActivityDay` qatori (Redis throttle testi)
+- [x] Sayt, Mini App, bot, ovoz, takroriy to'lov — har biri to'g'ri `source` bilan (`test/activity.e2e-spec.ts`)
+- [x] Backfill ikki marta ishlasa ham dublikat yo'q
+
+Rejadan farqlar: (1) tarixiy faollik alohida skript emas, **0006 migratsiyasining o'zida** to'ldiriladi —
+production'da qo'lda ishga tushiriladigan qadam yo'q; (2) tarixiy kunlarning kanali ma'lum emas, shuning
+uchun ular `WEB` emas, alohida `UNKNOWN` kanali bilan yoziladi (statistikada "kanal noma'lum").
 
 ### J3 — Statistika API
 `GET /admin/stats/overview` (jami/yangi/faol foydalanuvchilar, bugun/7/30 kun, oldingi davrga nisbatan;

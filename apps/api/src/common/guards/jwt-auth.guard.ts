@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { FastifyRequest } from 'fastify';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { SessionStateService } from '../../modules/auth/session-state.service';
+import { ActivityService } from '../../modules/activity/activity.service';
+import { isMiniAppRequest } from '../utils/request-channel';
 
 export interface AccessTokenPayload {
   sub: string;
@@ -27,6 +29,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly sessions: SessionStateService,
+    private readonly activity: ActivityService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -58,6 +61,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const user: AuthenticatedUser = { id: payload.sub, sessionId: payload.sid };
     (request as unknown as { user: AuthenticatedUser }).user = user;
+    await this.activity.touch(user.id, isMiniAppRequest(request) ? 'MINIAPP' : 'WEB');
     return true;
   }
 

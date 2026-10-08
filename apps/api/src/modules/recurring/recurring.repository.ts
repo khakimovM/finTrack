@@ -140,6 +140,7 @@ export class RecurringRepository {
         date,
         note: rule.note ?? 'Takroriy to‘lov',
         recurringRuleId: rule.id,
+        source: 'RECURRING',
       },
       include: occurrenceInclude,
     });

@@ -188,8 +188,8 @@ export class DebtHandlers {
     try {
       const result =
         draft.amount === null
-          ? await this.payments.settle(user.id, draft.debtId, { accountId: draft.accountId })
-          : await this.payments.createPayment(user.id, draft.debtId, { amount: draft.amount, accountId: draft.accountId });
+          ? await this.payments.settle(user.id, draft.debtId, { accountId: draft.accountId }, 'BOT')
+          : await this.payments.createPayment(user.id, draft.debtId, { amount: draft.amount, accountId: draft.accountId }, 'BOT');
       await ctx.answerCallbackQuery({ text: 'Yozildi ✅' });
       const done = result.debt.status === 'PAID' ? '🎉 Qarz to‘liq yopildi!' : `Qoldiq: <b>${money(result.debt.remainingAmount)}</b>`;
       await ctx.editMessageText(`✅ To‘lov yozildi: <b>${money(result.payment.amount)}</b>\n${done}`, { parse_mode: 'HTML' });

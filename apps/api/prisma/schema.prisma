@@ -93,6 +93,11 @@ model User {
   timezone          String    @default("Asia/Tashkent")
   strictMode        Boolean   @default(false) @map("strict_mode")
   emailVerifiedAt   DateTime? @map("email_verified_at")
+  /// Last request through the site, Mini App or bot; written at most every few minutes.
+  lastSeenAt        DateTime? @map("last_seen_at")
+  /// Set by the admin panel (J4): a banned user cannot sign in and their sessions are ended.
+  bannedAt          DateTime? @map("banned_at")
+  banReason         String?   @map("ban_reason") @db.VarChar(300)
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
   deletedAt         DateTime? @map("deleted_at")
@@ -108,9 +113,34 @@ model User {
   notifications         Notification[]
   telegramLoginRequests TelegramLoginRequest[]
   adminSessions         AdminSession[]
+  activityDays          UserActivityDay[]
 
   @@index([email])
+  @@index([createdAt])
   @@map("users")
+}
+
+enum ActivityChannel {
+  WEB
+  MINIAPP
+  BOT
+  /// Days filled in from history by migration 0006: there was activity, not where.
+  UNKNOWN
+}
+
+/// One row per user, calendar day (Asia/Tashkent) and channel they used FinTrack on. Feeds the
+/// admin panel's active-user counts and cohorts; at most one write per key and day.
+model UserActivityDay {
+  userId    String          @map("user_id")
+  day       DateTime        @db.Date
+  channel   ActivityChannel
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day, channel])
+  @@index([day])
+  @@map("user_activity_days")
 }
 
 enum TelegramLoginPurpose {
@@ -321,24 +351,26 @@ model TransactionTag {
 // ============================================================
 
 model Transaction {
-  id              String          @id @default(uuid())
-  userId          String          @map("user_id")
-  accountId       String          @map("account_id")
+  id              String             @id @default(uuid())
+  userId          String             @map("user_id")
+  accountId       String             @map("account_id")
   type            TransactionType
   /// Amount in tiyin, always positive. The sign comes from `type`.
   amount          BigInt
   /// Amount converted to the user's base currency at the transaction date (Phase 8).
-  amountBase      BigInt?         @map("amount_base")
-  categoryId      String?         @map("category_id")
-  debtId          String?         @map("debt_id")
+  amountBase      BigInt?            @map("amount_base")
+  categoryId      String?            @map("category_id")
+  debtId          String?            @map("debt_id")
   /// Links the two rows of a single transfer.
-  transferGroupId String?         @map("transfer_group_id")
-  recurringRuleId String?         @map("recurring_rule_id")
-  date            DateTime        @db.Date
-  note            String?         @db.VarChar(500)
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
-  deletedAt       DateTime?       @map("deleted_at")
+  transferGroupId String?            @map("transfer_group_id")
+  recurringRuleId String?            @map("recurring_rule_id")
+  date            DateTime           @db.Date
+  note            String?            @db.VarChar(500)
+  /// Where the entry was made. Null for rows written before migration 0006.
+  source          TransactionSource?
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  deletedAt       DateTime?          @map("deleted_at")
 
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   account       Account          @relation(fields: [accountId], references: [id], onDelete: Restrict)
@@ -354,7 +386,16 @@ model Transaction {
   @@index([accountId, date])
   @@index([categoryId])
   @@index([transferGroupId])
+  @@index([createdAt])
   @@map("transactions")
+}
+
+enum TransactionSource {
+  WEB
+  MINIAPP
+  BOT
+  VOICE
+  RECURRING
 }
 
 // ============================================================

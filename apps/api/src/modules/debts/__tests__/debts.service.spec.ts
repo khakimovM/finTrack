@@ -67,6 +67,7 @@ function ledgerRow(overrides: Partial<Transaction>): Transaction {
     debtId: DEBT_ID,
     transferGroupId: null,
     recurringRuleId: null,
+    source: null,
     date: new Date('2026-09-01T00:00:00Z'),
     note: null,
     createdAt: created,
@@ -134,7 +135,7 @@ describe('DebtsService', () => {
         personName: 'Jasur',
         accountId: ACCOUNT,
         amount: '1000000',
-      });
+      }, 'WEB');
 
       expect(t.prisma.$transaction).toHaveBeenCalledTimes(1);
       expect(t.guard.assertCanDebit).toHaveBeenCalledWith(t.prisma.tx, USER, ACCOUNT, 1_000_000n);
@@ -155,7 +156,7 @@ describe('DebtsService', () => {
         personName: 'Bank',
         accountId: ACCOUNT,
         amount: '1000000',
-      });
+      }, 'WEB');
 
       expect(t.guard.assertCanDebit).not.toHaveBeenCalled();
     });
@@ -169,7 +170,7 @@ describe('DebtsService', () => {
           accountId: ACCOUNT,
           amount: '1',
           date: '2999-01-01',
-        }),
+        }, 'WEB'),
       ).rejects.toBeInstanceOf(FutureDateException);
       expect(t.prisma.$transaction).not.toHaveBeenCalled();
     });
@@ -244,7 +245,7 @@ describe('DebtPaymentsService', () => {
     t.repository.createPayment.mockResolvedValue(paymentResult(400_000n));
     t.repository.setStatus.mockResolvedValue(withPayments(debt({ status: 'PARTIALLY_PAID' }), [400_000n]));
 
-    const res = await t.payments.createPayment(USER, DEBT_ID, { amount: '400000', accountId: ACCOUNT });
+    const res = await t.payments.createPayment(USER, DEBT_ID, { amount: '400000', accountId: ACCOUNT }, 'WEB');
 
     expect(t.repository.lock).toHaveBeenCalledWith(t.prisma.tx, USER, DEBT_ID);
     expect(t.repository.setStatus).toHaveBeenCalledWith(t.prisma.tx, USER, DEBT_ID, 'PARTIALLY_PAID', null);
@@ -260,7 +261,7 @@ describe('DebtPaymentsService', () => {
     t.repository.createPayment.mockResolvedValue(paymentResult(400_000n));
     t.repository.setStatus.mockResolvedValue(withPayments(debt({ status: 'PAID' }), [600_000n, 400_000n]));
 
-    await t.payments.createPayment(USER, DEBT_ID, { amount: '400000', accountId: ACCOUNT });
+    await t.payments.createPayment(USER, DEBT_ID, { amount: '400000', accountId: ACCOUNT }, 'WEB');
 
     const [, , , status, paidAt] = t.repository.setStatus.mock.calls[0];
     expect(status).toBe('PAID');
@@ -273,7 +274,7 @@ describe('DebtPaymentsService', () => {
     t.repository.paidAmount.mockResolvedValue(900_000n);
 
     const error = await t.payments
-      .createPayment(USER, DEBT_ID, { amount: '200000', accountId: ACCOUNT })
+      .createPayment(USER, DEBT_ID, { amount: '200000', accountId: ACCOUNT }, 'WEB')
       .catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(DebtOverpaymentException);
@@ -287,7 +288,7 @@ describe('DebtPaymentsService', () => {
     t.repository.paidAmount.mockResolvedValue(1_000_000n);
 
     await expect(
-      t.payments.createPayment(USER, DEBT_ID, { amount: '1', accountId: ACCOUNT }),
+      t.payments.createPayment(USER, DEBT_ID, { amount: '1', accountId: ACCOUNT }, 'WEB'),
     ).rejects.toBeInstanceOf(ConflictDomainException);
   });
 
@@ -298,7 +299,7 @@ describe('DebtPaymentsService', () => {
     t.repository.createPayment.mockResolvedValue(paymentResult(300_000n));
     t.repository.setStatus.mockResolvedValue(withPayments(debt({ direction: 'I_BORROWED' }), [300_000n]));
 
-    await t.payments.createPayment(USER, DEBT_ID, { amount: '300000', accountId: ACCOUNT });
+    await t.payments.createPayment(USER, DEBT_ID, { amount: '300000', accountId: ACCOUNT }, 'WEB');
 
     expect(t.guard.assertCanDebit).toHaveBeenCalledWith(t.prisma.tx, USER, ACCOUNT, 300_000n);
     expect(t.repository.createPayment.mock.calls[0][3]).toMatchObject({ type: 'LOAN_REPAY_OUT' });
@@ -311,7 +312,7 @@ describe('DebtPaymentsService', () => {
     t.repository.createPayment.mockResolvedValue(paymentResult(750_000n));
     t.repository.setStatus.mockResolvedValue(withPayments(debt({ status: 'PAID' }), [250_000n, 750_000n]));
 
-    await t.payments.settle(USER, DEBT_ID, { accountId: ACCOUNT });
+    await t.payments.settle(USER, DEBT_ID, { accountId: ACCOUNT }, 'WEB');
 
     expect(t.repository.createPayment.mock.calls[0][3]).toMatchObject({ amount: 750_000n });
   });

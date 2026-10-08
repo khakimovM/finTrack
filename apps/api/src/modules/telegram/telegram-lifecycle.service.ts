@@ -8,6 +8,7 @@ import { DebtHandlers } from './handlers/debt.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
 import { VoiceHandlers } from './handlers/voice.handlers';
 import { miniAppUrl } from './bot-ui';
+import { ActivityService } from '../activity/activity.service';
 
 export const ALLOWED_UPDATES = ['message', 'callback_query'] as const;
 
@@ -30,6 +31,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     private readonly debtHandlers: DebtHandlers,
     private readonly entryHandlers: EntryHandlers,
     private readonly voiceHandlers: VoiceHandlers,
+    private readonly activity: ActivityService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -39,6 +41,12 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
       return;
     }
 
+    // Every private message or button tap counts as using FinTrack through the bot. Recorded after
+    // the handlers, so the contact that registers a new user already counts for them.
+    bot.use(async (ctx, next) => {
+      await next();
+      if (ctx.from && !ctx.from.is_bot && ctx.chat?.type === 'private') await this.activity.touchTelegram(BigInt(ctx.from.id));
+    });
     // Order matters: specific commands/buttons first, free-text entry parsing last.
     this.authHandlers.register(bot);
     this.menuHandlers.register(bot);

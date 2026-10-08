@@ -12,7 +12,9 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { TransactionSource } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequestSource } from '../../common/decorators/request-source.decorator';
 import { DebtsService } from './debts.service';
 import { DebtPaymentsService } from './debt-payments.service';
 import {
@@ -47,8 +49,9 @@ export class DebtsController {
   async create(
     @CurrentUser('id') userId: string,
     @Body() dto: CreateDebtDto,
+    @RequestSource() source: TransactionSource,
   ) {
-    return this.service.create(userId, dto);
+    return this.service.create(userId, dto, source);
   }
 
   @Get(':id')
@@ -96,8 +99,9 @@ export class DebtsController {
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateDebtPaymentDto,
+    @RequestSource() source: TransactionSource,
   ) {
-    return this.payments.createPayment(userId, id, dto);
+    return this.payments.createPayment(userId, id, dto, source);
   }
 
   @Post(':id/settle')
@@ -107,8 +111,9 @@ export class DebtsController {
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SettleDebtDto,
+    @RequestSource() source: TransactionSource,
   ) {
-    return this.payments.settle(userId, id, dto);
+    return this.payments.settle(userId, id, dto, source);
   }
 
   @Delete(':id/payments/:paymentId')

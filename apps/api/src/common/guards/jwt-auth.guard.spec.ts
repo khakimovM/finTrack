@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { SessionStateService } from '../../modules/auth/session-state.service';
+import { ActivityService } from '../../modules/activity/activity.service';
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
@@ -11,6 +12,7 @@ describe('JwtAuthGuard', () => {
   let jwtService: JwtService;
   let configService: ConfigService;
   let sessions: { isSessionRevoked: jest.Mock; isUserActive: jest.Mock };
+  let activity: { touch: jest.Mock };
 
   beforeEach(() => {
     reflector = new Reflector();
@@ -19,11 +21,18 @@ describe('JwtAuthGuard', () => {
       get: jest.fn().mockReturnValue('test-secret-at-least-32-characters-long'),
     } as unknown as ConfigService;
 
+    activity = { touch: jest.fn().mockResolvedValue(undefined) };
     sessions = {
       isSessionRevoked: jest.fn().mockResolvedValue(false),
       isUserActive: jest.fn().mockResolvedValue(true),
     };
-    guard = new JwtAuthGuard(reflector, jwtService, configService, sessions as unknown as SessionStateService);
+    guard = new JwtAuthGuard(
+      reflector,
+      jwtService,
+      configService,
+      sessions as unknown as SessionStateService,
+      activity as unknown as ActivityService,
+    );
   });
 
   const createMockContext = (options: {

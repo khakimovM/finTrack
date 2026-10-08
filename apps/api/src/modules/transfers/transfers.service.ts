@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { TransactionSource } from '@prisma/client';
 import { TransferResponse, CreateTransferInput, parseIsoDate } from '@fintrack/shared';
 import { TransfersRepository } from './transfers.repository';
 import { AccountAccessService } from '../accounts/account-access.service';
@@ -23,7 +24,7 @@ export class TransfersService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(userId: string, dto: CreateTransferInput): Promise<TransferResponse> {
+  async create(userId: string, dto: CreateTransferInput, source: TransactionSource): Promise<TransferResponse> {
     if (dto.fromAccountId === dto.toAccountId) {
       throw new SameAccountTransferException();
     }
@@ -43,6 +44,7 @@ export class TransfersService {
         amount,
         date: parseIsoDate(dto.date),
         note: dto.note,
+        source,
       });
     });
 
