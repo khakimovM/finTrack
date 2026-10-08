@@ -16,7 +16,7 @@ export function toFrom(ctx: Context): TelegramFrom | null {
   };
 }
 
-/** /start (with login_/link_ payloads), shared contacts and the "not me" button. */
+/** /start (with login_/link_/admin_ payloads), /id, shared contacts and the "not me" button. */
 @Injectable()
 export class AuthHandlers {
   constructor(
@@ -36,6 +36,13 @@ export class AuthHandlers {
 
       const user = await this.loginBot.handlePlainStart(from);
       if (user) await this.menu.sendMenu(ctx, LOGIN_TEXT.welcomeBack(user.name));
+    });
+
+    // Anyone's own Telegram id, e.g. to put it in ADMIN_TELEGRAM_IDS. Not in the command menu.
+    pm.command('id', async (ctx) => {
+      const from = toFrom(ctx);
+      if (!from) return;
+      await ctx.reply(LOGIN_TEXT.yourId(from.id), { parse_mode: 'HTML' });
     });
 
     pm.on('message:contact', async (ctx) => {

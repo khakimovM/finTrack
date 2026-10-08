@@ -30,7 +30,23 @@ export const LOGIN_TEXT = {
   newLogin: (device: string, ip: string | null, time: string) =>
     `🔔 Hisobingizga yangi kirish: ${escapeHtml(device)}${ip ? `, IP ${escapeHtml(ip)}` : ''}, ${time}.\n\n` +
     'Bu siz bo‘lmasangiz, Sozlamalar → Sessiyalar bo‘limidan uni darhol yakunlang.',
+
+  // Admin panel. A different heading and warning, so it is never mistaken for the ordinary code.
+  adminCode: (code: string, device: string, ip: string | null) =>
+    `🛡 <b>FinTrack admin panel</b> kirish kodi:\n\n<code>${code}</code>\n\n` +
+    `Bu oddiy kirish kodi emas: u <b>admin huquqi</b> beradi. Kod 3 daqiqa amal qiladi, uni hech kimga bermang.\n\n` +
+    `So‘rov: ${escapeHtml(device)}${ip ? `, IP ${escapeHtml(ip)}` : ''}`,
+  adminNoAccount: 'Admin panelga kirish uchun avval botda ro‘yxatdan o‘ting: /start',
+  adminLogin: (device: string, ip: string | null, time: string) =>
+    `🛡 Admin panelga kirildi: ${escapeHtml(device)}${ip ? `, IP ${escapeHtml(ip)}` : ''}, ${time}.\n\n` +
+    'Bu siz bo‘lmasangiz, ADMIN_TELEGRAM_IDS va server kirishlarini darhol tekshiring.',
+  yourId: (id: number) => `🆔 Telegram ID'ingiz: <code>${id}</code>`,
 };
+
+/** Date and time of a sign-in notice, in the account's own time zone. */
+export function noticeTime(at: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('uz-UZ', { timeZone, dateStyle: 'short', timeStyle: 'short' }).format(at);
+}
 
 /** "Chrome, Windows" from a User-Agent, good enough for a security notice. */
 export function describeDevice(userAgent: string | null | undefined): string {

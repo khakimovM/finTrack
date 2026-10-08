@@ -4,6 +4,10 @@ export const queryKeys = {
     sessions: () => ['auth', 'sessions'] as const,
     telegramLogin: (requestId: string) => ['auth', 'telegram-login', requestId] as const,
   },
+  admin: {
+    all: () => ['admin'] as const,
+    session: () => ['admin', 'session'] as const,
+  },
   accounts: {
     all: () => ['accounts'] as const,
     detail: (id: string) => ['accounts', id] as const,

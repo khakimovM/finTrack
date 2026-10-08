@@ -8,6 +8,8 @@ export const E2E = {
   botToken: '123456789:AAFakeTokenForPlaywrightOnly_abcdefghi',
   botUsername: 'fintrack_e2e_bot',
   webhookSecret: 'playwright_webhook_secret_that_is_long_enough',
+  /** ADMIN_TELEGRAM_IDS of the stack; below the ids newTelegramUser hands out (1e9+). */
+  adminTelegramId: 200_000_002,
 };
 
 export const API_URL = `http://localhost:${E2E.apiPort}`;

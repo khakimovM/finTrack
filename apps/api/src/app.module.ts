@@ -27,6 +27,7 @@ import { ExportModule } from './modules/export/export.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { UsersModule } from './modules/users/users.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { CsrfGuard } from './common/guards/csrf.guard';
 
@@ -107,6 +108,7 @@ const REDACTED_LOG_PATHS = [
     JobsModule,
     UsersModule,
     TelegramModule,
+    AdminModule,
   ],
 
   providers: [

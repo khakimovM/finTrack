@@ -58,9 +58,10 @@ Sxemalarning manbasi: `packages/shared/src/schemas/*` (Zod), hujjat ular bilan m
 
 ---
 
-## Endpointlar ro'yxati (77 ta)
+## Endpointlar ro'yxati (83 ta)
 
-✅ — sessiya kerak · ❌ — ochiq · 🍪 — refresh cookie · 🤖 — Telegram webhook sirli tokeni
+✅ — sessiya kerak · ❌ — ochiq · 🍪 — refresh cookie · 🤖 — Telegram webhook sirli tokeni ·
+🛡 — admin sessiyasi (`ft_admin` cookie)
 
 ### Auth (9)
 | Metod | Yo'l | Auth | Vazifasi |
@@ -130,6 +131,18 @@ Email/parol bilan ro'yxatdan o'tish va kirish **yo'q**: hisob faqat Telegram orq
 ### Health (2)
 `GET /health` (jarayon tirik) · `GET /health/ready` (DB + Redis; ishlamasa `503`)
 
+### Admin auth (6)
+| Metod | Yo'l | Auth | Vazifasi |
+|---|---|---|---|
+| POST | `/admin/auth/telegram/start` | ❌ | admin kirish so'rovi, deep link `start=admin_…` (5/min) |
+| GET | `/admin/auth/telegram/status/:requestId` | ❌ | faqat `ADMIN` so'rovlari holati |
+| POST | `/admin/auth/telegram/verify` | ❌ | admin kodi → `ft_admin` cookie (10/min) |
+| POST | `/admin/auth/telegram/resend` | ❌ | admin kodini qayta yuborish (5/min) |
+| POST | `/admin/auth/logout` | 🛡 | admin sessiyasini yakunlash (muddati o'tgan bo'lsa ham cookie o'chadi) |
+| GET | `/admin/auth/me` | 🛡 | `{ admin: { id, name, telegramUsername }, expiresAt }` |
+
+Batafsil: "Admin panel" bo'limi va `docs/09-ADMIN-PANEL.md`.
+
 ---
 
 ## Telegram orqali kirish
@@ -188,6 +201,23 @@ undan keyin kelsa — butun oila bekor qilinadi, `401 TOKEN_REUSE_DETECTED`.
 }
 ```
 Telefon raqami hech qachon to'liq qaytmaydi.
+
+## Admin panel
+
+Faqat `ADMIN_TELEGRAM_IDS` dagi Telegram hisobi kira oladi; ro'yxat bo'sh bo'lsa barcha `/admin/*`
+yo'llari `404`. Kirish oddiy kod oqimi bilan bir xil, uch farqi bor:
+
+- deep link `start=admin_<nonce>`; bot faqat ro'yxatdagi, ro'yxatdan o'tgan hisobga **alohida**
+  "🛡 admin panel" kodini yuboradi. Boshqa odamga "havola muddati tugagan" javobi, so'rov `CANCELLED`,
+  urinish `admin_audit_logs` ga `LOGIN_DENIED` bo'lib yoziladi;
+- `verify` foydalanuvchi sessiyasini emas, `ft_admin` cookie'sini o'rnatadi (`httpOnly`,
+  `SameSite=Strict`, `path=/api/v1/admin`): 8 soat, 1 soat harakatsizlikda tugaydi; javob
+  `AdminSessionResponse`. Ruxsat har so'rovda ro'yxatga qarab qayta tekshiriladi;
+- 🛡 yo'llar sessiyasiz, soxta cookie bilan yoki oddiy `accessToken` bilan **`404 NOT_FOUND`** qaytaradi
+  (noma'lum URL bilan bir xil). `ft_admin` esa foydalanuvchi API'siga hech narsa ochmaydi (`401`).
+  Foydalanuvchi va admin so'rovlari bir-birining endpointlarida `404`.
+
+Bot buyrug'i `/id` — yozuvchining Telegram ID'sini qaytaradi (`ADMIN_TELEGRAM_IDS` ni to'ldirish uchun).
 
 ## Users
 

@@ -50,12 +50,21 @@ export const sharedContact = (user: TelegramUser) =>
     contact: { phone_number: `99890${String(user.id).slice(-7)}`, first_name: user.first_name, user_id: user.id },
   });
 
+async function messagesTo(user: TelegramUser): Promise<string[]> {
+  const res = await fetch(`${MOCK_TELEGRAM_URL}/__messages?chat_id=${user.id}`);
+  return (await res.json()) as string[];
+}
+
+/** How many messages the bot has sent this user so far; pass it to waitForCode to skip old codes. */
+export async function messageCount(user: TelegramUser): Promise<number> {
+  return (await messagesTo(user)).length;
+}
+
 /** Waits for the one-time code the bot sent to this user through the mock Bot API. */
-export async function waitForCode(user: TelegramUser, timeoutMs = 10_000): Promise<string> {
+export async function waitForCode(user: TelegramUser, timeoutMs = 10_000, since = 0): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const res = await fetch(`${MOCK_TELEGRAM_URL}/__messages?chat_id=${user.id}`);
-    const texts = (await res.json()) as string[];
+    const texts = (await messagesTo(user)).slice(since);
     const code = texts
       .map((t) => /<code>(\d{6})<\/code>/.exec(t)?.[1])
       .filter(Boolean)

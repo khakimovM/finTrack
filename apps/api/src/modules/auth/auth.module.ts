@@ -10,9 +10,10 @@ import { TelegramLoginService } from './telegram-login.service';
 import { TelegramLoginBotService } from './telegram-login-bot.service';
 import { LoginCodeService } from './login-code.service';
 import { TelegramWebAppService } from './telegram-webapp.service';
+import { AdminCoreModule } from '../admin/core/admin-core.module';
 
 @Module({
-  imports: [JwtModule.register({})],
+  imports: [JwtModule.register({}), AdminCoreModule],
   controllers: [AuthController],
   providers: [
     AuthService,

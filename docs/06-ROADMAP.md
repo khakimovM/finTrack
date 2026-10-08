@@ -200,6 +200,14 @@ Qolgan: haqiqiy Telegram bilan sinov (ovoz, Mini App) va production deploy — f
 
 ---
 
+## Bosqich J — Admin panel (keyingi ish)
+
+Faqat loyiha egasi kiradigan panel: foydalanuvchilar statistikasi, o'sish, faollik, foydalanish,
+tizim holati, bloklash, botdan xabar tarqatish. Botda ikki xil kod: foydalanuvchi va admin.
+To'liq reja, qarorlar va qabul mezonlari: **`docs/09-ADMIN-PANEL.md`** (J1–J7).
+
+---
+
 ## Ixtiyoriy — Bosqich 13: ko'p valyuta
 `Account.currency`, `ExchangeRate`, `amountBase`, kurs qotirish, statistikani bazaviy
 valyutada hisoblash. Faqat 12-bosqich tugagach boshlanadi.

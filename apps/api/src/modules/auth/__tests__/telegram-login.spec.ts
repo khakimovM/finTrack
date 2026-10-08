@@ -5,9 +5,11 @@ import { TelegramLoginRepository } from '../telegram-login.repository';
 import { TelegramLoginBotService } from '../telegram-login-bot.service';
 import { AuthRepository } from '../auth.repository';
 import { SessionStateService } from '../session-state.service';
-import { describeDevice, escapeHtml } from '../telegram-login.messages';
+import { LOGIN_TEXT, describeDevice, escapeHtml } from '../telegram-login.messages';
 import { TelegramBotService } from '../../../infra/telegram/telegram-bot.service';
 import { RedisService } from '../../../infra/redis/redis.service';
+import { AdminAccessService } from '../../admin/core/admin-access.service';
+import { AdminAuditService } from '../../admin/core/admin-audit.service';
 
 function request(overrides: Partial<TelegramLoginRequest> = {}): TelegramLoginRequest {
   return {
@@ -65,27 +67,94 @@ describe('LoginCodeService', () => {
     await expect(t.service.issue(request(), 42n, 'user-1')).resolves.toBe('RATE_LIMITED');
     expect(t.repository.update).not.toHaveBeenCalled();
   });
+
+  it('marks an admin code as an admin code, never as the ordinary sign-in one', async () => {
+    const t = codeService();
+    await t.service.issue(request({ purpose: 'ADMIN' }), 42n, 'user-1');
+    const sentText: string = t.telegram.send.mock.calls[0][1];
+    expect(sentText).toContain('admin panel');
+    expect(sentText).toContain('admin huquqi');
+  });
+});
+
+function botService(adminIds = '') {
+  const repository = {
+    findAwaitingContact: jest.fn().mockResolvedValue(null),
+    findByNonceHash: jest.fn(),
+    transition: jest.fn().mockResolvedValue(true),
+  };
+  const codes = { issue: jest.fn() };
+  const auth = {
+    findUserByTelegramId: jest.fn().mockResolvedValue(null),
+    touchTelegramProfile: jest.fn(),
+    isPhoneTaken: jest.fn().mockResolvedValue(false),
+    createTelegramUser: jest.fn().mockResolvedValue({ id: 'new-user' }),
+  };
+  const telegram = { send: jest.fn() };
+  const audit = { record: jest.fn() };
+  const config = { get: jest.fn((key: string) => (key === 'ADMIN_TELEGRAM_IDS' ? adminIds : undefined)) };
+  const service = new TelegramLoginBotService(
+    repository as unknown as TelegramLoginRepository,
+    codes as unknown as LoginCodeService,
+    auth as unknown as AuthRepository,
+    {} as SessionStateService,
+    telegram as unknown as TelegramBotService,
+    new AdminAccessService(config as unknown as ConfigService),
+    audit as unknown as AdminAuditService,
+  );
+  return { service, repository, codes, auth, telegram, audit };
+}
+
+describe('TelegramLoginBotService admin sign-in', () => {
+  const NONCE = 'abcdefghijklmnopqrstuvwxyz012345';
+
+  it('sends an admin code to a registered account on the admin list', async () => {
+    const t = botService('7001');
+    t.repository.findByNonceHash.mockResolvedValue(request({ purpose: 'ADMIN' }));
+    t.auth.findUserByTelegramId.mockResolvedValue({ id: 'owner' });
+
+    await expect(t.service.handleStartPayload(`admin_${NONCE}`, { id: 7001, firstName: 'Ega' })).resolves.toBe(true);
+    expect(t.codes.issue).toHaveBeenCalledWith(expect.objectContaining({ purpose: 'ADMIN' }), 7001n, 'owner');
+    expect(t.audit.record).not.toHaveBeenCalled();
+  });
+
+  it('answers anyone else like an expired link, cancels the request and records the attempt', async () => {
+    const t = botService('7001');
+    t.repository.findByNonceHash.mockResolvedValue(request({ purpose: 'ADMIN' }));
+    t.auth.findUserByTelegramId.mockResolvedValue({ id: 'stranger' });
+
+    await t.service.handleStartPayload(`admin_${NONCE}`, { id: 9009, firstName: 'Begona', username: 'begona' });
+
+    expect(t.codes.issue).not.toHaveBeenCalled();
+    expect(t.repository.transition).toHaveBeenCalledWith(request().id, ['PENDING'], 'CANCELLED');
+    expect(t.telegram.send).toHaveBeenCalledWith(9009n, LOGIN_TEXT.expired, { html: true });
+    expect(t.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'LOGIN_DENIED', telegramId: 9009n, meta: { reason: 'not_admin', username: 'begona' } }),
+    );
+  });
+
+  it('refuses everyone when no admin is configured', async () => {
+    const t = botService('');
+    t.repository.findByNonceHash.mockResolvedValue(request({ purpose: 'ADMIN' }));
+    t.auth.findUserByTelegramId.mockResolvedValue({ id: 'owner' });
+
+    await t.service.handleStartPayload(`admin_${NONCE}`, { id: 7001, firstName: 'Ega' });
+    expect(t.codes.issue).not.toHaveBeenCalled();
+  });
+
+  it('does not accept a user sign-in link under the admin prefix, or the other way round', async () => {
+    const t = botService('7001');
+    t.repository.findByNonceHash.mockResolvedValue(request({ purpose: 'LOGIN' }));
+    t.auth.findUserByTelegramId.mockResolvedValue({ id: 'owner' });
+
+    await t.service.handleStartPayload(`admin_${NONCE}`, { id: 7001, firstName: 'Ega' });
+    expect(t.codes.issue).not.toHaveBeenCalled();
+    expect(t.telegram.send).toHaveBeenCalledWith(7001n, LOGIN_TEXT.expired, { html: true });
+  });
 });
 
 describe('TelegramLoginBotService.handleContact', () => {
-  function setup() {
-    const repository = { findAwaitingContact: jest.fn().mockResolvedValue(null) };
-    const codes = { issue: jest.fn() };
-    const auth = {
-      findUserByTelegramId: jest.fn().mockResolvedValue(null),
-      isPhoneTaken: jest.fn().mockResolvedValue(false),
-      createTelegramUser: jest.fn().mockResolvedValue({ id: 'new-user' }),
-    };
-    const telegram = { send: jest.fn() };
-    const service = new TelegramLoginBotService(
-      repository as unknown as TelegramLoginRepository,
-      codes as unknown as LoginCodeService,
-      auth as unknown as AuthRepository,
-      {} as SessionStateService,
-      telegram as unknown as TelegramBotService,
-    );
-    return { service, repository, codes, auth };
-  }
+  const setup = () => botService();
 
   it('ignores a contact card that belongs to someone else', async () => {
     const t = setup();

@@ -43,6 +43,20 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // The owner's admin panel, loaded only when someone opens it: users never download its code.
+  {
+    path: '/admin/login',
+    lazy: () => import('./pages/admin/AdminLoginPage').then((m) => ({ Component: m.AdminLoginPage })),
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: '/admin',
+    lazy: () => import('./features/admin/components/AdminShell').then((m) => ({ Component: m.AdminShell })),
+    errorElement: <ErrorPage />,
+    children: [
+      { index: true, lazy: () => import('./pages/admin/AdminHomePage').then((m) => ({ Component: m.AdminHomePage })) },
+    ],
+  },
   // Component gallery for checking the design system; compiled out of production builds.
   ...(import.meta.env.DEV
     ? [{ path: '/dev/ui', lazy: () => import('./pages/dev/UiGallery').then((m) => ({ Component: m.UiGallery })) }]

@@ -4,9 +4,11 @@ import { TelegramLoginRepository } from './telegram-login.repository';
 import { LoginCodeService } from './login-code.service';
 import { AuthRepository } from './auth.repository';
 import { SessionStateService } from './session-state.service';
-import { hashNonce } from './telegram-login.service';
+import { START_PREFIX, hashNonce } from './telegram-login.service';
 import { LOGIN_TEXT } from './telegram-login.messages';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
+import { AdminAccessService } from '../admin/core/admin-access.service';
+import { AdminAuditService } from '../admin/core/admin-audit.service';
 
 export interface TelegramFrom {
   id: number;
@@ -51,16 +53,18 @@ export class TelegramLoginBotService {
     private readonly authRepository: AuthRepository,
     private readonly sessions: SessionStateService,
     private readonly telegram: TelegramBotService,
+    private readonly adminAccess: AdminAccessService,
+    private readonly audit: AdminAuditService,
   ) {}
 
-  /** `/start login_<nonce>` or `/start link_<nonce>`. Returns false for other payloads. */
+  /** `/start login_<nonce>`, `link_<nonce>` or `admin_<nonce>`. Returns false for other payloads. */
   async handleStartPayload(payload: string, from: TelegramFrom): Promise<boolean> {
-    const match = /^(login|link)_([A-Za-z0-9_-]{16,64})$/.exec(payload);
+    const match = /^(login|link|admin)_([A-Za-z0-9_-]{16,64})$/.exec(payload);
     if (!match) return false;
 
     const request = await this.repository.findByNonceHash(hashNonce(match[2]));
     const telegramId = BigInt(from.id);
-    if (!request || request.purpose !== (match[1] === 'login' ? 'LOGIN' : 'LINK')) {
+    if (!request || START_PREFIX[request.purpose] !== match[1]) {
       await this.telegram.send(telegramId, LOGIN_TEXT.expired, { html: true });
       return true;
     }
@@ -72,6 +76,10 @@ export class TelegramLoginBotService {
 
     if (request.purpose === 'LINK') {
       await this.completeLink(request, from);
+      return true;
+    }
+    if (request.purpose === 'ADMIN') {
+      await this.issueAdminCode(request, from);
       return true;
     }
 
@@ -148,6 +156,29 @@ export class TelegramLoginBotService {
     if (await this.repository.transition(request.id, ['PENDING', 'AWAITING_CONTACT', 'CODE_SENT'], 'CANCELLED')) {
       await this.telegram.send(BigInt(fromId), LOGIN_TEXT.cancelled, { html: true });
     }
+  }
+
+  /**
+   * Admin sign-in: a code only for a registered account on the admin list. Anyone else gets the
+   * ordinary "link expired" reply, so the bot never confirms that an admin panel exists.
+   */
+  private async issueAdminCode(request: TelegramLoginRequest, from: TelegramFrom): Promise<void> {
+    const telegramId = BigInt(from.id);
+    const allowed = this.adminAccess.isAdmin(telegramId);
+    const user = allowed ? await this.authRepository.findUserByTelegramId(telegramId) : null;
+    if (user) {
+      await this.codes.issue(request, telegramId, user.id);
+      return;
+    }
+
+    await this.repository.transition(request.id, ['PENDING'], 'CANCELLED');
+    await this.audit.record({
+      action: 'LOGIN_DENIED',
+      telegramId,
+      ipAddress: request.ipAddress,
+      meta: { reason: allowed ? 'no_account' : 'not_admin', username: from.username ?? null },
+    });
+    await this.telegram.send(telegramId, allowed ? LOGIN_TEXT.adminNoAccount : LOGIN_TEXT.expired, { html: true });
   }
 
   private async completeLink(request: TelegramLoginRequest, from: TelegramFrom): Promise<void> {

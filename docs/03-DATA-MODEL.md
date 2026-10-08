@@ -115,6 +115,17 @@ Bitta kirish urinishi. Deep link'dagi `nonce` faqat hash ko'rinishida (`nonceHas
 kod ham `HMAC(requestId:code, OTP_SECRET)` — ochiq holda hech qayerda yo'q. Kod so'rovga bog'langan,
 3 daqiqa amal qiladi, 5 urinish (`attempts`, qator qulfi ostida hisoblanadi), bir marta ishlatiladi.
 `status`: `PENDING` → `AWAITING_CONTACT` → `CODE_SENT` → `CONSUMED` | `CANCELLED` | `EXPIRED`.
+`purpose`: `LOGIN` (sayt), `LINK` (eski hisobga Telegram ulash), `ADMIN` (admin panel, 0005 migratsiyasi).
+
+## Admin panel — `AdminSession`, `AdminAuditLog`
+
+- `AdminSession` — foydalanuvchi sessiyalaridan alohida. Cookie'dagi tasodifiy token faqat SHA-256
+  ko'rinishida (`tokenHash @unique`); `expiresAt` = kirishdan 8 soat, `lastUsedAt` (daqiqada ko'pi bilan
+  bir marta yoziladi) 1 soatdan eski bo'lsa sessiya tugagan. Admin huquqi bazada saqlanmaydi:
+  `ADMIN_TELEGRAM_IDS` env'i har so'rovda tekshiriladi.
+- `AdminAuditLog` — faqat qo'shiladigan jurnal: `LOGIN`, `LOGIN_DENIED` (`adminUserId = null`,
+  `telegramId` va sabab `meta` da), `LOGOUT`, keyingi bosqichlarda `BAN`/`UNBAN`/`REVOKE_SESSIONS`/
+  `BROADCAST`/`EXPORT`. Tashqi kalit yo'q — yozuv tilga olingan foydalanuvchidan uzoq yashaydi.
 
 ## Bildirishnomalar
 

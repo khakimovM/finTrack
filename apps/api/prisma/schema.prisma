@@ -107,6 +107,7 @@ model User {
   recurringRules        RecurringRule[]
   notifications         Notification[]
   telegramLoginRequests TelegramLoginRequest[]
+  adminSessions         AdminSession[]
 
   @@index([email])
   @@map("users")
@@ -115,6 +116,7 @@ model User {
 enum TelegramLoginPurpose {
   LOGIN // web sign-in: the bot sends a one-time code
   LINK // attach Telegram to an existing (legacy) account from Settings
+  ADMIN // admin panel sign-in: only Telegram ids listed in ADMIN_TELEGRAM_IDS get a code
 }
 
 enum TelegramLoginStatus {
@@ -174,6 +176,57 @@ model RefreshToken {
   @@index([userId, revokedAt])
   @@index([familyId])
   @@map("refresh_tokens")
+}
+
+// ============================================================
+// ADMIN PANEL (owner only, see docs/09-ADMIN-PANEL.md)
+// ============================================================
+
+/// An admin panel session, separate from user sessions. The cookie holds a random token; only
+/// its SHA-256 is stored. Ends 8 h after sign-in or after 1 h without a request.
+model AdminSession {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  ipAddress  String?   @map("ip_address")
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime  @default(now()) @map("last_used_at")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("admin_sessions")
+}
+
+enum AdminAuditAction {
+  LOGIN
+  LOGIN_DENIED
+  LOGOUT
+  BAN
+  UNBAN
+  REVOKE_SESSIONS
+  BROADCAST
+  EXPORT
+}
+
+/// Everything done in the admin panel, and every refused attempt to get in. No foreign keys:
+/// the record outlives the users it mentions.
+model AdminAuditLog {
+  id           String           @id @default(uuid())
+  /// Null for refused sign-ins by someone who is not an admin.
+  adminUserId  String?          @map("admin_user_id")
+  action       AdminAuditAction
+  targetUserId String?          @map("target_user_id")
+  telegramId   BigInt?          @map("telegram_id")
+  meta         Json?
+  ipAddress    String?          @map("ip_address")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("admin_audit_logs")
 }
 
 // ============================================================
