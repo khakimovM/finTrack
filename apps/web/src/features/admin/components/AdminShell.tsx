@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChartPie, LayoutGrid, LogOut, ScrollText, Server, TrendingUp, Users, type LucideIcon } from 'lucide-react';
+import { ChartPie, LayoutGrid, LogOut, Megaphone, ScrollText, Server, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 import { Logo } from '../../../components/brand/Logo';
 import { Button } from '../../../components/ui/Button';
 import { Chip } from '../../../components/ui/Chip';
@@ -20,6 +20,7 @@ const NAV: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }>
   { to: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
   { to: '/admin/growth', label: 'O‘sish', icon: TrendingUp },
   { to: '/admin/usage', label: 'Foydalanish', icon: ChartPie },
+  { to: '/admin/broadcasts', label: 'Xabarlar', icon: Megaphone },
   { to: '/admin/system', label: 'Tizim', icon: Server },
   { to: '/admin/audit', label: 'Audit', icon: ScrollText },
 ];

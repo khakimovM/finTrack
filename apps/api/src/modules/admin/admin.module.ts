@@ -17,6 +17,11 @@ import { AdminUsersService } from './users/admin-users.service';
 import { AdminSystemController } from './system/admin-system.controller';
 import { AdminSystemService } from './system/admin-system.service';
 import { AdminAuditLogService } from './system/admin-audit-log.service';
+import { BroadcastsController } from './broadcasts/broadcasts.controller';
+import { BroadcastsService } from './broadcasts/broadcasts.service';
+import { BroadcastsRepository } from './broadcasts/broadcasts.repository';
+import { BroadcastDeliveryService } from './broadcasts/broadcast-delivery.service';
+import { BroadcastProcessor } from './broadcasts/broadcast.processor';
 
 /**
  * The owner's admin panel (docs/09-ADMIN-PANEL.md). The only module allowed to read across
@@ -26,15 +31,16 @@ import { AdminAuditLogService } from './system/admin-audit-log.service';
   imports: [
     AuthModule,
     AdminCoreModule,
-    // Read-only here: the system page shows their counts and latest failures.
+    // Broadcasts are this module's own queue; the others are only read by the system page.
     BullModule.registerQueue(
       { name: QUEUES.RECURRING },
       { name: QUEUES.DEBT_REMINDERS },
       { name: QUEUES.TELEGRAM_OUTBOX },
       { name: QUEUES.DAILY_DIGEST },
+      { name: QUEUES.BROADCAST },
     ),
   ],
-  controllers: [AdminAuthController, AdminStatsController, AdminUsersController, AdminSystemController],
+  controllers: [AdminAuthController, AdminStatsController, AdminUsersController, AdminSystemController, BroadcastsController],
   providers: [
     AdminAuthService,
     AdminSessionService,
@@ -46,6 +52,10 @@ import { AdminAuditLogService } from './system/admin-audit-log.service';
     AdminUsersRepository,
     AdminSystemService,
     AdminAuditLogService,
+    BroadcastsService,
+    BroadcastsRepository,
+    BroadcastDeliveryService,
+    BroadcastProcessor,
   ],
 })
 export class AdminModule {}

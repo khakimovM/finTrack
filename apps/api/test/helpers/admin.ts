@@ -13,8 +13,13 @@ export async function registerOwner(ctx: TestApp): Promise<void> {
   await ctx.deliver(contactUpdate(OWNER, OWNER.id, '998901000001'));
 }
 
-/** A browser signed into the admin panel with the bot's admin code. */
+/**
+ * A browser signed into the admin panel with the bot's admin code. The bot sends one person at
+ * most five codes in 15 minutes, and every admin suite signs the same owner in: start each sign-in
+ * with a clean count, as a person signing in once would have.
+ */
 export async function signInAsAdmin(ctx: TestApp): Promise<ApiClient> {
+  await ctx.app.get(RedisService).del(`tg:codes:${OWNER.id}`);
   const browser = new ApiClient(ctx);
   const start = await browser.post('/admin/auth/telegram/start');
   if (start.status !== 201) throw new Error(`admin start failed: ${start.status}`);

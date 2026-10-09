@@ -46,8 +46,9 @@ export class AdminSystemService {
     @InjectQueue(QUEUES.DEBT_REMINDERS) reminders: Queue,
     @InjectQueue(QUEUES.TELEGRAM_OUTBOX) outbox: Queue,
     @InjectQueue(QUEUES.DAILY_DIGEST) digest: Queue,
+    @InjectQueue(QUEUES.BROADCAST) broadcast: Queue,
   ) {
-    this.queues = [recurring, reminders, outbox, digest];
+    this.queues = [recurring, reminders, outbox, digest, broadcast];
   }
 
   async status(): Promise<AdminSystemResponse> {

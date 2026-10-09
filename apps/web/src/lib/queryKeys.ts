@@ -16,6 +16,8 @@ export const queryKeys = {
     userList: (query: object) => ['admin', 'users', 'list', query] as const,
     user: (id: string) => ['admin', 'users', 'detail', id] as const,
     system: () => ['admin', 'system'] as const,
+    broadcastPreview: (segment: string, includeOptedOut: boolean) => ['admin', 'broadcasts', 'preview', segment, includeOptedOut] as const,
+    broadcasts: (page: number) => ['admin', 'broadcasts', 'list', page] as const,
     audit: (query: object) => ['admin', 'audit', query] as const,
   },
   accounts: {

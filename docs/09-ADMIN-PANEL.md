@@ -160,10 +160,19 @@ qiluvchilar soni), `POST /admin/broadcasts/test` (faqat adminning o'ziga), `POST
 (tasdiq bilan), BullMQ navbati ~25 xabar/s, `telegramBlockedAt` larga yuborilmaydi, 403 → belgilanadi,
 jarayon va natija UI'da; `notifyTelegram: false` bo'lganlarga ham yuboriladimi — J6 boshida so'raladi.
 
-**Qabul mezonlari**
-- [ ] Avval test xabari, keyin tasdiq oynasida aniq qabul qiluvchilar soni
-- [ ] Qayta ishga tushsa ham bir odamga ikki marta bormaydi (idempotent)
-- [ ] Natija: yuborildi / bot bloklangan / xato
+**Qaror (2026-10-09):** `notifyTelegram: false` bo'lganlarga — **har xabar uchun tanlanadi**: formada
+"Bildirishnomalarni o'chirganlarga ham yuborish" belgisi, standart holatda o'chiq.
+
+**Qabul mezonlari** (bajarildi, 2026-10-09; `test/admin-broadcasts.e2e-spec.ts`, `e2e/admin.spec.ts`)
+- [x] Avval test xabari, keyin tasdiq oynasida aniq qabul qiluvchilar soni (server ham tekshiradi:
+  test qilinmagan matn → `422 BROADCAST_NOT_TESTED`, son o'zgargan → `409 RECIPIENTS_CHANGED`)
+- [x] Qayta ishga tushsa ham bir odamga ikki marta bormaydi (bir vaqtda uchta yuboruvchi va uzilgan yuborish testlangan)
+- [x] Natija: yuborildi / bot bloklangan / xato (jarayon UI'da har 2 s yangilanadi)
+
+Aniqlashtirishlar: (1) qabul qiluvchilar yaratish paytida qotiriladi (`BroadcastRecipient`, 0008);
+(2) bir vaqtda faqat bitta xabar (`409 BROADCAST_IN_PROGRESS`) — ikkitasi botning ~30 xabar/s chegarasini
+bo'lishib oshirib yuborardi; (3) xabar oddiy matn, formatlashsiz; (4) Telegram vaqtinchalik xato bersa (429,
+tarmoq) bir marta qayta urinadi, keyin `failed`.
 
 ### J7 — Hujjatlar, e2e, deploy
 `docs/01–05` yangilanadi (admin roli, arxitektura, data model, API kontrakt, frontend), Playwright:

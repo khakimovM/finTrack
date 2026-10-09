@@ -13,6 +13,11 @@ import {
   AdminUsersExportQuery,
   AdminUsersQuery,
   AdminUsersResponse,
+  BroadcastAudience,
+  BroadcastListResponse,
+  BroadcastPreviewResponse,
+  BroadcastResponse,
+  CreateBroadcastInput,
 } from '@fintrack/shared';
 import { api } from '../../../lib/api';
 
@@ -62,6 +67,22 @@ export const adminApi = {
   },
   exportUsers: async (query: Partial<AdminUsersExportQuery>): Promise<Blob> => {
     const res = await api.get<Blob>('/admin/users/export.csv', { params: params(query), responseType: 'blob' });
+    return res.data;
+  },
+
+  broadcastPreview: async (audience: BroadcastAudience): Promise<BroadcastPreviewResponse> => {
+    const res = await api.post<{ data: BroadcastPreviewResponse }>('/admin/broadcasts/preview', audience);
+    return res.data.data;
+  },
+  broadcastTest: async (text: string): Promise<void> => {
+    await api.post('/admin/broadcasts/test', { text });
+  },
+  broadcast: async (input: CreateBroadcastInput): Promise<BroadcastResponse> => {
+    const res = await api.post<{ data: BroadcastResponse }>('/admin/broadcasts', input);
+    return res.data.data;
+  },
+  broadcasts: async (page: number): Promise<BroadcastListResponse> => {
+    const res = await api.get<BroadcastListResponse>('/admin/broadcasts', { params: { page } });
     return res.data;
   },
 

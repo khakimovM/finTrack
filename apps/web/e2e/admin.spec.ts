@@ -45,7 +45,7 @@ test('a visitor without an admin session sees an ordinary 404 at /admin', async 
   await expect(page.getByRole('heading', { name: 'Sahifa topilmadi' })).toBeVisible();
 });
 
-test('the owner signs in, finds a person, bans and unbans them, and checks the system and the audit log', async ({ page }) => {
+test('the owner signs in, bans and unbans a person, broadcasts a message, and checks the system and the audit log', async ({ page }) => {
   // The test database outlives runs: a unique reason finds this run's audit row.
   const stamp = Date.now() % 100_000;
   const reason = `Playwright tekshiruvi ${stamp}`;
@@ -84,6 +84,23 @@ test('the owner signs in, finds a person, bans and unbans them, and checks the s
 
   await page.getByRole('link', { name: 'Audit' }).click();
   await expect(page.getByText(`Sabab: ${reason} · 0 sessiya tugatildi`)).toBeVisible();
+
+  // A broadcast: tested on the owner first, then sent to everyone once.
+  const announcement = `Playwright e’loni ${stamp}`;
+  const ownerBefore = await messageCount(OWNER);
+  const personBefore = await messageCount(person);
+  await page.getByRole('link', { name: 'Xabarlar' }).click();
+  await page.getByLabel('Xabar matni').fill(announcement);
+  await expect(page.getByRole('button', { name: 'Yuborish', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Menga test yuborish' }).click();
+  await expect.poll(async () => (await messagesSince(OWNER, ownerBefore)).filter((m) => m === announcement).length).toBe(1);
+  await page.getByRole('button', { name: 'Yuborish', exact: true }).click();
+  await expect(page.getByRole('alertdialog')).toContainText('kishiga yuborilsinmi?');
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Yuborish', exact: true }).click();
+  const item = page.getByRole('listitem').filter({ hasText: announcement });
+  await expect(item.getByText('Tugadi')).toBeVisible({ timeout: 30_000 });
+  expect((await messagesSince(person, personBefore)).filter((m) => m === announcement)).toHaveLength(1);
+  expect((await messagesSince(OWNER, ownerBefore)).filter((m) => m === announcement)).toHaveLength(2);
 
   // On a phone the people list is cards, and nothing scrolls sideways. (Same session: the bot
   // sends one person at most five codes in 15 minutes, so the owner signs in once per run.)

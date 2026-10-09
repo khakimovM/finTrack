@@ -176,6 +176,7 @@ sahifasi (API ham 404 beradi); kirish faqat `/admin/login` orqali. Sessiya panel
 | Foydalanuvchilar | qidiruv (300 ms), holat tablari, saralash, CSV; ≥1024 jadval, undan kichik — kartalar; filtrlar va ochiq karta URL'da (`?q&status&sort&page&open`). Karta (`Modal lg`): sanoqlar, 90 kunlik faollik kalendari, yozuv manbalari; bloklash (sabab formasi, 3–300), blokdan chiqarish va sessiyalarni tugatish (`useConfirm`). Admin hisobida tugmalar yo'q |
 | O'sish | davr (30/90 kun, 1 yil) × guruh (kun/hafta/oy); faol+yangi, jami, yozuvlar grafiklari; yangi foydalanuvchilar yo'li; 12 haftalik kogorta heatmap |
 | Foydalanish | davr (7/30/90); kanallar donut, yozuv manbalari, funksiyalar, AI yordamchi va provayderlar |
+| Xabarlar | matn, kimga (3 segment), "bildirishnomani o'chirganlarga ham" belgisi, aniq son; avval "Menga test yuborish", keyin "Yuborish" (matn o'zgarsa qayta test), tasdiq oynasida odamlar soni; yuborilganlar ro'yxati, jarayon har 2 s yangilanadi |
 | Tizim | DB, Redis, Telegram, versiya kartalari; navbatlar jadvali va oxirgi xatolar; har 30 s yangilanadi |
 | Audit | amal turi filtri, sahifalash; kim → kimga, tafsilot bir qatorda, IP |
 

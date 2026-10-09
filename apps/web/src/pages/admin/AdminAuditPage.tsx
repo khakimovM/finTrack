@@ -43,6 +43,8 @@ export function describeAudit(entry: AdminAuditLogEntry): string {
       return `Sabab: ${text(meta.reason) ?? '—'} · ${text(meta.sessions) ?? 0} sessiya tugatildi`;
     case 'UNBAN':
       return meta.reason ? `Avvalgi sabab: ${text(meta.reason)}` : '';
+    case 'BROADCAST':
+      return `${formatCount(Number(meta.recipients ?? 0))} kishiga xabar${meta.includeOptedOut ? ' (bildirishnomani o‘chirganlar ham)' : ''}`;
     case 'REVOKE_SESSIONS':
       return `${text(meta.sessions) ?? 0} sessiya tugatildi`;
     case 'EXPORT': {

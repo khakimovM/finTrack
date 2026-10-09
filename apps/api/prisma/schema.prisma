@@ -260,6 +260,70 @@ model AdminAuditLog {
   @@map("admin_audit_logs")
 }
 
+/// Who a broadcast goes to: everyone, people active in the last 30 days, or those who were not.
+enum BroadcastSegment {
+  ALL
+  ACTIVE_30D
+  INACTIVE_30D
+}
+
+enum BroadcastStatus {
+  QUEUED
+  SENDING
+  DONE
+}
+
+enum BroadcastDeliveryStatus {
+  PENDING
+  /// Taken by the sender; a row left here by a crash is never sent again (it becomes FAILED).
+  SENDING
+  SENT
+  /// Telegram answered 403: the person blocked the bot.
+  BLOCKED
+  FAILED
+}
+
+/// A message from the owner to many people through the bot (admin panel, J6). Counts are kept up to
+/// date while it is sent. No foreign key to the admin, like the audit log.
+model Broadcast {
+  id              String           @id @default(uuid())
+  adminUserId     String           @map("admin_user_id")
+  text            String           @db.VarChar(4096)
+  segment         BroadcastSegment
+  /// Also sent to people who switched Telegram notifications off (chosen per broadcast).
+  includeOptedOut Boolean          @default(false) @map("include_opted_out")
+  status          BroadcastStatus  @default(QUEUED)
+  total           Int
+  sent            Int              @default(0)
+  blocked         Int              @default(0)
+  failed          Int              @default(0)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  startedAt       DateTime?        @map("started_at")
+  finishedAt      DateTime?        @map("finished_at")
+
+  recipients BroadcastRecipient[]
+
+  @@index([createdAt])
+  @@map("broadcasts")
+}
+
+/// The recipients, fixed when the broadcast is created: one row per person, so nobody gets it twice.
+model BroadcastRecipient {
+  broadcastId String                  @map("broadcast_id")
+  userId      String                  @map("user_id")
+  telegramId  BigInt                  @map("telegram_id")
+  status      BroadcastDeliveryStatus @default(PENDING)
+  claimedAt   DateTime?               @map("claimed_at")
+  sentAt      DateTime?               @map("sent_at")
+  error       String?                 @db.VarChar(200)
+
+  broadcast Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+
+  @@id([broadcastId, userId])
+  @@index([broadcastId, status])
+  @@map("broadcast_recipients")
+}
+
 // ============================================================
 // ACCOUNTS
 // ============================================================

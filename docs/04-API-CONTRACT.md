@@ -49,16 +49,16 @@ Sxemalarning manbasi: `packages/shared/src/schemas/*` (Zod), hujjat ular bilan m
 | 401 | `UNAUTHENTICATED`, `TOKEN_REUSE_DETECTED`, `REFRESH_RACE`, `TELEGRAM_INIT_DATA_INVALID`, `TELEGRAM_INIT_DATA_EXPIRED` |
 | 403 | `FORBIDDEN`, `CSRF_REJECTED`, `TELEGRAM_NOT_REGISTERED`, `ACCOUNT_BANNED` (hisob admin tomonidan bloklangan) |
 | 404 | `NOT_FOUND` — topilmadi **yoki** boshqa foydalanuvchiniki |
-| 409 | `CONFLICT`, `CONCURRENT_UPDATE`, `ACCOUNT_EXISTS`, `ACCOUNT_HAS_HISTORY`, `CATEGORY_EXISTS`, `TAG_EXISTS`, `BUDGET_EXISTS`, `DEBT_ALREADY_PAID`, `RECURRING_ALREADY_RAN` |
+| 409 | `CONFLICT`, `BROADCAST_IN_PROGRESS`, `RECIPIENTS_CHANGED` (`details.recipients`), `CONCURRENT_UPDATE`, `ACCOUNT_EXISTS`, `ACCOUNT_HAS_HISTORY`, `CATEGORY_EXISTS`, `TAG_EXISTS`, `BUDGET_EXISTS`, `DEBT_ALREADY_PAID`, `RECURRING_ALREADY_RAN` |
 | 413 | `PAYLOAD_TOO_LARGE` (tana > 1 MB) |
-| 422 | `INSUFFICIENT_BALANCE`, `DEBT_OVERPAYMENT`, `INVALID_CATEGORY_TYPE`, `INVALID_CATEGORY_DEPTH`, `CIRCULAR_CATEGORY`, `INVALID_TRANSACTION_TYPE`, `INVALID_REFERENCE`, `MANAGED_TRANSACTION`, `SAME_ACCOUNT_TRANSFER`, `SYSTEM_CATEGORY`, `FUTURE_DATE`, `ACCOUNT_ARCHIVED`, `LAST_ACCOUNT`, `EXPORT_TOO_LARGE`, `RECURRING_INACTIVE`, `OTP_EXPIRED`, `CANNOT_BAN_ADMIN` |
+| 422 | `INSUFFICIENT_BALANCE`, `DEBT_OVERPAYMENT`, `INVALID_CATEGORY_TYPE`, `INVALID_CATEGORY_DEPTH`, `CIRCULAR_CATEGORY`, `INVALID_TRANSACTION_TYPE`, `INVALID_REFERENCE`, `MANAGED_TRANSACTION`, `SAME_ACCOUNT_TRANSFER`, `SYSTEM_CATEGORY`, `FUTURE_DATE`, `ACCOUNT_ARCHIVED`, `LAST_ACCOUNT`, `EXPORT_TOO_LARGE`, `RECURRING_INACTIVE`, `OTP_EXPIRED`, `CANNOT_BAN_ADMIN`, `BROADCAST_NOT_TESTED`, `TEST_NOT_DELIVERED` |
 | 429 | `RATE_LIMITED`, `OTP_ATTEMPTS_EXCEEDED`, `OTP_RESEND_LIMIT` |
 | 500 | `INTERNAL_ERROR` |
 | 503 | `SERVICE_UNAVAILABLE` (DB/Redis), `TELEGRAM_UNAVAILABLE` (bot sozlanmagan) |
 
 ---
 
-## Endpointlar ro'yxati (96 ta)
+## Endpointlar ro'yxati (101 ta)
 
 ✅ — sessiya kerak · ❌ — ochiq · 🍪 — refresh cookie · 🤖 — Telegram webhook sirli tokeni ·
 🛡 — admin sessiyasi (`ft_admin` cookie)
@@ -161,6 +161,15 @@ Email/parol bilan ro'yxatdan o'tish va kirish **yo'q**: hisob faqat Telegram orq
 | POST | `/admin/users/:id/revoke-sessions` | 🛡 | barcha sessiyalarini tugatish (qayta kira oladi) |
 | GET | `/admin/system` | 🛡 | DB, Redis, navbatlar, Telegram webhook, versiya |
 | GET | `/admin/audit?action&page&limit` | 🛡 | admin amallari jurnali |
+
+### Admin xabarlari (5)
+| Metod | Yo'l | Auth | Vazifasi |
+|---|---|---|---|
+| POST | `/admin/broadcasts/preview` | 🛡 | `{ segment, includeOptedOut }` → aniq qabul qiluvchilar soni |
+| POST | `/admin/broadcasts/test` | 🛡 | matnni faqat adminning o'ziga yuborish (10/min) |
+| POST | `/admin/broadcasts` | 🛡 | tarqatish: test qilingan matn + tasdiqlangan son (5/min) |
+| GET | `/admin/broadcasts?page&limit` | 🛡 | yuborilgan xabarlar, eng yangisi birinchi |
+| GET | `/admin/broadcasts/:id` | 🛡 | bitta xabar: holat va natija |
 
 Batafsil: "Admin panel" bo'limi va `docs/09-ADMIN-PANEL.md`.
 
@@ -305,6 +314,24 @@ balans, izoh **yo'q**; telefon faqat oxirgi ikki raqami bilan: `+998 •• •�
 (`/auth/telegram/webapp`) va `/auth/refresh` → `403 ACCOUNT_BANNED`; ochiq sessiya → `401`. Bot har
 qanday xabarga "hisobingiz bloklangan" deb javob beradi, hech narsa yozmaydi, ochilgan kirish havolasini
 bekor qiladi (sahifa `CANCELLED` ko'radi). Ma'lumotlar o'chmaydi; blokdan chiqarilgach hammasi joyida.
+
+### Xabar tarqatish (`/admin/broadcasts/*`)
+
+Matn — oddiy matn (formatlashsiz), 1–3500 belgi. `segment`: `ALL` · `ACTIVE_30D` (oxirgi 30 kunda faol) ·
+`INACTIVE_30D`. Har doim chiqariladi: o'chirilgan, bloklangan, Telegram'siz va botni bloklagan hisoblar;
+Telegram bildirishnomasini o'chirganlar — `includeOptedOut: true` bo'lmasa (har xabar uchun alohida tanlanadi).
+
+- `POST /admin/broadcasts/preview` → `{ recipients, excluded: { botBlocked, optedOut } }`.
+- `POST /admin/broadcasts/test` `{ text }` → `{ delivered: true }`; matn adminning o'z Telegram'iga aynan
+  shunday boradi va 1 soat "test qilingan" hisoblanadi. Yetmasa → `422 TEST_NOT_DELIVERED`.
+- `POST /admin/broadcasts` `{ text, segment, includeOptedOut, expectedRecipients }` → `201 BroadcastResponse`
+  (`QUEUED`). Aynan shu matn test qilinmagan → `422 BROADCAST_NOT_TESTED`; boshqa xabar hali yuborilmoqda →
+  `409 BROADCAST_IN_PROGRESS`; ro'yxat endi boshqacha → `409 RECIPIENTS_CHANGED` (`details.recipients`),
+  hech narsa yaratilmaydi. Qabul qiluvchilar shu paytda qotiriladi, audit `BROADCAST` bilan bir tranzaksiyada.
+- `BroadcastResponse`: `{ id, text, segment, includeOptedOut, status: QUEUED|SENDING|DONE, total, sent, blocked,
+  failed, pending, admin, createdAt, startedAt, finishedAt }`. BullMQ ~25 xabar/s yuboradi; 403 → `blocked` va
+  foydalanuvchida `telegramBlockedAt`. Har bir odamga **ko'pi bilan bir marta**: qator yuborishdan oldin
+  "olinadi", uzilgan yuborish qayta urinilmaydi (`failed`).
 
 ### Tizim va audit
 

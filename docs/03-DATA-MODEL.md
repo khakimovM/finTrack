@@ -143,6 +143,12 @@ kod ham `HMAC(requestId:code, OTP_SECRET)` — ochiq holda hech qayerda yo'q. Ko
 - `AdminAuditLog` — faqat qo'shiladigan jurnal: `LOGIN`, `LOGIN_DENIED` (`adminUserId = null`,
   `telegramId` va sabab `meta` da), `LOGOUT`, keyingi bosqichlarda `BAN`/`UNBAN`/`REVOKE_SESSIONS`/
   `BROADCAST`/`EXPORT`. Tashqi kalit yo'q — yozuv tilga olingan foydalanuvchidan uzoq yashaydi.
+- `Broadcast` (0008) — admin xabari: matn, `segment` (`ALL`/`ACTIVE_30D`/`INACTIVE_30D`),
+  `includeOptedOut`, `status` (`QUEUED` → `SENDING` → `DONE`) va `total/sent/blocked/failed` sanoqlari.
+- `BroadcastRecipient` — yaratilganda qotirilgan qabul qiluvchilar, kalit `(broadcastId, userId)`: bir odam
+  ro'yxatga ikki marta tushmaydi. `status`: `PENDING` → `SENDING` (yuboruvchi "oldi", `claimedAt`) →
+  `SENT`/`BLOCKED`/`FAILED`. 2 daqiqadan eski `SENDING` — o'lgan yuborish: yetgan-yetmagani noma'lum, shuning
+  uchun qayta yuborilmaydi, `FAILED` (`error = 'interrupted'`). Indeks `(broadcastId, status)`.
 
 ## Bildirishnomalar
 

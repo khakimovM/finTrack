@@ -31,13 +31,23 @@ let tgUserSeq = 600_000_000 + Math.floor(Math.random() * 300_000_000);
 export class FakeTelegram {
   readonly calls: ApiCall[] = [];
   private messageId = 1;
+  /** Chats that blocked the bot: Telegram answers 403 and nothing is delivered. */
+  private readonly blockedChats = new Set<number>();
 
   install(bot: Bot): void {
     bot.api.config.use(async (_prev, method, payload) => {
       const body = (payload ?? {}) as Record<string, unknown>;
+      if (method === 'sendMessage' && this.blockedChats.has(Number(body.chat_id))) {
+        return { ok: false, error_code: 403, description: 'Forbidden: bot was blocked by the user' } as never;
+      }
       this.calls.push({ method, payload: body });
       return { ok: true, result: this.result(method, body) } as never;
     });
+  }
+
+  /** The person blocks the bot in Telegram. */
+  block(chatId: number): void {
+    this.blockedChats.add(chatId);
   }
 
   newUser(firstName = 'Test'): FakeTgUser {
