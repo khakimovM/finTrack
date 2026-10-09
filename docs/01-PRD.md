@@ -11,8 +11,11 @@ kimga qancha qarz berilgani esdan chiqadi; qaysi kategoriya byudjetni yeb qo'yay
 
 ## Foydalanuvchi rollari
 
-Bitta rol — `USER`. Admin panel bu bosqichda yo'q. Har bir foydalanuvchi **faqat** o'z
-ma'lumotini ko'radi va o'zgartiradi.
+- `USER` — har bir foydalanuvchi **faqat** o'z ma'lumotini ko'radi va o'zgartiradi.
+- **Ega (admin)** — `ADMIN_TELEGRAM_IDS` dagi Telegram hisobi (bazadagi rol emas). `/admin` panelida
+  foydalanuvchilar statistikasi, o'sish, faollik, tizim holati; bloklash, sessiyalarni tugatish, CSV,
+  botdan xabar tarqatish. Admin pul miqdori, balans va izohlarni **ko'rmaydi** — faqat sanoq va sanalar.
+  Batafsil: `docs/09-ADMIN-PANEL.md`.
 
 ## Funksional modullar
 
@@ -91,5 +94,5 @@ akkauntni o'chirish.
 
 ## Doirasidan tashqarida (hozircha)
 
-Bank/plastik integratsiyasi, SMS/push, jamoaviy (oilaviy) hisoblar, admin panel,
+Bank/plastik integratsiyasi, SMS/push, jamoaviy (oilaviy) hisoblar,
 investitsiya portfeli, kredit kalkulyatori, OCR chek skaneri.

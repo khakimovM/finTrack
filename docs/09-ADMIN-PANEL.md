@@ -181,12 +181,22 @@ admin kirishi (mock Telegram), ruxsatsiz rad etish, bloklash oqimi. Railway: `.r
 `railway variable set` bilan, keyin deploy.
 
 **Qabul mezonlari**
-- [ ] `npm run verify` va `npm run test:e2e` yashil
+- [x] `npm run verify` va `npm run test:e2e` yashil (2026-10-09)
 - [ ] Production'da admin kirishi va rad etish qo'lda tekshirilgan
 
-## Ertaga birinchi qadamlar
+`.railway/railway.ts` da `ADMIN_TELEGRAM_IDS: preserve()` bor; `railway config plan` — "up to date"
+(qiymat hali qo'yilmagan, preserve uni yaratmaydi ham, o'chirmaydi ham). Windows'da `plan`/`apply` uchun
+SDK CLI versiyasini `_` env orqali tekshiradi: PowerShell'da
+`$env:_ = "$env:APPDATA
+pm
+ode_modules@railwaycliinailway.exe"; & $env:_ config plan`.
 
-1. Foydalanuvchidan o'z Telegram ID'si (yoki J1 dagi `/id` buyrug'i deploy bo'lgach botdan oladi).
-2. `git checkout -b feat/admin main`, J1 dan boshlash.
-3. Ochiq: Railway avtomatik deploy hali ishlamaydi — har merge'dan keyin qo'lda deploy
-   (`railway redeploy -s finTrack --from-source -y`) yoki dashboard'da Source sozlamasini tuzatish.
+## Production'ga chiqarish
+
+1. PR `feat/admin` → `main`, CI yashil bo'lgach merge.
+2. Deploy: `railway redeploy -s finTrack --from-source -y` (avtomatik deploy hali ishlamaydi).
+   Pre-deploy 0005–0008 migratsiyalarini qo'llaydi (hammasi additiv; 0006 tarixiy faollikni to'ldiradi).
+3. Botga `/id` yozib o'z Telegram ID'ingizni oling.
+4. `railway variable set ADMIN_TELEGRAM_IDS=<id> -s finTrack` — o'zgaruvchi qo'yilishi qayta deploy qiladi.
+5. Qo'lda tekshirish: `/admin` → 404; `/admin/login` → bot "🛡 Admin panel" kodi → panel; boshqa Telegram
+   hisobidan `admin_` havolasi → "havola eskirgan" va audit'da `LOGIN_DENIED`.
