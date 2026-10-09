@@ -144,10 +144,15 @@ kalendari, bloklash, sessiyalarni tugatish — `useConfirm` bilan), O'sish va qa
 Foydalanish (funksiyalar, bot vs sayt, ovozli yordamchi), Tizim, Audit jurnali. Dizayn tizimi va
 animatsiyalar qayta ishlatiladi; to'rt holat; telefonda ham ishlaydi; "Admin" belgisi.
 
-**Qabul mezonlari**
-- [ ] Har sahifada skeleton / xato / bo'sh / natija
-- [ ] 390px da jadval kartalarga aylanadi
-- [ ] Admin bo'lmagan `/admin` ga kirsa 404 sahifasi
+**Qabul mezonlari** (bajarildi, 2026-10-09)
+- [x] Har sahifada skeleton / xato / bo'sh / natija (har vidjet o'zi alohida; `AdminPanel.test.tsx`)
+- [x] 390px da jadval kartalarga aylanadi (jadval 1024px dan; Playwright gorizontal scroll yo'qligini ham tekshiradi)
+- [x] Admin bo'lmagan `/admin` ga kirsa 404 sahifasi (`e2e/admin.spec.ts`, `AdminLoginPage.test.tsx`)
+
+Rejadan farqlar va aniqlashtirishlar: (1) J1 dagi "/admin → /admin/login" yo'naltirish o'rniga sessiyasiz
+tashrif endi **404**; faqat shu tab'da sessiya bo'lgan va u tugagan bo'lsa `/admin/login` ga qaytaradi;
+(2) tafsilot paneli alohida yon panel emas, `Modal lg` (telefonda to'liq sheet) — mavjud dizayn tizimi;
+(3) Playwright'da ega bir marta kiradi: bot bitta odamga 15 daqiqada 5 tadan ortiq kod bermaydi.
 
 ### J6 — Botdan xabar tarqatish
 `POST /admin/broadcasts/preview` (segment: hammasi / 30 kunda faol / 30+ kun faol emas → qabul

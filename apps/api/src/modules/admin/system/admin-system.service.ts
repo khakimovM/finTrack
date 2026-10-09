@@ -138,12 +138,13 @@ export class AdminSystemService {
     const mode = this.config.get<string>('TELEGRAM_WEBHOOK_URL') ? 'webhook' : 'polling';
     const info = await timed(() => bot.api.getWebhookInfo());
     if (!info) return { mode, ...off };
-    const webhook = info.value;
+    // Read defensively: a proxy or an older Bot API may leave fields out.
+    const webhook: Partial<typeof info.value> = info.value ?? {};
     return {
       mode,
       // The path of the webhook is not secret, but there is no reason to show more than the host.
       webhookHost: webhook.url ? new URL(webhook.url).host : null,
-      pendingUpdates: webhook.pending_update_count,
+      pendingUpdates: typeof webhook.pending_update_count === 'number' ? webhook.pending_update_count : null,
       lastErrorAt: webhook.last_error_date ? new Date(webhook.last_error_date * 1000).toISOString() : null,
       lastError: webhook.last_error_message?.slice(0, REASON_LENGTH) ?? null,
     };

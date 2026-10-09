@@ -7,6 +7,16 @@ export const queryKeys = {
   admin: {
     all: () => ['admin'] as const,
     session: () => ['admin', 'session'] as const,
+    overview: () => ['admin', 'stats', 'overview'] as const,
+    growth: (from: string, to: string, groupBy: string) => ['admin', 'stats', 'growth', from, to, groupBy] as const,
+    retention: (cohorts: number) => ['admin', 'stats', 'retention', cohorts] as const,
+    usage: (from: string, to: string) => ['admin', 'stats', 'usage', from, to] as const,
+    funnel: (from: string, to: string) => ['admin', 'stats', 'funnel', from, to] as const,
+    userLists: () => ['admin', 'users', 'list'] as const,
+    userList: (query: object) => ['admin', 'users', 'list', query] as const,
+    user: (id: string) => ['admin', 'users', 'detail', id] as const,
+    system: () => ['admin', 'system'] as const,
+    audit: (query: object) => ['admin', 'audit', query] as const,
   },
   accounts: {
     all: () => ['accounts'] as const,

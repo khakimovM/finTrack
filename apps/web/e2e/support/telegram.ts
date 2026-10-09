@@ -55,6 +55,11 @@ async function messagesTo(user: TelegramUser): Promise<string[]> {
   return (await res.json()) as string[];
 }
 
+/** What the bot has sent this user after the first `since` messages. */
+export async function messagesSince(user: TelegramUser, since = 0): Promise<string[]> {
+  return (await messagesTo(user)).slice(since);
+}
+
 /** How many messages the bot has sent this user so far; pass it to waitForCode to skip old codes. */
 export async function messageCount(user: TelegramUser): Promise<number> {
   return (await messagesTo(user)).length;

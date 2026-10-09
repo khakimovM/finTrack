@@ -54,7 +54,13 @@ export const router = createBrowserRouter([
     lazy: () => import('./features/admin/components/AdminShell').then((m) => ({ Component: m.AdminShell })),
     errorElement: <ErrorPage />,
     children: [
-      { index: true, lazy: () => import('./pages/admin/AdminHomePage').then((m) => ({ Component: m.AdminHomePage })) },
+      { index: true, lazy: () => import('./pages/admin/AdminOverviewPage').then((m) => ({ Component: m.AdminOverviewPage })) },
+      { path: 'users', lazy: () => import('./pages/admin/AdminUsersPage').then((m) => ({ Component: m.AdminUsersPage })) },
+      { path: 'growth', lazy: () => import('./pages/admin/AdminGrowthPage').then((m) => ({ Component: m.AdminGrowthPage })) },
+      { path: 'usage', lazy: () => import('./pages/admin/AdminUsagePage').then((m) => ({ Component: m.AdminUsagePage })) },
+      { path: 'system', lazy: () => import('./pages/admin/AdminSystemPage').then((m) => ({ Component: m.AdminSystemPage })) },
+      { path: 'audit', lazy: () => import('./pages/admin/AdminAuditPage').then((m) => ({ Component: m.AdminAuditPage })) },
+      { path: '*', lazy: () => import('./features/admin/components/AdminShell').then((m) => ({ Component: m.AdminNotFound })) },
     ],
   },
   // Component gallery for checking the design system; compiled out of production builds.
