@@ -126,8 +126,11 @@ kod ham `HMAC(requestId:code, OTP_SECRET)` — ochiq holda hech qayerda yo'q. Ko
   kanaldan foydalangan. `ActivityService` JWT guard'dan (`WEB`/`MINIAPP`) va bot middleware'idan (`BOT`)
   chaqiriladi; Redis `SET NX` kaliti tufayli bazaga kuniga bir marta yoziladi. `UNKNOWN` — 0006
   migratsiyasi tranzaksiyalar va refresh tokenlardan tiklagan tarixiy kunlar (kanal noma'lum).
-- `User.lastSeenAt` — oxirgi so'rov, 5 daqiqada ko'pi bilan bir marta yoziladi; `bannedAt`/`banReason`
-  — admin bloklashi uchun (J4).
+- `User.lastSeenAt` — oxirgi so'rov, 5 daqiqada ko'pi bilan bir marta yoziladi.
+- `User.bannedAt`/`banReason` — admin bloklashi (J4). `bannedAt` bo'lsa hisob hech qayerdan kira olmaydi
+  (JWT guard, refresh, kod, Mini App, bot), ma'lumotlari esa o'zgarmaydi. `AuthRepository.findUserByTelegramId`
+  bloklanganni ham **qaytaradi** — aks holda bot uni yangi foydalanuvchi deb qayta ro'yxatdan o'tkazmoqchi
+  bo'lardi; tekshiruv har kirish nuqtasida alohida.
 - AI yordamchi hisoblagichlari bazada emas, Redis'da: `metrics:<kun>:ai.<voice|text>.<ok|limit|unavailable>`
   va `metrics:<kun>:ai.provider.<nom>.<ok|fail.<sabab>>`, 120 kun saqlanadi.
 

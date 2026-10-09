@@ -47,18 +47,18 @@ Sxemalarning manbasi: `packages/shared/src/schemas/*` (Zod), hujjat ular bilan m
 |---|---|
 | 400 | `VALIDATION_ERROR`, `OTP_INVALID` (`details.attemptsLeft`) |
 | 401 | `UNAUTHENTICATED`, `TOKEN_REUSE_DETECTED`, `REFRESH_RACE`, `TELEGRAM_INIT_DATA_INVALID`, `TELEGRAM_INIT_DATA_EXPIRED` |
-| 403 | `FORBIDDEN`, `CSRF_REJECTED`, `TELEGRAM_NOT_REGISTERED` |
+| 403 | `FORBIDDEN`, `CSRF_REJECTED`, `TELEGRAM_NOT_REGISTERED`, `ACCOUNT_BANNED` (hisob admin tomonidan bloklangan) |
 | 404 | `NOT_FOUND` — topilmadi **yoki** boshqa foydalanuvchiniki |
 | 409 | `CONFLICT`, `CONCURRENT_UPDATE`, `ACCOUNT_EXISTS`, `ACCOUNT_HAS_HISTORY`, `CATEGORY_EXISTS`, `TAG_EXISTS`, `BUDGET_EXISTS`, `DEBT_ALREADY_PAID`, `RECURRING_ALREADY_RAN` |
 | 413 | `PAYLOAD_TOO_LARGE` (tana > 1 MB) |
-| 422 | `INSUFFICIENT_BALANCE`, `DEBT_OVERPAYMENT`, `INVALID_CATEGORY_TYPE`, `INVALID_CATEGORY_DEPTH`, `CIRCULAR_CATEGORY`, `INVALID_TRANSACTION_TYPE`, `INVALID_REFERENCE`, `MANAGED_TRANSACTION`, `SAME_ACCOUNT_TRANSFER`, `SYSTEM_CATEGORY`, `FUTURE_DATE`, `ACCOUNT_ARCHIVED`, `LAST_ACCOUNT`, `EXPORT_TOO_LARGE`, `RECURRING_INACTIVE`, `OTP_EXPIRED` |
+| 422 | `INSUFFICIENT_BALANCE`, `DEBT_OVERPAYMENT`, `INVALID_CATEGORY_TYPE`, `INVALID_CATEGORY_DEPTH`, `CIRCULAR_CATEGORY`, `INVALID_TRANSACTION_TYPE`, `INVALID_REFERENCE`, `MANAGED_TRANSACTION`, `SAME_ACCOUNT_TRANSFER`, `SYSTEM_CATEGORY`, `FUTURE_DATE`, `ACCOUNT_ARCHIVED`, `LAST_ACCOUNT`, `EXPORT_TOO_LARGE`, `RECURRING_INACTIVE`, `OTP_EXPIRED`, `CANNOT_BAN_ADMIN` |
 | 429 | `RATE_LIMITED`, `OTP_ATTEMPTS_EXCEEDED`, `OTP_RESEND_LIMIT` |
 | 500 | `INTERNAL_ERROR` |
 | 503 | `SERVICE_UNAVAILABLE` (DB/Redis), `TELEGRAM_UNAVAILABLE` (bot sozlanmagan) |
 
 ---
 
-## Endpointlar ro'yxati (88 ta)
+## Endpointlar ro'yxati (96 ta)
 
 ✅ — sessiya kerak · ❌ — ochiq · 🍪 — refresh cookie · 🤖 — Telegram webhook sirli tokeni ·
 🛡 — admin sessiyasi (`ft_admin` cookie)
@@ -149,6 +149,18 @@ Email/parol bilan ro'yxatdan o'tish va kirish **yo'q**: hisob faqat Telegram orq
 | GET | `/admin/stats/retention?cohorts` | 🛡 | haftalik kogortalar, 0–8 hafta |
 | GET | `/admin/stats/usage?from&to` | 🛡 | kanallar, yozuv manbalari, funksiyalar, AI yordamchi |
 | GET | `/admin/stats/funnel?from&to` | 🛡 | ro'yxatdan o'tish → birinchi yozuv → 5+ yozuv → 2-haftada qaytish |
+
+### Admin boshqaruv (8)
+| Metod | Yo'l | Auth | Vazifasi |
+|---|---|---|---|
+| GET | `/admin/users?q&status&sort&page&limit` | 🛡 | foydalanuvchilar ro'yxati |
+| GET | `/admin/users/export.csv?q&status&sort` | 🛡 | ro'yxat CSV (audit'ga yoziladi) |
+| GET | `/admin/users/:id` | 🛡 | profil, sanoqlar, 90 kunlik faollik |
+| POST | `/admin/users/:id/ban` | 🛡 | bloklash `{ reason }`: kira olmaydi, sessiyalari tugaydi |
+| POST | `/admin/users/:id/unban` | 🛡 | blokdan chiqarish |
+| POST | `/admin/users/:id/revoke-sessions` | 🛡 | barcha sessiyalarini tugatish (qayta kira oladi) |
+| GET | `/admin/system` | 🛡 | DB, Redis, navbatlar, Telegram webhook, versiya |
+| GET | `/admin/audit?action&page&limit` | 🛡 | admin amallari jurnali |
 
 Batafsil: "Admin panel" bo'limi va `docs/09-ADMIN-PANEL.md`.
 
@@ -263,6 +275,46 @@ uzun oraliq → `400 VALIDATION_ERROR`.
 - `GET /admin/stats/funnel?from&to` (standart oxirgi 30 kun) — davrda ro'yxatdan o'tganlar:
   `{ from, to, registered, firstEntry, fiveEntries, returnedWeek2 }` (`returnedWeek2` — ro'yxatdan
   o'tgandan keyingi 7–13-kunlarda faol bo'lganlar).
+
+### Foydalanuvchilar (`/admin/users/*`)
+
+Ko'rinadigani — ism, @username, ro'yxatdan o'tgan va oxirgi faollik vaqti, sanoqlar, kanallar. Summa,
+balans, izoh **yo'q**; telefon faqat oxirgi ikki raqami bilan: `+998 •• ••• •• 12`.
+
+- `GET /admin/users?q&status&sort&page&limit` — `q`: ism yoki @username bo'lagi (`%`/`_` oddiy harf),
+  yoki to'liq Telegram ID; `status`: `all` (standart) · `active` · `banned` · `deleted` · `botBlocked`;
+  `sort`: `newest` (standart) · `oldest` · `lastSeen` · `entries` · `name`; `limit` 1–100 (standart 25).
+  Javob `{ data: AdminUserRow[], meta: { page, limit, total, totalPages } }`, qator:
+  `{ id, name, telegramUsername, phone, createdAt, lastSeenAt, entries, accounts, channels, status, botBlocked }`.
+  `entries` — o'chirilmagan yozuvlar (statistika ta'rifi bilan), `channels` — oxirgi 30 kunda
+  ishlatilgan kanallar (`WEB`, `MINIAPP`, `BOT`, `UNKNOWN`), `status`: `active` · `banned` · `deleted`.
+- `GET /admin/users/:id` — `{ user: AdminUserRow + { bannedAt, banReason, deletedAt, isAdmin }, counts: { entries,
+  accounts, categories, debts, budgets, recurring, tags, activeSessions }, entriesBySource: { web, miniApp, bot,
+  voice, recurring, unknown }, activity: [{ day, channels }] }` (faollik — oxirgi 90 kun). Yo'q → `404`.
+- `POST /admin/users/:id/ban` `{ reason }` (3–300 belgi) → `200 AdminUserDetail`. Bir tranzaksiyada: `bannedAt`,
+  barcha refresh tokenlar bekor, audit `BAN` (`{ reason, sessions }`); keyin ochiq access tokenlar ham darhol
+  to'xtaydi va botga sabab bilan xabar boradi. Admin ro'yxatidagi hisob → `422 CANNOT_BAN_ADMIN`;
+  allaqachon bloklangan yoki o'chirilgan → `409 CONFLICT`.
+- `POST /admin/users/:id/unban` → `200 AdminUserDetail`; bloklanmagan → `409 CONFLICT`. Botga xabar boradi.
+- `POST /admin/users/:id/revoke-sessions` → `{ revoked }` (tugatilgan sessiyalar soni); audit `REVOKE_SESSIONS`.
+- `GET /admin/users/export.csv` — ro'yxat filtrlari bilan, sahifasiz, ko'pi bilan 50 000 qator (ko'p bo'lsa
+  `422 EXPORT_TOO_LARGE`); UTF-8 BOM, formula injection'dan himoyalangan. Fayl berilishidan **oldin** audit
+  `EXPORT` (`{ rows, status, sort, q }`) yoziladi.
+
+**Bloklangan hisob** hech qayerdan kira olmaydi: kod bilan kirish (`/auth/telegram/verify`), Mini App
+(`/auth/telegram/webapp`) va `/auth/refresh` → `403 ACCOUNT_BANNED`; ochiq sessiya → `401`. Bot har
+qanday xabarga "hisobingiz bloklangan" deb javob beradi, hech narsa yozmaydi, ochilgan kirish havolasini
+bekor qiladi (sahifa `CANCELLED` ko'radi). Ma'lumotlar o'chmaydi; blokdan chiqarilgach hammasi joyida.
+
+### Tizim va audit
+
+- `GET /admin/system` — `{ version: { commit, node, environment, startedAt, uptimeSeconds }, database: { status,
+  latencyMs, sizeBytes, lastMigration }, redis: { status, latencyMs, usedMemoryBytes }, queues: [{ name, counts:
+  { waiting, active, delayed, failed, completed, paused } | null, recentFailures: [{ job, failedAt, attempts,
+  reason }] }], telegram: { mode: webhook|polling|off, webhookHost, pendingUpdates, lastErrorAt, lastError } }`.
+  Har tekshiruv 2 s bilan cheklangan: ishlamayotgan qism `down`/`null` bo'lib ko'rinadi, sahifa osilib qolmaydi.
+- `GET /admin/audit?action&page&limit` (standart 50) — eng yangisi birinchi: `{ id, action, createdAt, admin:
+  { id, name } | null, target: { id, name | null } | null, telegramId, meta, ipAddress }`.
 
 ## Users
 

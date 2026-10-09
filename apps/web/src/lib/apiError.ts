@@ -15,6 +15,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   OTP_RESEND_LIMIT: 'Kod juda ko‘p marta so‘raldi. Qaytadan kiring',
   TELEGRAM_UNAVAILABLE: 'Telegram orqali kirish vaqtincha ishlamayapti',
   TELEGRAM_NOT_REGISTERED: 'Avval botda /start bosib, telefon raqamingizni ulashing',
+  ACCOUNT_BANNED: 'Hisobingiz bloklangan. Sayt, ilova va bot orqali kirib bo‘lmaydi',
   TELEGRAM_INIT_DATA_INVALID: 'Telegram maʼlumotlari tasdiqlanmadi. Ilovani botdan qayta oching',
   TELEGRAM_INIT_DATA_EXPIRED: 'Ilova sessiyasi tugadi. Ilovani botdan qayta oching',
   TOKEN_REUSE_DETECTED: 'Xavfsizlik sababli sessiyangiz yakunlandi, qayta kiring',

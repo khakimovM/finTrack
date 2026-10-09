@@ -2,17 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AdminStatsGroupBy, addDays, formatIsoDate, parseIsoDate } from '@fintrack/shared';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
+import { ENTRY } from '../core/admin-sql';
 
 /**
  * The admin panel's reads across all users: the one deliberate exception to "every query is
  * scoped to the owner" (docs/09). Every query here returns counts and dates, never an amount,
- * a balance, a name or a note; admin-stats.repository.spec.ts holds that line.
+ * a balance, a name or a note; test/admin-stats.e2e-spec.ts walks every answer to hold that line.
  *
  * Timestamps are stored as UTC wall time; calendar days are those of `tz` (Asia/Tashkent).
  */
-
-/** Ledger rows that count as one entry: opening balances are not entries, a transfer is one. */
-const ENTRY = Prisma.sql`t."type" NOT IN ('ADJUSTMENT', 'TRANSFER_IN')`;
 
 /** Local midnight of `day` in `tz`, as the UTC wall time `created_at` columns hold. */
 function midnight(day: string, tz: string): Prisma.Sql {

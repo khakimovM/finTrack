@@ -5,7 +5,7 @@ import { create } from 'zustand';
  * explanation: not registered in the bot yet, launch data too old, opened without initData
  * (e.g. from a keyboard button), or the exchange failed for another reason.
  */
-export type MiniAppStatus = 'off' | 'ready' | 'unregistered' | 'expired' | 'no-init-data' | 'error';
+export type MiniAppStatus = 'off' | 'ready' | 'unregistered' | 'banned' | 'expired' | 'no-init-data' | 'error';
 
 interface MiniAppState {
   status: MiniAppStatus;

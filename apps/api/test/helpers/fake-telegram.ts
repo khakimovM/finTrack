@@ -113,6 +113,8 @@ export class FakeTelegram {
           chat: { id: payload.chat_id, type: 'private' },
           text: payload.text,
         };
+      case 'getWebhookInfo':
+        return { url: '', has_custom_certificate: false, pending_update_count: 0 };
       default:
         return true;
     }

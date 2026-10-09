@@ -14,7 +14,7 @@ import { LOGIN_TEXT, describeDevice, noticeTime } from './telegram-login.message
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ClockService } from '../../infra/clock/clock.service';
-import { DomainException, NotFoundDomainException } from '../../common/exceptions/domain.exception';
+import { AccountBannedException, DomainException, NotFoundDomainException } from '../../common/exceptions/domain.exception';
 
 export const REQUEST_TTL_MS = 10 * 60_000;
 export const MAX_ATTEMPTS = 5;
@@ -109,6 +109,7 @@ export class TelegramLoginService {
 
     const user = await this.authRepository.findUserById(userId);
     if (!user) throw new NotFoundDomainException('Foydalanuvchi topilmadi');
+    if (user.bannedAt) throw new AccountBannedException();
 
     const session = await this.authService.issueSession(user, meta);
     void this.notifyNewLogin(user.telegramId, meta, user.timezone);

@@ -9,6 +9,7 @@ import { EntryHandlers } from './handlers/entry.handlers';
 import { VoiceHandlers } from './handlers/voice.handlers';
 import { miniAppUrl } from './bot-ui';
 import { ActivityService } from '../activity/activity.service';
+import { BotUserService } from './bot-user.service';
 
 export const ALLOWED_UPDATES = ['message', 'callback_query'] as const;
 
@@ -32,6 +33,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     private readonly entryHandlers: EntryHandlers,
     private readonly voiceHandlers: VoiceHandlers,
     private readonly activity: ActivityService,
+    private readonly botUsers: BotUserService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -41,6 +43,10 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
       return;
     }
 
+    // A banned account is answered before anything else runs, and its tries are not activity.
+    bot.use(async (ctx, next) => {
+      if (!(await this.botUsers.refuseBanned(ctx))) await next();
+    });
     // Every private message or button tap counts as using FinTrack through the bot. Recorded after
     // the handlers, so the contact that registers a new user already counts for them.
     bot.use(async (ctx, next) => {

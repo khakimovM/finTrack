@@ -8,8 +8,8 @@ const USER_ALIVE_TTL_SECONDS = 60;
 
 /**
  * Access tokens are stateless JWTs; this adds the two checks a finance app cannot skip:
- * a revoked session (logout-all, "end this session") and a deleted account stop working
- * immediately instead of when the token expires.
+ * a revoked session (logout-all, "end this session") and a deleted or banned account stop
+ * working immediately instead of when the token expires.
  */
 @Injectable()
 export class SessionStateService {
@@ -40,7 +40,7 @@ export class SessionStateService {
     if ((await this.redis.get(key)) === '1') return true;
 
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, deletedAt: null },
+      where: { id: userId, deletedAt: null, bannedAt: null },
       select: { id: true },
     });
     if (!user) return false;

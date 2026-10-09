@@ -39,6 +39,7 @@ describe('hasLaunchParams', () => {
 describe('miniAppStatusFor', () => {
   it('maps the API codes to the screens that explain them', () => {
     expect(miniAppStatusFor(axiosErrorWith('TELEGRAM_NOT_REGISTERED'))).toBe('unregistered');
+    expect(miniAppStatusFor(axiosErrorWith('ACCOUNT_BANNED'))).toBe('banned');
     expect(miniAppStatusFor(axiosErrorWith('TELEGRAM_INIT_DATA_EXPIRED'))).toBe('expired');
     expect(miniAppStatusFor(axiosErrorWith('TELEGRAM_INIT_DATA_INVALID'))).toBe('error');
     expect(miniAppStatusFor(new Error('network'))).toBe('error');

@@ -4,7 +4,7 @@ import { User } from '@prisma/client';
 import { AuthService, MiniAppAccess, TokenMeta } from './auth.service';
 import { AuthRepository } from './auth.repository';
 import { validateInitData } from './telegram-init-data';
-import { DomainException } from '../../common/exceptions/domain.exception';
+import { AccountBannedException, DomainException } from '../../common/exceptions/domain.exception';
 import { RedisService } from '../../infra/redis/redis.service';
 
 /**
@@ -48,6 +48,8 @@ export class TelegramWebAppService {
         message: 'Avval botda /start bosib, telefon raqamingizni ulashing',
       });
     }
+
+    if (user.bannedAt) throw new AccountBannedException();
 
     const familyId = await this.sessionFor(result.hash, result.authDate, user, meta);
     return this.auth.miniAppAccess(user, familyId);

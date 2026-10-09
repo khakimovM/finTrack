@@ -124,10 +124,18 @@ botga "hisobingiz bloklangan", sessiyalar bekor), `POST /admin/users/:id/revoke-
 `GET /admin/users/export.csv`, `GET /admin/system` (DB, Redis, BullMQ navbatlari va oxirgi xatolar,
 `getWebhookInfo`, versiya — `RAILWAY_GIT_COMMIT_SHA`, uptime, DB hajmi), `GET /admin/audit`.
 
-**Qabul mezonlari**
-- [ ] Bloklangan foydalanuvchi: sayt, Mini App va bot orqali kira olmaydi; ochiq sessiyalari tugaydi
-- [ ] Admin o'zini bloklay olmaydi
-- [ ] CSV'da summa yo'q, telefon niqoblangan; eksport audit'ga yoziladi
+**Qabul mezonlari** (bajarildi, 2026-10-09; `test/admin-users.e2e-spec.ts`)
+- [x] Bloklangan foydalanuvchi: sayt, Mini App va bot orqali kira olmaydi; ochiq sessiyalari tugaydi
+- [x] Admin o'zini bloklay olmaydi (ro'yxatdagi har qanday admin hisobi: `422 CANNOT_BAN_ADMIN`)
+- [x] CSV'da summa yo'q, telefon niqoblangan; eksport audit'ga yoziladi
+
+Rejadan farqlar va aniqlashtirishlar: (1) yangi xato kodi `403 ACCOUNT_BANNED` — kod bilan kirish,
+Mini App va refresh'da (refresh'da u bo'lmasa, bekor qilingan token "o'g'irlik" deb ko'rinardi); Mini App'da
+alohida "Hisobingiz bloklangan" ekrani; (2) bot bloklangan hisobga **har qanday** xabarga bir xil javob beradi
+va handler'lar ishlamaydi, faollik ham yozilmaydi; ochilgan `/start login_…` so'rovi darhol `CANCELLED`;
+(3) bloklash, sessiyalarni tugatish va audit yozuvi bitta tranzaksiyada; eksport auditi fayl berilishidan
+oldin, yozilmasa fayl ham berilmaydi; (4) ro'yxatdagi "kanallar" — oxirgi 30 kun; (5) telefon bo'yicha
+qidiruv yo'q (faqat ism, @username, Telegram ID).
 
 ### J5 — Admin UI
 `/admin`: Umumiy ko'rinish (KPI + o'sish grafigi + faol foydalanuvchilar + kanallar donut + yangi

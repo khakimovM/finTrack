@@ -40,6 +40,13 @@ export const LOGIN_TEXT = {
   adminLogin: (device: string, ip: string | null, time: string) =>
     `🛡 Admin panelga kirildi: ${escapeHtml(device)}${ip ? `, IP ${escapeHtml(ip)}` : ''}, ${time}.\n\n` +
     'Bu siz bo‘lmasangiz, ADMIN_TELEGRAM_IDS va server kirishlarini darhol tekshiring.',
+  // A ban (admin panel, J4): the reason is the owner's own words, shown to the user once.
+  banned: '🚫 FinTrack hisobingiz bloklangan. Sayt, ilova va bot orqali foydalanib bo‘lmaydi.',
+  bannedNotice: (reason: string) =>
+    `🚫 FinTrack hisobingiz bloklandi: barcha sessiyalar yakunlandi.
+
+Sabab: ${escapeHtml(reason)}`,
+  unbanned: '✅ FinTrack hisobingiz qayta ochildi. Saytga, ilovaga va botga yana kirishingiz mumkin.',
   yourId: (id: number) => `🆔 Telegram ID'ingiz: <code>${id}</code>`,
 };
 

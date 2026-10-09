@@ -12,6 +12,7 @@ export * from './date';
 export * from './recurrence';
 export * from './schemas/auth';
 export * from './schemas/admin';
+export * from './schemas/admin-manage';
 export * from './schemas/user';
 export * from './schemas/account';
 export * from './schemas/category';

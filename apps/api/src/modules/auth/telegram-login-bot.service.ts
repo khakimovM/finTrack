@@ -159,6 +159,17 @@ export class TelegramLoginBotService {
   }
 
   /**
+   * A banned account's `/start <payload>`: the sign-in it would complete is cancelled, so the
+   * waiting page says so at once instead of running out its time.
+   */
+  async cancelForBanned(payload: string): Promise<void> {
+    const match = /^(login|link|admin)_([A-Za-z0-9_-]{16,64})$/.exec(payload);
+    if (!match) return;
+    const request = await this.repository.findByNonceHash(hashNonce(match[2]));
+    if (request) await this.repository.transition(request.id, ['PENDING'], 'CANCELLED');
+  }
+
+  /**
    * Admin sign-in: a code only for a registered account on the admin list. Anyone else gets the
    * ordinary "link expired" reply, so the bot never confirms that an admin panel exists.
    */
