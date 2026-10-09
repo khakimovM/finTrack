@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { Context } from 'grammy';
 import { AuthRepository } from '../auth/auth.repository';
+import { TelegramLoginBotService } from '../auth/telegram-login-bot.service';
+import { LOGIN_TEXT } from '../auth/telegram-login.messages';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { TEXT } from './bot-ui';
 
@@ -11,7 +13,26 @@ import { TEXT } from './bot-ui';
  */
 @Injectable()
 export class BotUserService {
-  constructor(private readonly auth: AuthRepository) {}
+  constructor(
+    private readonly auth: AuthRepository,
+    private readonly loginBot: TelegramLoginBotService,
+  ) {}
+
+  /**
+   * A banned account gets the same answer to everything it sends. Runs before every handler, so
+   * no sign-in, registration or entry goes through. Returns true when the update was refused.
+   */
+  async refuseBanned(ctx: Context): Promise<boolean> {
+    if (!ctx.from || ctx.from.is_bot || ctx.chat?.type !== 'private') return false;
+    const user = await this.auth.findUserByTelegramId(BigInt(ctx.from.id));
+    if (!user?.bannedAt) return false;
+
+    const payload = /^\/start\s+(\S+)/.exec(ctx.message?.text ?? '')?.[1];
+    if (payload) await this.loginBot.cancelForBanned(payload);
+    if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: LOGIN_TEXT.banned, show_alert: true });
+    else await ctx.reply(LOGIN_TEXT.banned);
+    return true;
+  }
 
   async resolve(ctx: Context): Promise<User | null> {
     if (!ctx.from || ctx.from.is_bot || ctx.chat?.type !== 'private') return null;

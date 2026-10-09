@@ -63,9 +63,10 @@ export class LoginCodeService {
       codesSent: request.codesSent + 1,
     });
 
+    const text = request.purpose === 'ADMIN' ? LOGIN_TEXT.adminCode : LOGIN_TEXT.code;
     const result = await this.telegram.send(
       telegramId,
-      LOGIN_TEXT.code(code, describeDevice(request.userAgent), request.ipAddress),
+      text(code, describeDevice(request.userAgent), request.ipAddress),
       {
         html: true,
         replyMarkup: {

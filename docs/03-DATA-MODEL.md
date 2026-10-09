@@ -115,6 +115,40 @@ Bitta kirish urinishi. Deep link'dagi `nonce` faqat hash ko'rinishida (`nonceHas
 kod ham `HMAC(requestId:code, OTP_SECRET)` — ochiq holda hech qayerda yo'q. Kod so'rovga bog'langan,
 3 daqiqa amal qiladi, 5 urinish (`attempts`, qator qulfi ostida hisoblanadi), bir marta ishlatiladi.
 `status`: `PENDING` → `AWAITING_CONTACT` → `CODE_SENT` → `CONSUMED` | `CANCELLED` | `EXPIRED`.
+`purpose`: `LOGIN` (sayt), `LINK` (eski hisobga Telegram ulash), `ADMIN` (admin panel, 0005 migratsiyasi).
+
+## Faollik va manba (admin statistikasi uchun, 0006)
+
+- `Transaction.source` — yozuv qayerdan kiritilgan: `WEB` (sayt, cookie), `MINIAPP` (Bearer token),
+  `BOT` (matn), `VOICE` (ovozli xabar qoralamasi), `RECURRING` (takroriy qoida). Servis metodlari uni
+  majburiy parametr sifatida oladi; 0006 dan oldingi qatorlarda `null`.
+- `UserActivityDay` — `(userId, day, channel)` kaliti: foydalanuvchi o'sha kuni (Asia/Tashkent) shu
+  kanaldan foydalangan. `ActivityService` JWT guard'dan (`WEB`/`MINIAPP`) va bot middleware'idan (`BOT`)
+  chaqiriladi; Redis `SET NX` kaliti tufayli bazaga kuniga bir marta yoziladi. `UNKNOWN` — 0006
+  migratsiyasi tranzaksiyalar va refresh tokenlardan tiklagan tarixiy kunlar (kanal noma'lum).
+- `User.lastSeenAt` — oxirgi so'rov, 5 daqiqada ko'pi bilan bir marta yoziladi.
+- `User.bannedAt`/`banReason` — admin bloklashi (J4). `bannedAt` bo'lsa hisob hech qayerdan kira olmaydi
+  (JWT guard, refresh, kod, Mini App, bot), ma'lumotlari esa o'zgarmaydi. `AuthRepository.findUserByTelegramId`
+  bloklanganni ham **qaytaradi** — aks holda bot uni yangi foydalanuvchi deb qayta ro'yxatdan o'tkazmoqchi
+  bo'lardi; tekshiruv har kirish nuqtasida alohida.
+- AI yordamchi hisoblagichlari bazada emas, Redis'da: `metrics:<kun>:ai.<voice|text>.<ok|limit|unavailable>`
+  va `metrics:<kun>:ai.provider.<nom>.<ok|fail.<sabab>>`, 120 kun saqlanadi.
+
+## Admin panel — `AdminSession`, `AdminAuditLog`
+
+- `AdminSession` — foydalanuvchi sessiyalaridan alohida. Cookie'dagi tasodifiy token faqat SHA-256
+  ko'rinishida (`tokenHash @unique`); `expiresAt` = kirishdan 8 soat, `lastUsedAt` (daqiqada ko'pi bilan
+  bir marta yoziladi) 1 soatdan eski bo'lsa sessiya tugagan. Admin huquqi bazada saqlanmaydi:
+  `ADMIN_TELEGRAM_IDS` env'i har so'rovda tekshiriladi.
+- `AdminAuditLog` — faqat qo'shiladigan jurnal: `LOGIN`, `LOGIN_DENIED` (`adminUserId = null`,
+  `telegramId` va sabab `meta` da), `LOGOUT`, keyingi bosqichlarda `BAN`/`UNBAN`/`REVOKE_SESSIONS`/
+  `BROADCAST`/`EXPORT`. Tashqi kalit yo'q — yozuv tilga olingan foydalanuvchidan uzoq yashaydi.
+- `Broadcast` (0008) — admin xabari: matn, `segment` (`ALL`/`ACTIVE_30D`/`INACTIVE_30D`),
+  `includeOptedOut`, `status` (`QUEUED` → `SENDING` → `DONE`) va `total/sent/blocked/failed` sanoqlari.
+- `BroadcastRecipient` — yaratilganda qotirilgan qabul qiluvchilar, kalit `(broadcastId, userId)`: bir odam
+  ro'yxatga ikki marta tushmaydi. `status`: `PENDING` → `SENDING` (yuboruvchi "oldi", `claimedAt`) →
+  `SENT`/`BLOCKED`/`FAILED`. 2 daqiqadan eski `SENDING` — o'lgan yuborish: yetgan-yetmagani noma'lum, shuning
+  uchun qayta yuborilmaydi, `FAILED` (`error = 'interrupted'`). Indeks `(broadcastId, status)`.
 
 ## Bildirishnomalar
 
@@ -135,6 +169,11 @@ token bilan yaratiladi, faqat sessiyalar ro'yxatida ko'rinishi va bekor qilinish
 `(userId, date)`, `(userId, type, date)`, `(accountId, date)`, `(categoryId)`,
 `(userId, status, deletedAt)`, `(userId, dueDate)`, `(transferGroupId)`,
 `(nextRunAt, isActive)`.
+
+Admin statistikasi (0007) — egasi bo'yicha emas, butun jadval bo'ylab sanaydi, shuning uchun
+`userId` dan boshlanmaydi: `transactions (createdAt, type)` (davr bo'yicha yozuvlar soni, faqat
+indeksdan) va `user_activity_days (day, userId)` (davr bo'yicha faol foydalanuvchilar, faqat indeksdan).
+`users (createdAt)` — 0006 dan.
 
 Yangi filtr qo'shsangiz — mos indeks ham qo'shiladi. Kompozit indeks tartibi:
 `(userId, filtr, saralash)`.

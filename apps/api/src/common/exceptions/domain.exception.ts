@@ -37,6 +37,13 @@ export class DebtOverpaymentException extends DomainException {
   }
 }
 
+/** A banned account (admin panel, docs/09) cannot sign in by any route. */
+export class AccountBannedException extends DomainException {
+  constructor() {
+    super('Hisobingiz bloklangan', 'ACCOUNT_BANNED', HttpStatus.FORBIDDEN);
+  }
+}
+
 export class ConflictDomainException extends DomainException {
   constructor(code: string, message: string, details?: Record<string, unknown>) {
     super(message, code, HttpStatus.CONFLICT, details);

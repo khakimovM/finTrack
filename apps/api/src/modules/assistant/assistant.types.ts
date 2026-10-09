@@ -1,13 +1,15 @@
 import { addDays, formatIsoDate, parseIsoDate, positiveTiyinSchema, somToTiyin } from '@fintrack/shared';
 import { Extraction } from './extraction.schema';
 
-export type ProviderName = 'gemini' | 'groq' | 'claude';
+export const PROVIDER_NAMES = ['gemini', 'groq', 'claude'] as const;
+export type ProviderName = (typeof PROVIDER_NAMES)[number];
 
 /**
  * rate_limited: quota or 429 (switch provider, cool down); unavailable: network/5xx/timeout;
  * rejected: the provider refused the input; bad_output: the answer did not match the schema.
  */
-export type ProviderFailure = 'rate_limited' | 'unavailable' | 'rejected' | 'bad_output';
+export const PROVIDER_FAILURES = ['rate_limited', 'unavailable', 'rejected', 'bad_output'] as const;
+export type ProviderFailure = (typeof PROVIDER_FAILURES)[number];
 
 export class AssistantProviderError extends Error {
   constructor(

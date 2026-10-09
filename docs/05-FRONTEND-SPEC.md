@@ -163,6 +163,25 @@ mavzu (Yorug' · Qorong'i · Tizim; Mini App'da yashirin — Telegram mavzusiga 
 Telegram ulanishi, faol sessiyalar (IP qisman yashiriladi), "Barcha qurilmalardan chiqish",
 akkauntni o'chirish ("O'CHIRISH" deb yozib, keyin tasdiq dialogi).
 
+## Admin panel (`/admin/*`, faqat egasi — `docs/09-ADMIN-PANEL.md`)
+
+Alohida lazy chunk: oddiy foydalanuvchi uning kodini yuklamaydi. Qobiq — logo + "Admin" belgisi, mavzu,
+chiqish, ostida gorizontal bo'limlar (telefonda suriladi). Sessiyasiz `/admin/*` — oddiy **404**
+sahifasi (API ham 404 beradi); kirish faqat `/admin/login` orqali. Sessiya panel ochiq turganda tugasa
+(har qanday admin so'rovi 404) — `/admin/login` ga qaytaradi (tab'dagi `sessionStorage` belgisi).
+
+| Bo'lim | Ichida |
+|---|---|
+| Umumiy | 4 KPI (oldingi davrga nisbatan `ChangeChip`), hisob holatlari, 30 kunlik faol/yangi grafigi, kanallar donut, yozuv manbalari, yangi ro'yxatdan o'tganlar |
+| Foydalanuvchilar | qidiruv (300 ms), holat tablari, saralash, CSV; ≥1024 jadval, undan kichik — kartalar; filtrlar va ochiq karta URL'da (`?q&status&sort&page&open`). Karta (`Modal lg`): sanoqlar, 90 kunlik faollik kalendari, yozuv manbalari; bloklash (sabab formasi, 3–300), blokdan chiqarish va sessiyalarni tugatish (`useConfirm`). Admin hisobida tugmalar yo'q |
+| O'sish | davr (30/90 kun, 1 yil) × guruh (kun/hafta/oy); faol+yangi, jami, yozuvlar grafiklari; yangi foydalanuvchilar yo'li; 12 haftalik kogorta heatmap |
+| Foydalanish | davr (7/30/90); kanallar donut, yozuv manbalari, funksiyalar, AI yordamchi va provayderlar |
+| Xabarlar | matn, kimga (3 segment), "bildirishnomani o'chirganlarga ham" belgisi, aniq son; avval "Menga test yuborish", keyin "Yuborish" (matn o'zgarsa qayta test), tasdiq oynasida odamlar soni; yuborilganlar ro'yxati, jarayon har 2 s yangilanadi |
+| Tizim | DB, Redis, Telegram, versiya kartalari; navbatlar jadvali va oxirgi xatolar; har 30 s yangilanadi |
+| Audit | amal turi filtri, sahifalash; kim → kimga, tafsilot bir qatorda, IP |
+
+"Bugun" — Toshkent kuni (`features/admin/periods.ts`). Faqat sanoqlar va sanalar ko'rsatiladi.
+
 ## To'rt holat — majburiy
 
 Har bir ma'lumotli ko'rinishda: **loading skeleton**, **error + qayta urinish**, **empty + CTA**,

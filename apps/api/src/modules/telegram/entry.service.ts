@@ -140,7 +140,7 @@ export class EntryService {
         categoryId: draft.categoryId,
         date: draft.date,
         note: draft.note || null,
-      });
+      }, draft.source === 'voice' ? 'VOICE' : 'BOT');
       return { status: 'saved', result };
     } catch (err) {
       // Keep the draft so the user can fix it (e.g. pick another account) and retry.

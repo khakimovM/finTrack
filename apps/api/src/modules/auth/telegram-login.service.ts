@@ -10,16 +10,26 @@ import { TelegramLoginRepository } from './telegram-login.repository';
 import { LoginCodeService } from './login-code.service';
 import { AuthRepository } from './auth.repository';
 import { AuthResult, AuthService, TokenMeta } from './auth.service';
-import { LOGIN_TEXT, describeDevice } from './telegram-login.messages';
+import { LOGIN_TEXT, describeDevice, noticeTime } from './telegram-login.messages';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ClockService } from '../../infra/clock/clock.service';
-import { DomainException, NotFoundDomainException } from '../../common/exceptions/domain.exception';
+import { AccountBannedException, DomainException, NotFoundDomainException } from '../../common/exceptions/domain.exception';
 
 export const REQUEST_TTL_MS = 10 * 60_000;
 export const MAX_ATTEMPTS = 5;
 export const MAX_CODES_PER_REQUEST = 3;
 const OPEN_STATUSES: TelegramLoginStatus[] = ['PENDING', 'AWAITING_CONTACT', 'CODE_SENT'];
+
+/** Deep link payload prefix per purpose: `/start login_<nonce>`, `link_…`, `admin_…`. */
+export const START_PREFIX: Record<TelegramLoginPurpose, string> = { LOGIN: 'login', LINK: 'link', ADMIN: 'admin' };
+
+/**
+ * Which requests an endpoint may see: the user endpoints serve sign-in and linking, the admin
+ * endpoints only admin sign-in. Neither can poll, resend or redeem the other's request.
+ */
+export type LoginScope = 'user' | 'admin';
+const SCOPE_PURPOSES: Record<LoginScope, TelegramLoginPurpose[]> = { user: ['LOGIN', 'LINK'], admin: ['ADMIN'] };
 
 export function hashNonce(nonce: string): string {
   return createHash('sha256').update(nonce).digest('hex');
@@ -28,6 +38,12 @@ export function hashNonce(nonce: string): string {
 type VerifyOutcome =
   | { ok: true; userId: string; request: TelegramLoginRequest }
   | { ok: false; error: DomainException };
+
+/** A code redeemed for `purpose`: the account it signs in, and the request it came from. */
+export interface RedeemedCode {
+  userId: string;
+  request: TelegramLoginRequest;
+}
 
 @Injectable()
 export class TelegramLoginService {
@@ -67,18 +83,16 @@ export class TelegramLoginService {
       expiresAt: new Date(Date.now() + REQUEST_TTL_MS),
     });
 
-    const prefix = purpose === 'LOGIN' ? 'login' : 'link';
     return {
       requestId: request.id,
-      deepLink: this.telegram.deepLink(`${prefix}_${nonce}`),
+      deepLink: this.telegram.deepLink(`${START_PREFIX[purpose]}_${nonce}`),
       botUsername: this.telegram.username,
       expiresAt: request.expiresAt.toISOString(),
     };
   }
 
-  async status(requestId: string): Promise<TelegramLoginStatusResponse> {
-    const request = await this.repository.findById(requestId);
-    if (!request) throw new NotFoundDomainException('So‘rov topilmadi');
+  async status(requestId: string, scope: LoginScope = 'user'): Promise<TelegramLoginStatusResponse> {
+    const request = await this.findInScope(requestId, scope);
 
     const expired = OPEN_STATUSES.includes(request.status) && request.expiresAt < new Date();
     return {
@@ -89,14 +103,27 @@ export class TelegramLoginService {
     };
   }
 
-  /**
-   * Redeems the code. The request row is locked, so parallel guesses queue up; a wrong guess is
-   * committed (attempt counted) before the error is thrown.
-   */
+  /** Redeems a sign-in code and opens a user session. */
   async verify(input: VerifyTelegramLoginInput, meta: TokenMeta): Promise<AuthResult> {
+    const { userId } = await this.redeem(input, 'LOGIN');
+
+    const user = await this.authRepository.findUserById(userId);
+    if (!user) throw new NotFoundDomainException('Foydalanuvchi topilmadi');
+    if (user.bannedAt) throw new AccountBannedException();
+
+    const session = await this.authService.issueSession(user, meta);
+    void this.notifyNewLogin(user.telegramId, meta, user.timezone);
+    return session;
+  }
+
+  /**
+   * Checks the code of a `purpose` request and marks it used. The request row is locked, so
+   * parallel guesses queue up; a wrong guess is committed (attempt counted) before the error.
+   */
+  async redeem(input: VerifyTelegramLoginInput, purpose: TelegramLoginPurpose): Promise<RedeemedCode> {
     const outcome = await this.prisma.$transaction(async (db): Promise<VerifyOutcome> => {
       const request = await this.repository.lock(db, input.requestId);
-      if (!request || request.purpose !== 'LOGIN') {
+      if (!request || request.purpose !== purpose) {
         return { ok: false, error: new NotFoundDomainException('So‘rov topilmadi') };
       }
       const now = new Date();
@@ -137,18 +164,11 @@ export class TelegramLoginService {
     });
 
     if (!outcome.ok) throw outcome.error;
-
-    const user = await this.authRepository.findUserById(outcome.userId);
-    if (!user) throw new NotFoundDomainException('Foydalanuvchi topilmadi');
-
-    const session = await this.authService.issueSession(user, meta);
-    void this.notifyNewLogin(user.telegramId, meta, user.timezone);
-    return session;
+    return { userId: outcome.userId, request: outcome.request };
   }
 
-  async resend(requestId: string): Promise<TelegramLoginStatusResponse> {
-    const request = await this.repository.findById(requestId);
-    if (!request) throw new NotFoundDomainException('So‘rov topilmadi');
+  async resend(requestId: string, scope: LoginScope = 'user'): Promise<TelegramLoginStatusResponse> {
+    const request = await this.findInScope(requestId, scope);
     if (request.status !== 'CODE_SENT' || !request.telegramId || !request.userId || request.expiresAt < new Date()) {
       throw this.expiredError();
     }
@@ -164,7 +184,15 @@ export class TelegramLoginService {
     if (result === 'RATE_LIMITED') {
       throw new DomainException('Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring', 'RATE_LIMITED', HttpStatus.TOO_MANY_REQUESTS);
     }
-    return this.status(requestId);
+    return this.status(requestId, scope);
+  }
+
+  private async findInScope(requestId: string, scope: LoginScope): Promise<TelegramLoginRequest> {
+    const request = await this.repository.findById(requestId);
+    if (!request || !SCOPE_PURPOSES[scope].includes(request.purpose)) {
+      throw new NotFoundDomainException('So‘rov topilmadi');
+    }
+    return request;
   }
 
   private expiredError(): DomainException {
@@ -179,11 +207,7 @@ export class TelegramLoginService {
   private async notifyNewLogin(telegramId: bigint | null, meta: TokenMeta, timezone: string): Promise<void> {
     if (telegramId === null) return;
     try {
-      const time = new Intl.DateTimeFormat('uz-UZ', {
-        timeZone: timezone,
-        dateStyle: 'short',
-        timeStyle: 'short',
-      }).format(this.clock.now());
+      const time = noticeTime(this.clock.now(), timezone);
       await this.telegram.send(telegramId, LOGIN_TEXT.newLogin(describeDevice(meta.userAgent), meta.ipAddress ?? null, time), {
         html: true,
       });

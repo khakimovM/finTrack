@@ -6,7 +6,15 @@ import { OtpInput } from './OtpInput';
 
 const big = 'h-14 w-full text-[16px] sm:h-14';
 
-export function StartButton({ onStart, starting }: { onStart: () => void; starting: boolean }) {
+export function StartButton({
+  onStart,
+  starting,
+  label = 'Telegram orqali kirish',
+}: {
+  onStart: () => void;
+  starting: boolean;
+  label?: string;
+}) {
   return (
     <Button className={cn(big, 'gap-2.5')} onClick={onStart} disabled={starting} aria-busy={starting || undefined}>
       {starting ? (
@@ -15,7 +23,7 @@ export function StartButton({ onStart, starting }: { onStart: () => void; starti
         </>
       ) : (
         <>
-          <Send className="h-5 w-5" aria-hidden /> Telegram orqali kirish
+          <Send className="h-5 w-5" aria-hidden /> {label}
         </>
       )}
     </Button>

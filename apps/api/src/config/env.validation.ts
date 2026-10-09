@@ -61,6 +61,11 @@ export const envSchema = z.object({
     .optional(),
   /** Alternative Bot API server (local Bot API server or a test double). */
   TELEGRAM_API_ROOT: z.string().url().optional(),
+  /** Telegram user ids allowed into the admin panel, comma-separated. Unset = no admin panel. */
+  ADMIN_TELEGRAM_IDS: z
+    .string()
+    .regex(/^\d{5,15}(\s*,\s*\d{5,15})*$/, 'ADMIN_TELEGRAM_IDS: comma-separated Telegram user ids')
+    .optional(),
 
   /** Voice notes and free text: Gemini (free tier) transcribes and extracts entries. */
   GEMINI_API_KEY: z.string().min(20, 'GEMINI_API_KEY looks too short').optional(),

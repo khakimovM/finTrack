@@ -6,6 +6,7 @@ import {
   DebtStatus,
   Prisma,
   Transaction,
+  TransactionSource,
   TransactionType,
 } from '@prisma/client';
 import { ListDebtsQuery } from '@fintrack/shared';
@@ -31,6 +32,7 @@ export interface CreateDebtRepoData {
   date: Date;
   dueDate?: Date | null;
   note?: string | null;
+  source: TransactionSource;
 }
 
 export interface UpdateDebtRepoData {
@@ -46,6 +48,7 @@ export interface CreatePaymentRepoData {
   type: TransactionType;
   paidAt: Date;
   note?: string | null;
+  source: TransactionSource;
 }
 
 export interface DebtSummaryRow {
@@ -188,6 +191,7 @@ export class DebtsRepository {
         debtId: debt.id,
         date: data.date,
         note: data.note ?? `Qarz: ${data.personName}`,
+        source: data.source,
       },
     });
 
@@ -217,6 +221,7 @@ export class DebtsRepository {
         debtId,
         date: data.paidAt,
         note: data.note,
+        source: data.source,
       },
     });
     const payment = await db.debtPayment.create({

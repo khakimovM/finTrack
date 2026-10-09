@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DebtDirection, TransactionType } from '@prisma/client';
+import { DebtDirection, TransactionSource, TransactionType } from '@prisma/client';
 import {
   DebtResponse,
   DebtListMeta,
@@ -67,7 +67,7 @@ export class DebtsService {
   }
 
   /** Debt + its LOAN_GIVEN/LOAN_TAKEN ledger row are written in one transaction. */
-  async create(userId: string, dto: CreateDebtInput): Promise<CreateDebtResult> {
+  async create(userId: string, dto: CreateDebtInput, source: TransactionSource): Promise<CreateDebtResult> {
     const today = await this.clock.todayFor(userId);
     const date = dto.date ?? today;
     await this.clock.assertNotFuture(userId, date);
@@ -89,6 +89,7 @@ export class DebtsService {
         date: parseIsoDate(date),
         dueDate: dto.dueDate ? parseIsoDate(dto.dueDate) : null,
         note: dto.note,
+        source,
       });
     });
 

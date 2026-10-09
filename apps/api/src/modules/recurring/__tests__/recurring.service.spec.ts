@@ -50,6 +50,7 @@ function occurrence(date: Date): Transaction & { account: never; category: null;
     debtId: null,
     transferGroupId: null,
     recurringRuleId: RULE,
+    source: 'RECURRING',
     date,
     note: 'Internet',
     createdAt: new Date(),

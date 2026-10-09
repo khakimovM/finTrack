@@ -7,7 +7,7 @@ import { UserResponse, SessionResponse } from '@fintrack/shared';
 import { AuthRepository } from './auth.repository';
 import { SessionStateService } from './session-state.service';
 import { durationToMs } from '../../common/utils/duration';
-import { NotFoundDomainException } from '../../common/exceptions/domain.exception';
+import { AccountBannedException, NotFoundDomainException } from '../../common/exceptions/domain.exception';
 
 /** Window in which a just-rotated refresh token is treated as a concurrent refresh, not theft. */
 const REFRESH_GRACE_MS = 30_000;
@@ -101,6 +101,10 @@ export class AuthService {
       throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Refresh token topilmadi' });
     }
 
+    // A ban revokes every token; without this check the next refresh would look like token theft.
+    const user = await this.repository.findUserById(tokenRecord.userId);
+    if (user?.bannedAt) throw new AccountBannedException();
+
     if (tokenRecord.revokedAt !== null) {
       // Two tabs refreshing at once present the same token milliseconds apart. That is not
       // theft: the loser just retries with the cookie the winner already received.
@@ -121,7 +125,6 @@ export class AuthService {
       throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Sessiya muddati tugagan. Qaytadan kiring' });
     }
 
-    const user = await this.repository.findUserById(tokenRecord.userId);
     if (!user) {
       throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Foydalanuvchi topilmadi' });
     }

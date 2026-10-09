@@ -36,6 +36,7 @@ function row(overrides: Partial<Transaction> = {}): TransactionWithRelations {
     debtId: null,
     transferGroupId: null,
     recurringRuleId: null,
+    source: null,
     date: new Date('2026-09-01T00:00:00Z'),
     note: 'Non',
     createdAt: new Date('2026-09-01T10:00:00Z'),
@@ -108,7 +109,7 @@ describe('TransactionsService', () => {
       const t = setup();
       t.repository.create.mockResolvedValue(row());
 
-      const res = await t.service.create(USER, validDto);
+      const res = await t.service.create(USER, validDto, 'WEB');
 
       expect(t.prisma.$transaction).toHaveBeenCalledTimes(1);
       expect(t.guard.assertCanDebit).toHaveBeenCalledWith(t.prisma.tx, USER, ACC, 50_000n);
@@ -129,7 +130,7 @@ describe('TransactionsService', () => {
       t.categories.findById.mockResolvedValue({ id: CAT, type: 'INCOME' });
       t.repository.create.mockResolvedValue(row({ type: 'INCOME' }));
 
-      await t.service.create(USER, { ...validDto, type: 'INCOME' });
+      await t.service.create(USER, { ...validDto, type: 'INCOME' }, 'WEB');
       expect(t.guard.assertCanDebit).not.toHaveBeenCalled();
       expect(t.budgets.checkAndNotify).not.toHaveBeenCalled();
     });
@@ -138,7 +139,7 @@ describe('TransactionsService', () => {
       const t = setup();
       t.guard.assertCanDebit.mockRejectedValue(new InsufficientBalanceException());
 
-      await expect(t.service.create(USER, validDto)).rejects.toBeInstanceOf(InsufficientBalanceException);
+      await expect(t.service.create(USER, validDto, 'WEB')).rejects.toBeInstanceOf(InsufficientBalanceException);
       expect(t.repository.create).not.toHaveBeenCalled();
       expect(t.balanceService.invalidate).not.toHaveBeenCalled();
     });
@@ -146,13 +147,13 @@ describe('TransactionsService', () => {
     it('rejects loan/transfer types with INVALID_TRANSACTION_TYPE', async () => {
       const t = setup();
       await expect(
-        t.service.create(USER, { ...validDto, type: 'LOAN_GIVEN' as unknown as 'EXPENSE' }),
+        t.service.create(USER, { ...validDto, type: 'LOAN_GIVEN' as unknown as 'EXPENSE' }, 'WEB'),
       ).rejects.toBeInstanceOf(InvalidTransactionTypeException);
     });
 
     it('rejects a date after the user’s today', async () => {
       const t = setup();
-      await expect(t.service.create(USER, { ...validDto, date: '2999-01-01' })).rejects.toBeInstanceOf(
+      await expect(t.service.create(USER, { ...validDto, date: '2999-01-01' }, 'WEB')).rejects.toBeInstanceOf(
         FutureDateException,
       );
       expect(t.clock.assertNotFuture).toHaveBeenCalledWith(USER, '2999-01-01');
@@ -161,14 +162,14 @@ describe('TransactionsService', () => {
     it('requires a category of the same type', async () => {
       const t = setup();
       t.categories.findById.mockResolvedValue({ id: CAT, type: 'INCOME' });
-      await expect(t.service.create(USER, validDto)).rejects.toBeInstanceOf(InvalidCategoryTypeException);
+      await expect(t.service.create(USER, validDto, 'WEB')).rejects.toBeInstanceOf(InvalidCategoryTypeException);
     });
 
     it('returns 404 when a tag is not the user’s', async () => {
       const t = setup();
       t.tags.countOwned.mockResolvedValue(0);
       await expect(
-        t.service.create(USER, { ...validDto, tagIds: ['44444444-4444-4444-4444-444444444444'] }),
+        t.service.create(USER, { ...validDto, tagIds: ['44444444-4444-4444-4444-444444444444'] }, 'WEB'),
       ).rejects.toBeInstanceOf(NotFoundDomainException);
     });
   });

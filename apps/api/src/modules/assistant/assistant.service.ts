@@ -12,6 +12,7 @@ import { CategoriesRepository } from '../categories/categories.repository';
 import { AccountsRepository } from '../accounts/accounts.repository';
 import { RedisService } from '../../infra/redis/redis.service';
 import { ClockService } from '../../infra/clock/clock.service';
+import { DailyMetricsService } from '../activity/daily-metrics.service';
 
 export interface VoiceInput {
   data: Buffer;
@@ -64,6 +65,7 @@ export class AssistantService {
     private readonly accounts: AccountsRepository,
     private readonly redis: RedisService,
     private readonly clock: ClockService,
+    private readonly metrics: DailyMetricsService,
     config: ConfigService,
   ) {
     this.voiceDailyLimit = config.get<number>('VOICE_DAILY_LIMIT') ?? 30;
@@ -80,12 +82,30 @@ export class AssistantService {
 
   async fromVoice(user: User, voice: VoiceInput): Promise<AssistantOutcome> {
     if (!this.voiceEnabled) return { status: 'disabled' };
+    return this.counted('voice', () => this.voiceOutcome(user, voice));
+  }
+
+  /** For chat text the local parser could not read. */
+  async fromText(user: User, text: string): Promise<AssistantOutcome> {
+    if (!this.textEnabled) return { status: 'disabled' };
+    if (!looksLikeEntry(text)) return { status: 'ok', result: { transcript: text, entries: [], debtMentioned: false } };
+    return this.counted('text', async () => {
+      if (!(await this.withinLimit(user, 'text', this.textDailyLimit))) return { status: 'limit' };
+      const ctx = await this.context(user);
+      const extraction = await this.extractText(text, ctx);
+      return extraction ? this.ok(extraction, ctx) : { status: 'unavailable' };
+    });
+  }
+
+  private async voiceOutcome(user: User, voice: VoiceInput): Promise<AssistantOutcome> {
     if (!(await this.withinLimit(user, 'voice', this.voiceDailyLimit))) return { status: 'limit' };
     const ctx = await this.context(user);
 
     if (await this.available('gemini', this.gemini.enabled)) {
       try {
-        return this.ok(await this.gemini.extractFromAudio(voice.data, voice.mimeType, ctx), ctx);
+        const extraction = await this.gemini.extractFromAudio(voice.data, voice.mimeType, ctx);
+        await this.providerWorked('gemini');
+        return this.ok(extraction, ctx);
       } catch (err) {
         await this.recordFailure(err);
       }
@@ -95,6 +115,7 @@ export class AssistantService {
     let transcript: string;
     try {
       transcript = await this.groq.transcribe(voice.data, voice.fileName, voice.mimeType);
+      await this.providerWorked('groq');
     } catch (err) {
       await this.recordFailure(err);
       return { status: 'unavailable' };
@@ -105,14 +126,15 @@ export class AssistantService {
     return this.ok(extraction ?? this.parseLocally(transcript), ctx);
   }
 
-  /** For chat text the local parser could not read. */
-  async fromText(user: User, text: string): Promise<AssistantOutcome> {
-    if (!this.textEnabled) return { status: 'disabled' };
-    if (!looksLikeEntry(text)) return { status: 'ok', result: { transcript: text, entries: [], debtMentioned: false } };
-    if (!(await this.withinLimit(user, 'text', this.textDailyLimit))) return { status: 'limit' };
-    const ctx = await this.context(user);
-    const extraction = await this.extractText(text, ctx);
-    return extraction ? this.ok(extraction, ctx) : { status: 'unavailable' };
+  /** Counts every assistant request by kind and outcome (`ai.voice.ok`, `ai.text.limit`…). */
+  private async counted(kind: 'voice' | 'text', run: () => Promise<AssistantOutcome>): Promise<AssistantOutcome> {
+    const outcome = await run();
+    await this.metrics.increment(`ai.${kind}.${outcome.status}`);
+    return outcome;
+  }
+
+  private async providerWorked(provider: ProviderName): Promise<void> {
+    await this.metrics.increment(`ai.provider.${provider}.ok`);
   }
 
   private async extractText(text: string, ctx: ExtractionContext): Promise<Extraction | null> {
@@ -123,7 +145,9 @@ export class AssistantService {
     for (const [name, enabled, run] of chain) {
       if (!(await this.available(name, enabled))) continue;
       try {
-        return await run();
+        const extraction = await run();
+        await this.providerWorked(name);
+        return extraction;
       } catch (err) {
         await this.recordFailure(err);
       }
@@ -194,6 +218,7 @@ export class AssistantService {
       return;
     }
     this.logger.warn(`Assistant provider failed: ${err.message}`);
+    await this.metrics.increment(`ai.provider.${err.provider}.fail.${err.reason}`);
     // Gemini tracks cooldowns per model and reports no delay; a provider-wide pause would also
     // block its models that still have quota.
     if (err.reason === 'rate_limited' && err.retryAfterSeconds !== undefined) {

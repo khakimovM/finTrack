@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Transaction, TransactionType } from '@prisma/client';
+import { Prisma, Transaction, TransactionSource, TransactionType } from '@prisma/client';
 import { ListTransactionsQuery, TransactionFilters, parseIsoDate } from '@fintrack/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { Db } from '../../infra/prisma/prisma.types';
@@ -20,6 +20,7 @@ export interface CreateTransactionData {
   categoryId?: string | null;
   date: Date;
   note?: string | null;
+  source: TransactionSource;
 }
 
 export interface UpdateTransactionData {

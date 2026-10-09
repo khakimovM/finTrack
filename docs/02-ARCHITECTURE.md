@@ -58,8 +58,14 @@ apps/api/src/
     ├── transactions/  transfers/  debts/  budgets/
     ├── recurring/  stats/  notifications/  export/  health/  jobs/
     ├── telegram/            bot handlerlari, qoralamalar, outbox, kunlik xulosa, webhook
-    └── assistant/           ovoz/matn → yozuvlar (Gemini, Groq, Claude adapterlari)
+    ├── assistant/           ovoz/matn → yozuvlar (Gemini, Groq, Claude adapterlari)
+    ├── activity/            faollik kunlari (guard + bot), kunlik hisoblagichlar (Redis)
+    └── admin/               ega paneli: kirish, stats/, users/, system/, broadcasts/ (docs/09)
 ```
+
+`admin` — ownership qoidasidan (invariant #4) **yagona ongli istisno**: foydalanuvchilar kesimida
+o'qiydi, lekin faqat sanoq va sanalarni; pul, balans va izoh SELECT qilinmaydi. O'zgartiradigan amallari
+(bloklash, sessiyalarni tugatish, xabar tarqatish) audit yozuvi bilan bitta tranzaksiyada.
 
 Bot faqat domen servislarini chaqiradi (TransactionsService, DebtPaymentsService…), shuning uchun
 qat'iy rejim, byudjet, atomarlik va ownership qoidalari botda ham xuddi webdagidek ishlaydi. Botdan
@@ -106,6 +112,12 @@ Balans hech qachon frontendda hisoblanmaydi. Grafik ma'lumoti hech qachon fronte
 5. Refresh token bazada **hashlangan**, `familyId` (= sessiya) bilan; har refresh'da rotatsiya,
    qayta ishlatilgan token butun oilani bekor qiladi. Access tokenda `sid` bor: sessiya yakunlansa
    yoki hisob o'chsa, token darhol ishlamay qoladi (Redis tekshiruvi).
+
+**Admin panel**
+`/admin/login` → `start=admin_<nonce>` → bot kodni faqat `ADMIN_TELEGRAM_IDS` dagi hisobga beradi
+(boshqasiga "havola eskirgan") → `ft_admin` cookie (`SameSite=Strict`, `path=/api/v1/admin`, 8 soat,
+1 soat harakatsizlik). `AdminGuard` sessiyasizlarga **404** beradi; ikki sessiya bir-biriga hech narsa
+ochmaydi. Bloklangan hisob guard, refresh, kod, Mini App va botda to'xtatiladi (`403 ACCOUNT_BANNED`).
 
 **Telegram Mini App**
 1. Ilova bot menyu tugmasidan yoki inline tugmadan ochiladi (klaviatura tugmasi `initData` bermaydi).

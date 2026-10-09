@@ -93,6 +93,11 @@ model User {
   timezone          String    @default("Asia/Tashkent")
   strictMode        Boolean   @default(false) @map("strict_mode")
   emailVerifiedAt   DateTime? @map("email_verified_at")
+  /// Last request through the site, Mini App or bot; written at most every few minutes.
+  lastSeenAt        DateTime? @map("last_seen_at")
+  /// Set by the admin panel (J4): a banned user cannot sign in and their sessions are ended.
+  bannedAt          DateTime? @map("banned_at")
+  banReason         String?   @map("ban_reason") @db.VarChar(300)
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
   deletedAt         DateTime? @map("deleted_at")
@@ -107,14 +112,42 @@ model User {
   recurringRules        RecurringRule[]
   notifications         Notification[]
   telegramLoginRequests TelegramLoginRequest[]
+  adminSessions         AdminSession[]
+  activityDays          UserActivityDay[]
 
   @@index([email])
+  @@index([createdAt])
   @@map("users")
+}
+
+enum ActivityChannel {
+  WEB
+  MINIAPP
+  BOT
+  /// Days filled in from history by migration 0006: there was activity, not where.
+  UNKNOWN
+}
+
+/// One row per user, calendar day (Asia/Tashkent) and channel they used FinTrack on. Feeds the
+/// admin panel's active-user counts and cohorts; at most one write per key and day.
+model UserActivityDay {
+  userId    String          @map("user_id")
+  day       DateTime        @db.Date
+  channel   ActivityChannel
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day, channel])
+  /// (day, user_id): distinct users per period read from the index alone.
+  @@index([day, userId])
+  @@map("user_activity_days")
 }
 
 enum TelegramLoginPurpose {
   LOGIN // web sign-in: the bot sends a one-time code
   LINK // attach Telegram to an existing (legacy) account from Settings
+  ADMIN // admin panel sign-in: only Telegram ids listed in ADMIN_TELEGRAM_IDS get a code
 }
 
 enum TelegramLoginStatus {
@@ -174,6 +207,121 @@ model RefreshToken {
   @@index([userId, revokedAt])
   @@index([familyId])
   @@map("refresh_tokens")
+}
+
+// ============================================================
+// ADMIN PANEL (owner only, see docs/09-ADMIN-PANEL.md)
+// ============================================================
+
+/// An admin panel session, separate from user sessions. The cookie holds a random token; only
+/// its SHA-256 is stored. Ends 8 h after sign-in or after 1 h without a request.
+model AdminSession {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  ipAddress  String?   @map("ip_address")
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime  @default(now()) @map("last_used_at")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("admin_sessions")
+}
+
+enum AdminAuditAction {
+  LOGIN
+  LOGIN_DENIED
+  LOGOUT
+  BAN
+  UNBAN
+  REVOKE_SESSIONS
+  BROADCAST
+  EXPORT
+}
+
+/// Everything done in the admin panel, and every refused attempt to get in. No foreign keys:
+/// the record outlives the users it mentions.
+model AdminAuditLog {
+  id           String           @id @default(uuid())
+  /// Null for refused sign-ins by someone who is not an admin.
+  adminUserId  String?          @map("admin_user_id")
+  action       AdminAuditAction
+  targetUserId String?          @map("target_user_id")
+  telegramId   BigInt?          @map("telegram_id")
+  meta         Json?
+  ipAddress    String?          @map("ip_address")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("admin_audit_logs")
+}
+
+/// Who a broadcast goes to: everyone, people active in the last 30 days, or those who were not.
+enum BroadcastSegment {
+  ALL
+  ACTIVE_30D
+  INACTIVE_30D
+}
+
+enum BroadcastStatus {
+  QUEUED
+  SENDING
+  DONE
+}
+
+enum BroadcastDeliveryStatus {
+  PENDING
+  /// Taken by the sender; a row left here by a crash is never sent again (it becomes FAILED).
+  SENDING
+  SENT
+  /// Telegram answered 403: the person blocked the bot.
+  BLOCKED
+  FAILED
+}
+
+/// A message from the owner to many people through the bot (admin panel, J6). Counts are kept up to
+/// date while it is sent. No foreign key to the admin, like the audit log.
+model Broadcast {
+  id              String           @id @default(uuid())
+  adminUserId     String           @map("admin_user_id")
+  text            String           @db.VarChar(4096)
+  segment         BroadcastSegment
+  /// Also sent to people who switched Telegram notifications off (chosen per broadcast).
+  includeOptedOut Boolean          @default(false) @map("include_opted_out")
+  status          BroadcastStatus  @default(QUEUED)
+  total           Int
+  sent            Int              @default(0)
+  blocked         Int              @default(0)
+  failed          Int              @default(0)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  startedAt       DateTime?        @map("started_at")
+  finishedAt      DateTime?        @map("finished_at")
+
+  recipients BroadcastRecipient[]
+
+  @@index([createdAt])
+  @@map("broadcasts")
+}
+
+/// The recipients, fixed when the broadcast is created: one row per person, so nobody gets it twice.
+model BroadcastRecipient {
+  broadcastId String                  @map("broadcast_id")
+  userId      String                  @map("user_id")
+  telegramId  BigInt                  @map("telegram_id")
+  status      BroadcastDeliveryStatus @default(PENDING)
+  claimedAt   DateTime?               @map("claimed_at")
+  sentAt      DateTime?               @map("sent_at")
+  error       String?                 @db.VarChar(200)
+
+  broadcast Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+
+  @@id([broadcastId, userId])
+  @@index([broadcastId, status])
+  @@map("broadcast_recipients")
 }
 
 // ============================================================
@@ -268,24 +416,26 @@ model TransactionTag {
 // ============================================================
 
 model Transaction {
-  id              String          @id @default(uuid())
-  userId          String          @map("user_id")
-  accountId       String          @map("account_id")
+  id              String             @id @default(uuid())
+  userId          String             @map("user_id")
+  accountId       String             @map("account_id")
   type            TransactionType
   /// Amount in tiyin, always positive. The sign comes from `type`.
   amount          BigInt
   /// Amount converted to the user's base currency at the transaction date (Phase 8).
-  amountBase      BigInt?         @map("amount_base")
-  categoryId      String?         @map("category_id")
-  debtId          String?         @map("debt_id")
+  amountBase      BigInt?            @map("amount_base")
+  categoryId      String?            @map("category_id")
+  debtId          String?            @map("debt_id")
   /// Links the two rows of a single transfer.
-  transferGroupId String?         @map("transfer_group_id")
-  recurringRuleId String?         @map("recurring_rule_id")
-  date            DateTime        @db.Date
-  note            String?         @db.VarChar(500)
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
-  deletedAt       DateTime?       @map("deleted_at")
+  transferGroupId String?            @map("transfer_group_id")
+  recurringRuleId String?            @map("recurring_rule_id")
+  date            DateTime           @db.Date
+  note            String?            @db.VarChar(500)
+  /// Where the entry was made. Null for rows written before migration 0006.
+  source          TransactionSource?
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  deletedAt       DateTime?          @map("deleted_at")
 
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   account       Account          @relation(fields: [accountId], references: [id], onDelete: Restrict)
@@ -301,7 +451,17 @@ model Transaction {
   @@index([accountId, date])
   @@index([categoryId])
   @@index([transferGroupId])
+  /// (created_at, type): the admin panel counts entries per period from the index alone.
+  @@index([createdAt, type])
   @@map("transactions")
+}
+
+enum TransactionSource {
+  WEB
+  MINIAPP
+  BOT
+  VOICE
+  RECURRING
 }
 
 // ============================================================

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ExportService, EXPORT_MAX_ROWS, neutralizeFormula } from '../export.service';
+import { ExportService, EXPORT_MAX_ROWS } from '../export.service';
+import { neutralizeFormula } from '../../../common/utils/csv';
 import { TransactionsRepository } from '../../transactions/transactions.repository';
 import { parseIsoDate } from '@fintrack/shared';
 

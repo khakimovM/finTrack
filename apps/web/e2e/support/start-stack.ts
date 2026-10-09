@@ -113,6 +113,7 @@ const env: NodeJS.ProcessEnv = {
   TELEGRAM_WEBHOOK_SECRET: E2E.webhookSecret,
   TELEGRAM_WEBHOOK_URL: '',
   TELEGRAM_API_ROOT: `http://127.0.0.1:${E2E.telegramPort}`,
+  ADMIN_TELEGRAM_IDS: String(E2E.adminTelegramId),
   SCHEDULER_ENABLED: 'false',
   SWAGGER_ENABLED: 'false',
   GEMINI_API_KEY: '',

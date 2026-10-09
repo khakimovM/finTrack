@@ -43,6 +43,27 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // The owner's admin panel, loaded only when someone opens it: users never download its code.
+  {
+    path: '/admin/login',
+    lazy: () => import('./pages/admin/AdminLoginPage').then((m) => ({ Component: m.AdminLoginPage })),
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: '/admin',
+    lazy: () => import('./features/admin/components/AdminShell').then((m) => ({ Component: m.AdminShell })),
+    errorElement: <ErrorPage />,
+    children: [
+      { index: true, lazy: () => import('./pages/admin/AdminOverviewPage').then((m) => ({ Component: m.AdminOverviewPage })) },
+      { path: 'users', lazy: () => import('./pages/admin/AdminUsersPage').then((m) => ({ Component: m.AdminUsersPage })) },
+      { path: 'growth', lazy: () => import('./pages/admin/AdminGrowthPage').then((m) => ({ Component: m.AdminGrowthPage })) },
+      { path: 'usage', lazy: () => import('./pages/admin/AdminUsagePage').then((m) => ({ Component: m.AdminUsagePage })) },
+      { path: 'broadcasts', lazy: () => import('./pages/admin/AdminBroadcastsPage').then((m) => ({ Component: m.AdminBroadcastsPage })) },
+      { path: 'system', lazy: () => import('./pages/admin/AdminSystemPage').then((m) => ({ Component: m.AdminSystemPage })) },
+      { path: 'audit', lazy: () => import('./pages/admin/AdminAuditPage').then((m) => ({ Component: m.AdminAuditPage })) },
+      { path: '*', lazy: () => import('./features/admin/components/AdminShell').then((m) => ({ Component: m.AdminNotFound })) },
+    ],
+  },
   // Component gallery for checking the design system; compiled out of production builds.
   ...(import.meta.env.DEV
     ? [{ path: '/dev/ui', lazy: () => import('./pages/dev/UiGallery').then((m) => ({ Component: m.UiGallery })) }]

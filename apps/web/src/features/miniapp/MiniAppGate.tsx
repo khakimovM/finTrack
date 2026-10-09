@@ -1,4 +1,4 @@
-import { Clock, CloudOff, PanelBottom, UserPlus, type LucideIcon } from 'lucide-react';
+import { Ban, Clock, CloudOff, PanelBottom, UserPlus, type LucideIcon } from 'lucide-react';
 import { MiniAppStatus } from '../../stores/miniAppStore';
 import { telegramApp } from '../../lib/telegram';
 import { cn } from '../../lib/utils';
@@ -11,6 +11,12 @@ const COPY: Record<GateStatus, { title: string; body: string; icon: LucideIcon; 
     body: 'Botga qaytib /start bosing va telefon raqamingizni ulashing. Shundan so‘ng ilovani qayta oching.',
     icon: UserPlus,
     tile: 'bg-info-soft text-info',
+  },
+  banned: {
+    title: 'Hisobingiz bloklangan',
+    body: 'FinTrack hisobingiz bloklangan, shuning uchun ilova, sayt va bot orqali kirib bo‘lmaydi.',
+    icon: Ban,
+    tile: 'bg-danger-soft text-danger',
   },
   expired: {
     title: 'Ilova sessiyasi tugadi',

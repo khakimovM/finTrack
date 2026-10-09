@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TransactionType } from '@prisma/client';
+import { TransactionSource, TransactionType } from '@prisma/client';
 import {
   CreateDebtPaymentInput,
   DebtPaymentResponse,
@@ -58,12 +58,13 @@ export class DebtPaymentsService {
     userId: string,
     debtId: string,
     dto: CreateDebtPaymentInput,
+    source: TransactionSource,
   ): Promise<CreatePaymentResult> {
-    return this.pay(userId, debtId, { ...dto, amount: BigInt(dto.amount) });
+    return this.pay(userId, debtId, { ...dto, amount: BigInt(dto.amount) }, source);
   }
 
-  async settle(userId: string, debtId: string, dto: SettleDebtInput): Promise<CreatePaymentResult> {
-    return this.pay(userId, debtId, { ...dto, amount: null, note: dto.note ?? 'To‘liq yopildi' });
+  async settle(userId: string, debtId: string, dto: SettleDebtInput, source: TransactionSource): Promise<CreatePaymentResult> {
+    return this.pay(userId, debtId, { ...dto, amount: null, note: dto.note ?? 'To‘liq yopildi' }, source);
   }
 
   /**
@@ -74,6 +75,7 @@ export class DebtPaymentsService {
     userId: string,
     debtId: string,
     request: PaymentRequest,
+    source: TransactionSource,
   ): Promise<CreatePaymentResult> {
     const today = await this.clock.todayFor(userId);
     const paidAt = request.paidAt ?? today;
@@ -112,6 +114,7 @@ export class DebtPaymentsService {
         type: debt.direction === 'I_LENT' ? 'LOAN_REPAY_IN' : 'LOAN_REPAY_OUT',
         paidAt: parseIsoDate(paidAt),
         note: request.note,
+        source,
       });
 
       const status = debtStatusFor(debt.amount, paid + amount);

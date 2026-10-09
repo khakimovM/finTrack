@@ -7,6 +7,7 @@ import {
   TransactionWithRelations,
 } from '../transactions/transactions.repository';
 import { DomainException } from '../../common/exceptions/domain.exception';
+import { escapeCsvField, neutralizeFormula } from '../../common/utils/csv';
 
 /** Keeps a single export bounded in memory; larger ranges must be split by date. */
 export const EXPORT_MAX_ROWS = 50_000;
@@ -22,22 +23,6 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   LOAN_REPAY_OUT: 'Qarz qaytarildi (chiqim)',
   ADJUSTMENT: 'Tuzatish',
 };
-
-/**
- * Spreadsheet apps execute cells starting with = + - @ (CSV/formula injection). A leading
- * apostrophe makes Excel and LibreOffice treat the cell as plain text.
- */
-export function neutralizeFormula(field: string): string {
-  return /^[=+\-@\t\r]/.test(field) ? `'${field}` : field;
-}
-
-function escapeCsvField(field: string): string {
-  const safe = neutralizeFormula(field);
-  if (/[",\n\r]/.test(safe)) {
-    return `"${safe.replace(/"/g, '""')}"`;
-  }
-  return safe;
-}
 
 @Injectable()
 export class ExportService {

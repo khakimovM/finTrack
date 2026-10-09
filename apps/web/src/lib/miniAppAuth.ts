@@ -15,6 +15,7 @@ export function miniAppStatusFor(error: unknown): MiniAppStatus {
     ? (error.response?.data as { error?: { code?: string } } | undefined)?.error?.code
     : undefined;
   if (code === 'TELEGRAM_NOT_REGISTERED') return 'unregistered';
+  if (code === 'ACCOUNT_BANNED') return 'banned';
   if (code === 'TELEGRAM_INIT_DATA_EXPIRED') return 'expired';
   return 'error';
 }
