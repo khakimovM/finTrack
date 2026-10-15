@@ -23,10 +23,16 @@ export function beat(state: RevealState, delayMs: number, base?: string, animati
   return { className: cn(base, animation), style: delayMs ? { animationDelay: `${delayMs}ms` } : undefined };
 }
 
+/**
+ * The landing page arrived as prerendered HTML (scripts/prerender.mjs) and its hero already played
+ * its entrance there; the app, drawing the same page over it, shows the hero at rest.
+ */
+const heroPlayedInHtml = typeof document !== 'undefined' && document.documentElement.hasAttribute('data-prerendered');
+
 /** The same for things that play on page load (the hero): no observer, only reduced motion. */
 export function useEntrance(): (delayMs: number, base?: string, animation?: string) => Beat {
   const reduced = useReducedMotion();
-  return (delayMs, base, animation) => beat(reduced ? 'static' : 'playing', delayMs, base, animation);
+  return (delayMs, base, animation) => beat(reduced || heroPlayedInHtml ? 'static' : 'playing', delayMs, base, animation);
 }
 
 type RevealTag = 'div' | 'article' | 'li';

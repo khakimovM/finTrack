@@ -5,6 +5,7 @@ import { ToastContainer } from './components/ui/Toast';
 import { queryClient } from './lib/queryClient';
 import { useMiniAppStore } from './stores/miniAppStore';
 import { MiniAppGate } from './features/miniapp/MiniAppGate';
+import { MiniAppSplash } from './features/miniapp/MiniAppSplash';
 
 export function App() {
   const miniAppStatus = useMiniAppStore((s) => s.status);
@@ -12,7 +13,8 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      {/* Shown while the first page's code loads (the app's pages are separate chunks). */}
+      <RouterProvider router={router} fallbackElement={<MiniAppSplash />} />
       <ToastContainer />
     </QueryClientProvider>
   );

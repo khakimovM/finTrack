@@ -133,3 +133,11 @@ ochmaydi. Bloklangan hisob guard, refresh, kod, Mini App va botda to'xtatiladi (
   `WEB_DIST_DIR` dan beradi). Pre-deploy: `prisma migrate deploy`; healthcheck: `/api/v1/health/ready`;
   Telegram webhook to'g'ridan-to'g'ri shu domenga keladi. Sayt va API bitta domenda bo'lgani uchun
   cookie'lar first-party, CORS yo'q. CSP faqat `web.telegram.org` ga ilovani iframe'da ochishga ruxsat beradi.
+- Domen: **https://myfintrack.uz** (DNS — Cloudflare, apex CNAME "DNS only" → Railway; `www` Cloudflare'da
+  301 bilan apex'ga; pochta — Cloudflare Email Routing). `*.up.railway.app` dagi sahifa so'rovlari `CLIENT_URL`
+  ga 301 (API emas).
+- Web build (`apps/web` `npm run build`): Vite → landing'ning SSR build'i (`src/entry-prerender.tsx`) →
+  `scripts/prerender.mjs`. Natija: `index.html` — landing HTML'i ichida (faqat `/` uchun), `app.html` — bo'sh
+  qobiq `noindex` bilan (`/login`, `/app/*`, `/admin/*`; boshqa manzil — shu qobiq **404** bilan), har matnli
+  faylning `.br`/`.gz` nusxasi (`serve-web.ts` `preCompressed` bilan beradi, `Vary: Accept-Encoding`).
+  Ilova sahifalari alohida chunk'lar (`routes.tsx` `lazy`): landing faqat o'ziga kerak kodni yuklaydi.

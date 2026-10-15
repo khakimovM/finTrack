@@ -2,14 +2,88 @@
 <html lang="uz">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#efefec" />
+    <title>FinTrack — xarajat, daromad va qarzlar hisobi | myfintrack.uz</title>
     <meta
       name="description"
-      content="FinTrack — kirim-chiqim, hisoblar, byudjet va qarzlarni saytda yoki Telegram botda yuritish. Kirish faqat Telegram orqali, parolsiz."
+      content="FinTrack (MyFinTrack) — shaxsiy moliya ilovasi: kirim-chiqim, hisoblar, byudjet va qarzlarni saytda yoki Telegram botda yuriting. Bepul, parolsiz kirish."
     />
-    <title>FinTrack — Shaxsiy moliya boshqaruvi</title>
+    <link rel="canonical" href="https://myfintrack.uz/" />
+    <meta name="theme-color" content="#efefec" />
+    <meta name="application-name" content="FinTrack" />
+    <meta name="apple-mobile-web-app-title" content="FinTrack" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FinTrack" />
+    <meta property="og:locale" content="uz_UZ" />
+    <meta property="og:url" content="https://myfintrack.uz/" />
+    <meta property="og:title" content="FinTrack — pulingiz qayerga ketayotganini biling" />
+    <meta
+      property="og:description"
+      content="Xarajat va daromadni saytda yoki Telegram botda bir jumla bilan yozing. Hisoblar, byudjet va qarzlar bir joyda. Bepul."
+    />
+    <meta property="og:image" content="https://myfintrack.uz/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="FinTrack — shaxsiy moliya: saytda va Telegram’da" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FinTrack — pulingiz qayerga ketayotganini biling" />
+    <meta
+      name="twitter:description"
+      content="Xarajat va daromadni saytda yoki Telegram botda yozing. Hisoblar, byudjet va qarzlar bir joyda."
+    />
+    <meta name="twitter:image" content="https://myfintrack.uz/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://myfintrack.uz/#website",
+            "url": "https://myfintrack.uz/",
+            "name": "FinTrack",
+            "alternateName": ["MyFinTrack", "myfintrack.uz", "FinTrack Uz"],
+            "inLanguage": "uz",
+            "publisher": { "@id": "https://myfintrack.uz/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://myfintrack.uz/#organization",
+            "name": "FinTrack",
+            "alternateName": "MyFinTrack",
+            "url": "https://myfintrack.uz/",
+            "email": "info@myfintrack.uz",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://myfintrack.uz/icon-512.png",
+              "width": 512,
+              "height": 512
+            },
+            "sameAs": ["https://t.me/fintrack_cwa_bot"]
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://myfintrack.uz/#app",
+            "name": "FinTrack",
+            "url": "https://myfintrack.uz/",
+            "applicationCategory": "FinanceApplication",
+            "operatingSystem": "Web, Telegram",
+            "inLanguage": "uz",
+            "description": "Shaxsiy moliya ilovasi: kirim-chiqim, hisoblar, byudjet va qarzlarni saytda yoki Telegram botda yuritish.",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "UZS" },
+            "publisher": { "@id": "https://myfintrack.uz/#organization" }
+          }
+        ]
+      }
+    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
