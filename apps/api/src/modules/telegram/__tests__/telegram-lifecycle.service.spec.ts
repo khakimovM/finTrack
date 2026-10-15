@@ -27,6 +27,8 @@ function setup(env: Record<string, string | undefined>, existingWebhook: string)
       .spyOn(bot.api, 'getWebhookInfo')
       .mockResolvedValue({ url: existingWebhook, has_custom_certificate: false, pending_update_count: 0 }),
     setMyCommands: jest.spyOn(bot.api, 'setMyCommands').mockResolvedValue(true),
+    setMyDescription: jest.spyOn(bot.api, 'setMyDescription').mockResolvedValue(true),
+    setMyShortDescription: jest.spyOn(bot.api, 'setMyShortDescription').mockResolvedValue(true),
     setChatMenuButton: jest.spyOn(bot.api, 'setChatMenuButton').mockResolvedValue(true),
     setWebhook: jest.spyOn(bot.api, 'setWebhook').mockResolvedValue(true),
     deleteWebhook: jest.spyOn(bot.api, 'deleteWebhook').mockResolvedValue(true),
@@ -84,5 +86,24 @@ describe('TelegramLifecycleService transport', () => {
     expect(api.setWebhook).toHaveBeenCalledWith(PROD_WEBHOOK, expect.objectContaining({ max_connections: 40 }));
     expect(start).not.toHaveBeenCalled();
     expect(telegram.enabled).toBe(true);
+  });
+
+  it('names the website in the bot profile once the site has a public https address', async () => {
+    const { lifecycle, api } = setup({ TELEGRAM_WEBHOOK_URL: PROD_WEBHOOK, CLIENT_URL: 'https://myfintrack.uz' }, PROD_WEBHOOK);
+
+    await lifecycle.onApplicationBootstrap();
+
+    const short = String(api.setMyShortDescription.mock.calls[0][0]);
+    const long = String(api.setMyDescription.mock.calls[0][0]);
+    expect(short).toContain('myfintrack.uz');
+    expect(short.length).toBeLessThanOrEqual(120);
+    expect(long).toContain('https://myfintrack.uz');
+    expect(long.length).toBeLessThanOrEqual(512);
+  });
+
+  it('leaves the bot profile alone without an https site (local development)', async () => {
+    const { lifecycle, api } = setup({ TELEGRAM_WEBHOOK_URL: PROD_WEBHOOK, CLIENT_URL: 'http://localhost:5173' }, PROD_WEBHOOK);
+    await lifecycle.onApplicationBootstrap();
+    expect(api.setMyDescription).not.toHaveBeenCalled();
   });
 });

@@ -85,7 +85,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
 
   // Production serves the web build from this process (see serve-web.ts); dev uses Vite.
   const webDir = config.get<string>('WEB_DIST_DIR');
-  if (webDir) await serveWebApp(app, webDir);
+  if (webDir) await serveWebApp(app, webDir, config.get<string>('CLIENT_URL'));
 
   app.enableShutdownHooks();
 }

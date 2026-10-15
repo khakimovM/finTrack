@@ -1,24 +1,19 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
-import { LoginPage } from './pages/auth/LoginPage';
 import { LandingPage } from './pages/landing/LandingPage';
-import { NotificationsPage } from './pages/notifications/NotificationsPage';
-import { SettingsPage } from './pages/settings/SettingsPage';
-import { DashboardPage } from './pages/dashboard/DashboardPage';
-import { TransactionsPage } from './pages/transactions/TransactionsPage';
-import { AccountsPage } from './pages/accounts/AccountsPage';
-import { CategoriesPage } from './pages/categories/CategoriesPage';
-import { DebtsPage } from './pages/debts/DebtsPage';
-import { BudgetsPage } from './pages/budgets/BudgetsPage';
-import { RecurringPage } from './pages/recurring/RecurringPage';
-import { ReportsPage } from './pages/reports/ReportsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorPage } from './pages/ErrorPage';
 
+// Only the landing page (the first page most visitors and every search engine see) is in the main
+// bundle; the app, its charts and the admin panel load when someone goes there.
+
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage />, errorElement: <ErrorPage /> },
-  { path: '/login', element: <LoginPage />, errorElement: <ErrorPage /> },
+  {
+    path: '/login',
+    lazy: () => import('./pages/auth/LoginPage').then((m) => ({ Component: m.LoginPage })),
+    errorElement: <ErrorPage />,
+  },
   // Registration happens in the Telegram bot; keep old links working.
   { path: '/register', element: <Navigate to="/login" replace /> },
   {
@@ -27,18 +22,18 @@ export const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       {
-        element: <AppShell />,
+        lazy: () => import('./components/layout/AppShell').then((m) => ({ Component: m.AppShell })),
         children: [
-          { index: true, element: <DashboardPage /> },
-          { path: 'transactions', element: <TransactionsPage /> },
-          { path: 'accounts', element: <AccountsPage /> },
-          { path: 'debts', element: <DebtsPage /> },
-          { path: 'budgets', element: <BudgetsPage /> },
-          { path: 'categories', element: <CategoriesPage /> },
-          { path: 'recurring', element: <RecurringPage /> },
-          { path: 'reports', element: <ReportsPage /> },
-          { path: 'notifications', element: <NotificationsPage /> },
-          { path: 'settings', element: <SettingsPage /> },
+          { index: true, lazy: () => import('./pages/dashboard/DashboardPage').then((m) => ({ Component: m.DashboardPage })) },
+          { path: 'transactions', lazy: () => import('./pages/transactions/TransactionsPage').then((m) => ({ Component: m.TransactionsPage })) },
+          { path: 'accounts', lazy: () => import('./pages/accounts/AccountsPage').then((m) => ({ Component: m.AccountsPage })) },
+          { path: 'debts', lazy: () => import('./pages/debts/DebtsPage').then((m) => ({ Component: m.DebtsPage })) },
+          { path: 'budgets', lazy: () => import('./pages/budgets/BudgetsPage').then((m) => ({ Component: m.BudgetsPage })) },
+          { path: 'categories', lazy: () => import('./pages/categories/CategoriesPage').then((m) => ({ Component: m.CategoriesPage })) },
+          { path: 'recurring', lazy: () => import('./pages/recurring/RecurringPage').then((m) => ({ Component: m.RecurringPage })) },
+          { path: 'reports', lazy: () => import('./pages/reports/ReportsPage').then((m) => ({ Component: m.ReportsPage })) },
+          { path: 'notifications', lazy: () => import('./pages/notifications/NotificationsPage').then((m) => ({ Component: m.NotificationsPage })) },
+          { path: 'settings', lazy: () => import('./pages/settings/SettingsPage').then((m) => ({ Component: m.SettingsPage })) },
         ],
       },
     ],

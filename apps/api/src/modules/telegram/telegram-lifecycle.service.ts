@@ -7,7 +7,7 @@ import { MenuHandlers } from './handlers/menu.handlers';
 import { DebtHandlers } from './handlers/debt.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
 import { VoiceHandlers } from './handlers/voice.handlers';
-import { miniAppUrl } from './bot-ui';
+import { BOT_PROFILE, miniAppUrl } from './bot-ui';
 import { ActivityService } from '../activity/activity.service';
 import { BotUserService } from './bot-user.service';
 
@@ -81,10 +81,17 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
         { command: 'balans', description: 'Balans' },
       ]);
       // The menu button next to the input field opens the Mini App with signed initData.
-      const appUrl = miniAppUrl(this.config.get<string>('WEB_APP_URL') ?? this.config.get<string>('CLIENT_URL'));
+      const siteUrl = this.config.get<string>('WEB_APP_URL') ?? this.config.get<string>('CLIENT_URL');
+      const appUrl = miniAppUrl(siteUrl);
       await bot.api.setChatMenuButton({
         menu_button: appUrl ? { type: 'web_app', text: 'Ilova', web_app: { url: appUrl } } : { type: 'commands' },
       });
+      // The bot's profile and its t.me page (which search engines index) name the website.
+      if (appUrl && siteUrl) {
+        const host = new URL(siteUrl).host;
+        await bot.api.setMyShortDescription(BOT_PROFILE.short(host));
+        await bot.api.setMyDescription(BOT_PROFILE.long(`https://${host}`));
+      }
       if (webhookUrl) {
         await bot.api.setWebhook(webhookUrl, {
           secret_token: this.config.get<string>('TELEGRAM_WEBHOOK_SECRET'),

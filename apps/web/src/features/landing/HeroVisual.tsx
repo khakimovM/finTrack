@@ -254,6 +254,9 @@ function PhoneMock({ at, play }: { at: At; play: boolean }) {
 /** Height the desktop scene is drawn at; the phone's bottom edge sits at 668. */
 const SCENE_HEIGHT = 660;
 
+/** Measures before paint in the browser; the build-time render (no layout there) skips it quietly. */
+const useBrowserLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
+
 /**
  * From 820px the scene shrinks to the height the hero leaves it (one screen minus header and
  * padding), so short laptop screens see it whole; it never grows past its drawn size.
@@ -262,7 +265,7 @@ function useSceneScale(box: React.RefObject<HTMLDivElement | null>): number {
   const wide = useMediaQuery('(min-width: 820px)');
   const [scale, setScale] = React.useState(1);
 
-  React.useLayoutEffect(() => {
+  useBrowserLayoutEffect(() => {
     const node = box.current;
     if (!wide || !node) {
       setScale(1);

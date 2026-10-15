@@ -1,0 +1,8 @@
+# FinTrack (myfintrack.uz)
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://myfintrack.uz/sitemap.xml

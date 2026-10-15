@@ -52,6 +52,8 @@ function resolve(theme: Theme): ResolvedTheme {
 }
 
 function applyToDom(resolved: ResolvedTheme): void {
+  // The landing page is also rendered at build time, in Node, where there is no document.
+  if (typeof document === 'undefined') return;
   const root = document.documentElement;
   root.classList.toggle('dark', resolved === 'dark');
   // Mobile browsers colour their toolbar from this meta; keep it on the page background.

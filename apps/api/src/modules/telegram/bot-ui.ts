@@ -43,6 +43,15 @@ export function openAppKeyboard(url: string): InlineKeyboardMarkup {
   return { inline_keyboard: [[{ text: '🌐 FinTrack ilovasini ochish', web_app: { url } }]] };
 }
 
+/** The bot's profile: under its name (≤120) and on the empty chat and t.me page (≤512). */
+export const BOT_PROFILE = {
+  short: (host: string) => `FinTrack — xarajat, daromad va qarzlar hisobi. Sayt va ilova: ${host}`,
+  long: (site: string) =>
+    'Xarajat va daromadni shu yerga bir jumla bilan yozing: «50000 taksi», «+8 500 000 oylik». ' +
+    'FinTrack ularni kategoriyalarga ajratadi, byudjet va qarzlarni kuzatib boradi.\n\n' +
+    `Sayt va ilova: ${site}`,
+};
+
 export const TEXT = {
   menuIntro:
     'Xarajat yoki kirimni shunchaki yozing, masalan:\n' +

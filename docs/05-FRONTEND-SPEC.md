@@ -187,6 +187,20 @@ sahifasi (API ham 404 beradi); kirish faqat `/admin/login` orqali. Sessiya panel
 Har bir ma'lumotli ko'rinishda: **loading skeleton**, **error + qayta urinish**, **empty + CTA**,
 **success**. Bittasi yo'q bo'lsa sahifa tayyor emas.
 
+## SEO va birinchi yuklanish
+
+- `/` build paytida HTML'ga chiziladi (`entry-prerender.tsx`, `scripts/prerender.mjs`): qidiruv tizimlari va
+  havola ko'rinishlari matnni JS'siz o'qiydi. Ilova skripti kelgach sahifani o'sha holatda qayta chizadi; hero
+  kirish animatsiyasi HTML'da bir marta o'ynaydi (`<html data-prerendered>` → `useEntrance` "static").
+  Landing komponentlari Node'da ham render bo'lishi kerak: `window`/`document` faqat effect ichida yoki
+  `typeof` tekshiruvi bilan.
+- `public/theme-init.js` qorong'i mavzuni birinchi chizishdan oldin qo'yadi (CSP inline skriptga ruxsat bermaydi).
+- `index.html` `<head>`: sarlavha va tavsif, `canonical` (`https://myfintrack.uz/`), Open Graph / Twitter
+  (`og-image.png` 1200×630), JSON-LD (`WebSite` "FinTrack" + `alternateName` "MyFinTrack", `Organization`
+  logo bilan, `WebApplication` bepul). `robots.txt` `/app`, `/admin`, `/api/` ni yopadi; `sitemap.xml` — `/`.
+- Ikonkalar va OG rasm: `node scripts/generate-brand-assets.mjs` (Playwright Chromium), natija `public/` da commit.
+- Telegram bot profili (short/long description) saytni nomlaydi — `t.me` sahifasi ham unga havola beradi.
+
 ## Formatlash (`lib/money.ts`, `lib/format.ts`)
 
 - Pul: `1 250 000 so'm` — ming ajratgichi NBSP, minus U+2212; kirim `+` yashil, chiqim `−` qizil,
