@@ -49,6 +49,8 @@ export default defineRailway(() => {
     deploy: { restartPolicyMaxRetries: 5 },
     replicas: { sfo: 1 },
     networking: { privateNetworkEndpoint: 'fintrack' },
+    // The site's address; DNS is on Cloudflare (apex CNAME, "DNS only"). See docs/02-ARCHITECTURE.md.
+    domains: [{ domain: 'myfintrack.uz', port: 8080 }],
     // Values live in Railway only; preserve() keeps them without putting secrets in git.
     env: {
       // The owner's Telegram id(s) for the admin panel; empty or unset keeps every /admin route 404.

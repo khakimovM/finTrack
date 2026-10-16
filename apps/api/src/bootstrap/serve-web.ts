@@ -63,7 +63,7 @@ export async function serveWebApp(app: NestFastifyApplication, dir: string, publ
     // One address for search engines and bookmarks: the Railway hostname points to the real one.
     const host = request.hostname.replace(/:\d+$/, '');
     if (canonical && host !== canonical.host && RAILWAY_HOST.test(host)) {
-      return reply.header('cache-control', 'public, max-age=3600').redirect(301, `${canonical.origin}${request.url}`);
+      return reply.header('cache-control', 'public, max-age=3600').redirect(`${canonical.origin}${request.url}`, 301);
     }
 
     reply.header('cache-control', REVALIDATE);
