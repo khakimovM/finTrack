@@ -1,16 +1,20 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Req, Res } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { AdminWebAppSessionResponse } from '@fintrack/shared';
 import { Public } from '../../common/decorators/public.decorator';
-import { TelegramRequestRefDto, VerifyTelegramLoginDto } from '../auth/dto/auth.dto';
+import { TelegramRequestRefDto, TelegramWebAppAuthDto, VerifyTelegramLoginDto } from '../auth/dto/auth.dto';
 import { requestMeta } from '../auth/auth.controller';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminCookiesService } from './admin-cookies.service';
 import { AdminOnly, CurrentAdmin } from './admin.guard';
 import { AdminPrincipal } from './admin-session.service';
 
-/** Admin sign-in with an admin code from the bot (`start=admin_…`). Tighter limits than user sign-in. */
+/**
+ * Admin sign-in: with an admin code from the bot (`start=admin_…`) in a browser, or with the
+ * Mini App's launch data from the bot's /admin button. Tighter limits than user sign-in.
+ */
 @ApiTags('admin')
 @Controller('admin/auth')
 export class AdminAuthController {
@@ -45,6 +49,19 @@ export class AdminAuthController {
     const { token, session } = await this.auth.verify(dto, requestMeta(req));
     this.cookies.set(res, token, new Date(session.expiresAt));
     return session;
+  }
+
+  /** The bot's /admin button: Telegram's signed launch data instead of a code; no cookie. */
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('telegram/webapp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Telegram ichida admin panel: initData evaziga X-Admin-Token sessiyasi' })
+  @ApiResponse({ status: 401, description: 'TELEGRAM_INIT_DATA_INVALID | TELEGRAM_INIT_DATA_EXPIRED (eski yoki ishlatilgan)' })
+  @ApiResponse({ status: 404, description: 'Admin emas (yoki admin panel o‘chirilgan)' })
+  async webApp(@Body() dto: TelegramWebAppAuthDto, @Req() req: FastifyRequest): Promise<AdminWebAppSessionResponse> {
+    const { token, session } = await this.auth.webApp(dto.initData, requestMeta(req));
+    return { ...session, token };
   }
 
   @Public()

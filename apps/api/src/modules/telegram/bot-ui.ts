@@ -43,6 +43,26 @@ export function openAppKeyboard(url: string): InlineKeyboardMarkup {
   return { inline_keyboard: [[{ text: '🌐 FinTrack ilovasini ochish', web_app: { url } }]] };
 }
 
+/** The admin panel as a Mini App (HTTPS only, like the app); its page signs in with initData. */
+export function adminPanelUrl(webAppUrl?: string): string | undefined {
+  if (!webAppUrl?.startsWith('https://')) return undefined;
+  return `${webAppUrl.replace(/\/+$/, '')}/admin`;
+}
+
+/** An inline web_app button: unlike a keyboard one, Telegram signs its launch data. */
+export function openAdminKeyboard(url: string): InlineKeyboardMarkup {
+  return { inline_keyboard: [[{ text: '🛡 Admin panelni ochish', web_app: { url } }]] };
+}
+
+export const ADMIN_TEXT = {
+  open: '🛡 <b>Admin panel</b>\n\nTugma faqat sizga ko‘rinadi. Har bir ochilish alohida kirish hisoblanadi va audit’ga yoziladi.',
+  /** Local development: Telegram opens only HTTPS Mini Apps. */
+  noHttps: (site: string) => `🛡 Admin panel Telegram ichida faqat HTTPS saytda ochiladi. Brauzerda: ${site}/admin/login`,
+};
+
+/** /admin in the command menu: shown only in the admins' own chats (scope chat). */
+export const ADMIN_COMMAND = { command: 'admin', description: 'Admin panel' };
+
 /** The bot's profile: under its name (≤120) and on the empty chat and t.me page (≤512). */
 export const BOT_PROFILE = {
   short: (host: string) => `FinTrack — xarajat, daromad va qarzlar hisobi. Sayt va ilova: ${host}`,

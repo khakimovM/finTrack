@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { ADMIN_TOKEN_HEADER } from '@fintrack/shared';
 
 export const ADMIN_COOKIE = 'ft_admin';
 /** Sent only to the admin API: user pages and the user API never see the admin session. */
@@ -21,7 +22,14 @@ export class AdminCookiesService {
     res.clearCookie(ADMIN_COOKIE, this.baseOptions());
   }
 
+  /**
+   * The admin session token: the X-Admin-Token header in Telegram's Mini App, the cookie in a
+   * browser. The header wins: only the Mini App sets it, and an old cookie in the same webview
+   * must not shadow it. Another site can never make a browser send it, so no CSRF risk either.
+   */
   read(req: FastifyRequest): string | undefined {
+    const header = req.headers[ADMIN_TOKEN_HEADER.toLowerCase()];
+    if (typeof header === 'string' && header) return header;
     return (req as unknown as { cookies?: Record<string, string> }).cookies?.[ADMIN_COOKIE];
   }
 

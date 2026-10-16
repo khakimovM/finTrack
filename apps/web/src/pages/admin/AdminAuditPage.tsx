@@ -34,10 +34,15 @@ const text = (value: unknown) => (typeof value === 'string' || typeof value === 
 /** One line about what happened, from the entry's details. */
 export function describeAudit(entry: AdminAuditLogEntry): string {
   const meta = entry.meta ?? {};
+  // Signed in from the bot's /admin button rather than with a code on /admin/login.
+  const viaBot = meta.via === 'miniapp' ? 'Telegram ichida (/admin)' : null;
   switch (entry.action) {
+    case 'LOGIN':
+      return [text(meta.device), viaBot].filter(Boolean).join(' · ');
     case 'LOGIN_DENIED': {
       const who = [entry.telegramId && `Telegram ID ${entry.telegramId}`, text(meta.username) && `@${text(meta.username)}`].filter(Boolean);
-      return [who.join(', '), DENIED[text(meta.reason) ?? ''] ?? text(meta.reason)].filter(Boolean).join(' — ');
+      const reason = [DENIED[text(meta.reason) ?? ''] ?? text(meta.reason), viaBot].filter(Boolean).join(' · ');
+      return [who.join(', '), reason].filter(Boolean).join(' — ');
     }
     case 'BAN':
       return `Sabab: ${text(meta.reason) ?? '—'} · ${text(meta.sessions) ?? 0} sessiya tugatildi`;

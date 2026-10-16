@@ -7,11 +7,18 @@ import { MenuHandlers } from './handlers/menu.handlers';
 import { DebtHandlers } from './handlers/debt.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
 import { VoiceHandlers } from './handlers/voice.handlers';
-import { BOT_PROFILE, miniAppUrl } from './bot-ui';
+import { ADMIN_COMMAND, BOT_PROFILE, miniAppUrl } from './bot-ui';
 import { ActivityService } from '../activity/activity.service';
 import { BotUserService } from './bot-user.service';
+import { AdminAccessService } from '../admin/core/admin-access.service';
 
 export const ALLOWED_UPDATES = ['message', 'callback_query'] as const;
+
+const COMMANDS = [
+  { command: 'start', description: 'Boshlash / kirish' },
+  { command: 'menu', description: 'Menyu' },
+  { command: 'balans', description: 'Balans' },
+];
 
 /**
  * Wires handlers into the bot and chooses the transport: webhook when TELEGRAM_WEBHOOK_URL is
@@ -34,6 +41,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     private readonly voiceHandlers: VoiceHandlers,
     private readonly activity: ActivityService,
     private readonly botUsers: BotUserService,
+    private readonly adminAccess: AdminAccessService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -75,11 +83,8 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     const webhookUrl = this.config.get<string>('TELEGRAM_WEBHOOK_URL');
     try {
       if (!webhookUrl && (await this.webhookOwnedElsewhere(bot))) return;
-      await bot.api.setMyCommands([
-        { command: 'start', description: 'Boshlash / kirish' },
-        { command: 'menu', description: 'Menyu' },
-        { command: 'balans', description: 'Balans' },
-      ]);
+      await bot.api.setMyCommands(COMMANDS);
+      await this.showAdminCommand(bot);
       // The menu button next to the input field opens the Mini App with signed initData.
       const siteUrl = this.config.get<string>('WEB_APP_URL') ?? this.config.get<string>('CLIENT_URL');
       const appUrl = miniAppUrl(siteUrl);
@@ -133,6 +138,20 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
         'Use a separate bot token for local development.',
     );
     return true;
+  }
+
+  /**
+   * /admin is listed only in the admins' own chats. A chat the bot has never talked to cannot be
+   * scoped yet (Telegram answers "chat not found"); typing /admin works there all the same.
+   */
+  private async showAdminCommand(bot: Bot): Promise<void> {
+    for (const id of this.adminAccess.telegramIds) {
+      try {
+        await bot.api.setMyCommands([...COMMANDS, ADMIN_COMMAND], { scope: { type: 'chat', chat_id: Number(id) } });
+      } catch (err: unknown) {
+        this.logger.warn(`Admin command menu not set for an admin chat: ${this.describe(err)}`);
+      }
+    }
   }
 
   private describe(err: unknown): string {

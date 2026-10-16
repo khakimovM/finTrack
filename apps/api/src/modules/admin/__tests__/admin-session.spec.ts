@@ -11,6 +11,7 @@ import { AuthRepository } from '../../auth/auth.repository';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { ClockService } from '../../../infra/clock/clock.service';
 import { TelegramBotService } from '../../../infra/telegram/telegram-bot.service';
+import { RedisService } from '../../../infra/redis/redis.service';
 
 const OWNER_TG = 7001n;
 const T0 = new Date('2026-10-08T09:00:00Z');
@@ -129,7 +130,7 @@ describe('AdminSessionService', () => {
 });
 
 describe('AdminAuthService without an admin configured', () => {
-  it('answers every sign-in step with 404 and never opens a request', () => {
+  it('answers every sign-in step with 404 and never opens a request', async () => {
     const login = { start: jest.fn(), status: jest.fn(), resend: jest.fn(), redeem: jest.fn() };
     const service = new AdminAuthService(
       access(''),
@@ -139,21 +140,23 @@ describe('AdminAuthService without an admin configured', () => {
       {} as AdminAuditService,
       {} as TelegramBotService,
       {} as ClockService,
+      {} as RedisService,
+      { get: () => '123:token' } as unknown as ConfigService,
     );
     const id = '11111111-1111-1111-1111-111111111111';
     expect(() => service.start({})).toThrow(NotFoundException);
     expect(() => service.status(id)).toThrow(NotFoundException);
     expect(() => service.resend(id)).toThrow(NotFoundException);
-    return expect(service.verify({ requestId: id, code: '123456' }, {})).rejects.toBeInstanceOf(NotFoundException).then(() => {
-      expect(login.start).not.toHaveBeenCalled();
-      expect(login.redeem).not.toHaveBeenCalled();
-    });
+    await expect(service.verify({ requestId: id, code: '123456' }, {})).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.webApp('hash=00', {})).rejects.toBeInstanceOf(NotFoundException);
+    expect(login.start).not.toHaveBeenCalled();
+    expect(login.redeem).not.toHaveBeenCalled();
   });
 });
 
 describe('AdminGuard', () => {
-  function context(cookies: Record<string, string>) {
-    const request: Record<string, unknown> = { cookies };
+  function context(cookies: Record<string, string>, headers: Record<string, string> = {}) {
+    const request: Record<string, unknown> = { cookies, headers };
     return {
       request,
       ctx: { switchToHttp: () => ({ getRequest: () => request }) } as unknown as ExecutionContext,
@@ -174,6 +177,15 @@ describe('AdminGuard', () => {
     const { ctx, request } = context({ ft_admin: token });
     await expect(new AdminGuard(access('7001'), t.service, cookies).canActivate(ctx)).resolves.toBe(true);
     expect(request.admin).toMatchObject({ userId: 'owner' });
+  });
+
+  it('takes the token from the X-Admin-Token header too (the Mini App), ahead of a stale cookie', async () => {
+    const t = setup();
+    const { token } = await t.service.create('owner', {});
+    const guard = new AdminGuard(access('7001'), t.service, cookies);
+    await expect(guard.canActivate(context({}, { 'x-admin-token': token }).ctx)).resolves.toBe(true);
+    await expect(guard.canActivate(context({ ft_admin: 'stale' }, { 'x-admin-token': token }).ctx)).resolves.toBe(true);
+    await expect(guard.canActivate(context({}, { 'x-admin-token': 'forged' }).ctx)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('answers 404 to everyone when no admin is configured', async () => {

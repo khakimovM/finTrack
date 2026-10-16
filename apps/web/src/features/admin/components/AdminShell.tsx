@@ -12,6 +12,9 @@ import { queryKeys } from '../../../lib/queryKeys';
 import { cn } from '../../../lib/utils';
 import { NotFoundPage } from '../../../pages/NotFoundPage';
 import { MiniAppSplash } from '../../miniapp/MiniAppSplash';
+import { MiniAppGate } from '../../miniapp/MiniAppGate';
+import { forgetAdminMiniAppToken, isAdminMiniApp } from '../../../lib/adminMiniApp';
+import { telegramApp } from '../../../lib/telegram';
 import { useAdminLogout, useAdminSession } from '../hooks/useAdminSession';
 import { isAdminSessionGone } from '../hooks/useAdminData';
 
@@ -84,11 +87,20 @@ export function AdminShell() {
       </div>
     );
   }
-  if (!session.data) return hadSession.current ? <Navigate to="/admin/login" replace /> : <NotFoundPage />;
+  if (!session.data) {
+    if (!hadSession.current) return <NotFoundPage />;
+    // Inside Telegram there is no sign-in page to go back to: the panel is reopened from the bot.
+    return isAdminMiniApp() ? <MiniAppGate status="expired" /> : <Navigate to="/admin/login" replace />;
+  }
 
   const signOut = async () => {
     rememberSignedIn(false);
     await logout.mutateAsync().catch(() => undefined);
+    if (isAdminMiniApp()) {
+      forgetAdminMiniAppToken();
+      telegramApp()?.close();
+      return;
+    }
     navigate('/admin/login', { replace: true });
   };
 

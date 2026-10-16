@@ -10,12 +10,14 @@ import { VoiceHandlers } from '../handlers/voice.handlers';
 import { TelegramLifecycleService } from '../telegram-lifecycle.service';
 import { ActivityService } from '../../activity/activity.service';
 import { BotUserService } from '../bot-user.service';
+import { AdminAccessService } from '../../admin/core/admin-access.service';
 
 const PROD_WEBHOOK = 'https://fintrack.example.com/api/v1/telegram/webhook';
 
 function setup(env: Record<string, string | undefined>, existingWebhook: string) {
   const config = {
-    get: (key: string) => ({ TELEGRAM_BOT_TOKEN: '123:fake-token', NODE_ENV: 'development', ...env })[key],
+    get: (key: string) =>
+      ({ TELEGRAM_BOT_TOKEN: '123:fake-token', NODE_ENV: 'development', ADMIN_TELEGRAM_IDS: '7001,7002', ...env })[key],
   } as unknown as ConfigService;
   const telegram = new TelegramBotService(config, {} as unknown as PrismaService);
   const bot = telegram.bot as Bot;
@@ -46,6 +48,7 @@ function setup(env: Record<string, string | undefined>, existingWebhook: string)
     handlers as unknown as VoiceHandlers,
     { touchTelegram: jest.fn() } as unknown as ActivityService,
     { refuseBanned: jest.fn(async () => false) } as unknown as BotUserService,
+    new AdminAccessService(config),
   );
   return { lifecycle, telegram, api, start };
 }
@@ -105,5 +108,26 @@ describe('TelegramLifecycleService transport', () => {
     const { lifecycle, api } = setup({ TELEGRAM_WEBHOOK_URL: PROD_WEBHOOK, CLIENT_URL: 'http://localhost:5173' }, PROD_WEBHOOK);
     await lifecycle.onApplicationBootstrap();
     expect(api.setMyDescription).not.toHaveBeenCalled();
+  });
+
+  it('lists /admin only in the admins’ own chats, and a chat Telegram cannot scope does not stop the bot', async () => {
+    const { lifecycle, api, telegram } = setup({ TELEGRAM_WEBHOOK_URL: PROD_WEBHOOK }, PROD_WEBHOOK);
+    api.setMyCommands.mockImplementation(async (_commands, other) => {
+      if (other?.scope?.type === 'chat' && other.scope.chat_id === 7001) throw new Error('Bad Request: chat not found');
+      return true;
+    });
+
+    await lifecycle.onApplicationBootstrap();
+
+    const [everyone, ...scoped] = api.setMyCommands.mock.calls;
+    expect(everyone[0].map((c) => c.command)).not.toContain('admin');
+    expect(everyone[1]).toBeUndefined();
+    expect(scoped.map(([, other]) => other?.scope)).toEqual([
+      { type: 'chat', chat_id: 7001 },
+      { type: 'chat', chat_id: 7002 },
+    ]);
+    expect(scoped[1][0].map((c) => c.command)).toEqual(['start', 'menu', 'balans', 'admin']);
+    expect(api.setWebhook).toHaveBeenCalled();
+    expect(telegram.enabled).toBe(true);
   });
 });

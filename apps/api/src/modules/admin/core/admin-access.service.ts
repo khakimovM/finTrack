@@ -18,6 +18,11 @@ export class AdminAccessService {
     return this.ids.size > 0;
   }
 
+  /** The admins' private chats: the bot shows /admin in their command menu only. */
+  get telegramIds(): bigint[] {
+    return [...this.ids];
+  }
+
   isAdmin(telegramId: bigint | null | undefined): boolean {
     return telegramId !== null && telegramId !== undefined && this.ids.has(telegramId);
   }

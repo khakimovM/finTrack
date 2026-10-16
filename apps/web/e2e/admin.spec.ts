@@ -6,7 +6,9 @@ import {
   messagesSince,
   newTelegramUser,
   sharedContact,
+  signedInitData,
   startCommand,
+  TELEGRAM_SCRIPT_STUB,
   waitForCode,
   type TelegramUser,
 } from './support/telegram';
@@ -39,6 +41,50 @@ async function registerInBot(firstName: string): Promise<TelegramUser> {
   await deliver(sharedContact(user));
   return user;
 }
+
+/**
+ * Opens /admin the way the bot's /admin button does: as a Mini App, with signed launch data in
+ * the fragment and Telegram's script loaded. Returns the launch URL, to open the same launch again.
+ */
+async function openFromBot(page: Page, user: TelegramUser): Promise<string> {
+  await page.route('https://telegram.org/js/**', (route) =>
+    route.fulfill({ contentType: 'application/javascript', body: TELEGRAM_SCRIPT_STUB }),
+  );
+  const hash = new URLSearchParams({ tgWebAppData: signedInitData(user), tgWebAppVersion: '8.0', tgWebAppPlatform: 'ios' });
+  const url = `/admin#${hash.toString()}`;
+  await page.goto(url);
+  return url;
+}
+
+test('inside Telegram the bot’s /admin button opens the panel signed in, once per launch', async ({ browser }) => {
+  await deliver(startCommand(OWNER, ''));
+  await deliver(sharedContact(OWNER));
+  // A fresh context, no cookies: exactly like Telegram's webview.
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+
+  const launch = await openFromBot(page, OWNER);
+  await expect(page.getByRole('heading', { name: 'Umumiy ko‘rinish' })).toBeVisible();
+  await expect(page.getByText('Bugun faol')).toBeVisible();
+  await page.getByRole('link', { name: 'Foydalanuvchilar' }).click();
+  await expect(page.getByLabel('Foydalanuvchini qidirish')).toBeVisible();
+  // The session travels in a header, not in a cookie.
+  expect((await context.cookies()).map((c) => c.name)).not.toContain('ft_admin');
+
+  // The same launch again (a reload): the panel asks to reopen it from the bot.
+  await page.goto(launch);
+  await expect(page.getByRole('heading', { name: 'Admin panelni qayta oching' })).toBeVisible();
+  await context.close();
+});
+
+test('inside Telegram anyone else gets the ordinary 404 page at /admin', async ({ browser }) => {
+  const stranger = await registerInBot('Qiziquvchan');
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await openFromBot(page, stranger);
+  await expect(page.getByRole('heading', { name: 'Sahifa topilmadi' })).toBeVisible();
+  await context.close();
+});
 
 test('a visitor without an admin session sees an ordinary 404 at /admin', async ({ page }) => {
   await page.goto('/admin/users');

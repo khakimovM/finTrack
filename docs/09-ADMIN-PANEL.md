@@ -29,6 +29,23 @@ va **to'xtash**; oxirida bitta PR.
 - `/id` bot buyrug'i — yuboruvchiga o'z Telegram ID'sini aytadi (`ADMIN_TELEGRAM_IDS` ni to'ldirish uchun).
 - Admin oddiy foydalanuvchi sifatida ham kiraveradi — ikki sessiya bir-biridan mustaqil.
 
+### Telegram ichidan: `/admin` (2026-10-16)
+
+Egasining so'rovi: panelga Telegram'dan kirish, tugma faqat uning ID'sida ko'rinsin. Qaror — panel bot
+ichida Mini App bo'lib ochiladi (kod kiritilmaydi):
+
+- `/admin` buyruqlar menyusida faqat `ADMIN_TELEGRAM_IDS` chatlarida (`setMyCommands`, `scope: chat`,
+  bot ishga tushganda). Boshqalar yozsa — jimlik, xuddi noma'lum buyruqdagidek. Bot hech qachon yozishmagan
+  chatni Telegram "chat not found" deydi: menyuda chiqmaydi, lekin yozilsa ishlaydi. ID ro'yxatdan
+  olinsa, menyu qolib ketishi mumkin, buyruq esa javob bermay qo'yadi.
+- Admin'ga javob — "🛡 Admin panelni ochish" inline `web_app` tugmasi (`<sayt>/admin`, faqat HTTPS; lokal
+  http'da bot brauzerdagi `/admin/login` manzilini aytadi).
+- Sahifa Telegram imzolagan `initData` bilan `POST /admin/auth/telegram/webapp` ga kiradi: 10 daqiqa ichida
+  va **bir marta** (reload yoki nusxa → "Admin panelni qayta oching"). Admin bo'lmaganga 404 va
+  `LOGIN_DENIED`. Sessiya `ft_admin` cookie emas, xotiradagi token (`X-Admin-Token` header): Telegram
+  Web'da (iframe) `SameSite=Strict` cookie ishlamaydi. Muddat va audit — brauzerdagidek; "Chiqish"
+  Mini App'ni yopadi, sessiya tugasa panel botdan qayta ochishni so'raydi.
+
 ## Xavfsizlik
 
 - Admin route'lar `/api/v1/admin/*`, alohida `AdminGuard`: cookie → `admin_sessions` (token SHA-256),
@@ -187,9 +204,7 @@ admin kirishi (mock Telegram), ruxsatsiz rad etish, bloklash oqimi. Railway: `.r
 `.railway/railway.ts` da `ADMIN_TELEGRAM_IDS: preserve()` bor; `railway config plan` — "up to date"
 (qiymat hali qo'yilmagan, preserve uni yaratmaydi ham, o'chirmaydi ham). Windows'da `plan`/`apply` uchun
 SDK CLI versiyasini `_` env orqali tekshiradi: PowerShell'da
-`$env:_ = "$env:APPDATA
-pm
-ode_modules@railwaycliinailway.exe"; & $env:_ config plan`.
+`$env:_ = "$env:APPDATA\npm\node_modules\@railway\cli\bin\railway.exe"; & $env:_ config plan`.
 
 ## Production'ga chiqarish
 
@@ -200,3 +215,5 @@ ode_modules@railwaycliinailway.exe"; & $env:_ config plan`.
 4. `railway variable set ADMIN_TELEGRAM_IDS=<id> -s finTrack` — o'zgaruvchi qo'yilishi qayta deploy qiladi.
 5. Qo'lda tekshirish: `/admin` → 404; `/admin/login` → bot "🛡 Admin panel" kodi → panel; boshqa Telegram
    hisobidan `admin_` havolasi → "havola eskirgan" va audit'da `LOGIN_DENIED`.
+6. Telegram ichida: botda `/admin` (menyuda ham bor) → "🛡 Admin panelni ochish" → panel kodsiz ochiladi,
+   botga "Admin panelga kirildi" xabari keladi; boshqa hisobda `/admin` javobsiz qoladi.

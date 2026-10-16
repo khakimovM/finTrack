@@ -24,6 +24,7 @@ import { DebtsModule } from '../debts/debts.module';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AssistantModule } from '../assistant/assistant.module';
+import { AdminCoreModule } from '../admin/core/admin-core.module';
 import { QUEUES } from '../../infra/queue/queues';
 
 @Module({
@@ -39,6 +40,7 @@ import { QUEUES } from '../../infra/queue/queues';
     UsersModule,
     NotificationsModule,
     AssistantModule,
+    AdminCoreModule,
   ],
   controllers: [TelegramWebhookController],
   providers: [

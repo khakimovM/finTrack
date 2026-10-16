@@ -1,6 +1,7 @@
 import { Ban, Clock, CloudOff, PanelBottom, UserPlus, type LucideIcon } from 'lucide-react';
 import { MiniAppStatus } from '../../stores/miniAppStore';
 import { telegramApp } from '../../lib/telegram';
+import { isAdminPath } from '../../lib/adminMiniApp';
 import { cn } from '../../lib/utils';
 
 type GateStatus = Exclude<MiniAppStatus, 'off' | 'ready'>;
@@ -38,9 +39,21 @@ const COPY: Record<GateStatus, { title: string; body: string; icon: LucideIcon; 
   },
 };
 
+/** The admin panel (the bot's /admin button) is reopened from its own command, not "Ilova". */
+const ADMIN_COPY: Partial<Record<GateStatus, Pick<(typeof COPY)[GateStatus], 'title' | 'body'>>> = {
+  expired: {
+    title: 'Admin panelni qayta oching',
+    body: 'Xavfsizlik uchun har bir ochilish bir marta kirish beradi. Botga /admin yozing va panelni qayta oching.',
+  },
+  'no-init-data': {
+    title: 'Panelni bot orqali oching',
+    body: 'Botga /admin yozing va “🛡 Admin panelni ochish” tugmasini bosing.',
+  },
+};
+
 /** Shown inside Telegram instead of the login page, which cannot work there. */
 export function MiniAppGate({ status }: { status: GateStatus }) {
-  const copy = COPY[status];
+  const copy = { ...COPY[status], ...(isAdminPath(window.location.pathname) ? ADMIN_COPY[status] : undefined) };
   const app = telegramApp();
   const retry = status === 'error';
 
