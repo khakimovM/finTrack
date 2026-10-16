@@ -58,10 +58,10 @@ Sxemalarning manbasi: `packages/shared/src/schemas/*` (Zod), hujjat ular bilan m
 
 ---
 
-## Endpointlar ro'yxati (101 ta)
+## Endpointlar ro'yxati (102 ta)
 
 ✅ — sessiya kerak · ❌ — ochiq · 🍪 — refresh cookie · 🤖 — Telegram webhook sirli tokeni ·
-🛡 — admin sessiyasi (`ft_admin` cookie)
+🛡 — admin sessiyasi (`ft_admin` cookie; Telegram ichida `X-Admin-Token` header)
 
 ### Auth (9)
 | Metod | Yo'l | Auth | Vazifasi |
@@ -131,13 +131,14 @@ Email/parol bilan ro'yxatdan o'tish va kirish **yo'q**: hisob faqat Telegram orq
 ### Health (2)
 `GET /health` (jarayon tirik) · `GET /health/ready` (DB + Redis; ishlamasa `503`)
 
-### Admin auth (6)
+### Admin auth (7)
 | Metod | Yo'l | Auth | Vazifasi |
 |---|---|---|---|
 | POST | `/admin/auth/telegram/start` | ❌ | admin kirish so'rovi, deep link `start=admin_…` (5/min) |
 | GET | `/admin/auth/telegram/status/:requestId` | ❌ | faqat `ADMIN` so'rovlari holati |
 | POST | `/admin/auth/telegram/verify` | ❌ | admin kodi → `ft_admin` cookie (10/min) |
 | POST | `/admin/auth/telegram/resend` | ❌ | admin kodini qayta yuborish (5/min) |
+| POST | `/admin/auth/telegram/webapp` | ❌ | Telegram ichida (botdagi `/admin` tugmasi): `initData` → `{ admin, expiresAt, token }` (5/min) |
 | POST | `/admin/auth/logout` | 🛡 | admin sessiyasini yakunlash (muddati o'tgan bo'lsa ham cookie o'chadi) |
 | GET | `/admin/auth/me` | 🛡 | `{ admin: { id, name, telegramUsername }, expiresAt }` |
 
@@ -246,6 +247,21 @@ yo'llari `404`. Kirish oddiy kod oqimi bilan bir xil, uch farqi bor:
 - 🛡 yo'llar sessiyasiz, soxta cookie bilan yoki oddiy `accessToken` bilan **`404 NOT_FOUND`** qaytaradi
   (noma'lum URL bilan bir xil). `ft_admin` esa foydalanuvchi API'siga hech narsa ochmaydi (`401`).
   Foydalanuvchi va admin so'rovlari bir-birining endpointlarida `404`.
+
+**Telegram ichida (bot `/admin`).** Bot buyruqlar menyusida `/admin` faqat ro'yxatdagi adminlar chatida
+ko'rinadi (`setMyCommands`, `scope: chat`); boshqalar yozsa, bot noma'lum buyruqdagidek jim turadi. Admin
+uchun javob — inline `web_app` tugmasi `<sayt>/admin` (faqat HTTPS). Sahifa Mini App sifatida ochiladi va
+`POST /admin/auth/telegram/webapp` `{ initData }` (`TelegramWebAppAuthInput`) bilan kiradi:
+
+- `initData` bot tokeni bilan imzolangan, **10 daqiqadan** eski emas va **bir marta** ishlatiladi (hash
+  Redis'da). Qayta ishlatilgan yoki eski → `401 TELEGRAM_INIT_DATA_EXPIRED`, imzo noto'g'ri →
+  `401 TELEGRAM_INIT_DATA_INVALID`;
+- ro'yxatda yo'q yoki botda ro'yxatdan o'tmagan → `404 NOT_FOUND` va `LOGIN_DENIED` (`meta.via: miniapp`);
+- javob `AdminWebAppSessionResponse` = `AdminSessionResponse` + `token`. Cookie qo'yilmaydi: Mini App
+  token'ni faqat xotirada saqlaydi va 🛡 so'rovlarga `X-Admin-Token` header'ida yuboradi (header
+  cookie'dan ustun). Sessiya qoidalari bir xil: 8 soat, 1 soat harakatsizlik, `LOGIN` audit
+  (`meta.via: miniapp`) va botda "Admin panelga kirildi" xabari. `POST /admin/auth/logout` header bilan
+  ham ishlaydi.
 
 Bot buyrug'i `/id` — yozuvchining Telegram ID'sini qaytaradi (`ADMIN_TELEGRAM_IDS` ni to'ldirish uchun).
 

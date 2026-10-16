@@ -22,6 +22,18 @@ export const AdminSessionResponseSchema = z.object({
 });
 export type AdminSessionResponse = z.infer<typeof AdminSessionResponseSchema>;
 
+/**
+ * Inside Telegram (the bot's /admin button) the panel is a Mini App, where cookies are unreliable:
+ * `POST /admin/auth/telegram/webapp` returns the session token in the body and the app sends it
+ * back in this header. Request with TelegramWebAppAuthInput (./auth).
+ */
+export const ADMIN_TOKEN_HEADER = 'X-Admin-Token';
+
+export const AdminWebAppSessionResponseSchema = AdminSessionResponseSchema.extend({
+  token: z.string(),
+});
+export type AdminWebAppSessionResponse = z.infer<typeof AdminWebAppSessionResponseSchema>;
+
 // ------------------------------------------------------------------
 // Statistics. Counts and dates only: no amounts, balances or free text ever leave these
 // endpoints (decided with the owner, docs/09). Days are Asia/Tashkent calendar days.

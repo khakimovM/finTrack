@@ -1,4 +1,4 @@
-import { MENU, mainMenu, miniAppUrl, openAppKeyboard } from '../bot-ui';
+import { MENU, adminPanelUrl, mainMenu, miniAppUrl, openAdminKeyboard, openAppKeyboard } from '../bot-ui';
 
 describe('Mini App entry points in the bot', () => {
   it('opens the app only over HTTPS, always on /app', () => {
@@ -6,6 +6,14 @@ describe('Mini App entry points in the bot', () => {
     expect(miniAppUrl('https://fintrack.uz/')).toBe('https://fintrack.uz/app');
     expect(miniAppUrl('http://localhost:5173')).toBeUndefined();
     expect(miniAppUrl(undefined)).toBeUndefined();
+  });
+
+  it('opens the admin panel the same way, on /admin, from an inline (signed) button', () => {
+    expect(adminPanelUrl('https://myfintrack.uz/')).toBe('https://myfintrack.uz/admin');
+    expect(adminPanelUrl('http://localhost:5173')).toBeUndefined();
+    expect(openAdminKeyboard('https://myfintrack.uz/admin').inline_keyboard.flat()).toEqual([
+      expect.objectContaining({ web_app: { url: 'https://myfintrack.uz/admin' } }),
+    ]);
   });
 
   it('never puts a web_app button on the reply keyboard (Telegram would not sign that launch)', () => {
