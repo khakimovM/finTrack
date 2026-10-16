@@ -58,7 +58,7 @@ function CountingSom({ som, delayMs }: { som: number; delayMs: number }) {
   return <>{formatAmountNumber(Math.round(shown) * 100)}</>;
 }
 
-/** The app's home screen in a browser frame, drawn at 880×580 and scaled with zoom on phones. */
+/** The app's home screen in a browser frame, drawn at 880×580 and scaled down on phones. */
 function BrowserMock({ at }: { at: At }) {
   return (
     <div className="flex h-[580px] w-[880px] flex-col overflow-hidden rounded-lg border border-border bg-card text-[13px] leading-[18px] shadow-lg">
@@ -285,14 +285,19 @@ function useSceneScale(box: React.RefObject<HTMLDivElement | null>): number {
   return wide ? scale : 1;
 }
 
-/** Browser bleeding off the right edge with the phone in front; scaled down below 820px. */
+/**
+ * Browser bleeding off the right edge with the phone in front; scaled down below 820px.
+ * Scaled with transform, not zoom: iOS Safari zooms the boxes but leaves the text at full size,
+ * so labels wrapped and figures were cut. The entrance animates its own transform, hence the
+ * extra wrapper around each mock.
+ */
 export function HeroVisual() {
   const at = useEntrance();
   const play = !useReducedMotion();
   const boxRef = React.useRef<HTMLDivElement>(null);
   const scale = useSceneScale(boxRef);
-  const browser = at(150, 'absolute left-0 top-0 [zoom:0.5] min-[820px]:left-[76px] min-[820px]:top-2.5 min-[820px]:[zoom:1]', 'animate-ft-slide-in');
-  const phone = at(450, 'absolute right-2 top-[58px] [zoom:0.76] min-[820px]:-left-7 min-[820px]:right-auto min-[820px]:top-24 min-[820px]:[zoom:1]');
+  const browser = at(150, undefined, 'animate-ft-slide-in');
+  const phone = at(450);
   return (
     <div
       ref={boxRef}
@@ -304,11 +309,21 @@ export function HeroVisual() {
         className="absolute inset-0 origin-top-left min-[820px]:bottom-auto min-[820px]:h-[660px]"
         style={scale < 1 ? { transform: `scale(${scale})` } : undefined}
       >
-        <div aria-hidden className={browser.className} style={browser.style}>
-          <BrowserMock at={at} />
+        <div
+          aria-hidden
+          className="absolute left-0 top-0 origin-top-left scale-50 min-[820px]:left-[76px] min-[820px]:top-2.5 min-[820px]:scale-100"
+        >
+          <div className={browser.className} style={browser.style}>
+            <BrowserMock at={at} />
+          </div>
         </div>
-        <div aria-hidden className={phone.className} style={phone.style && { ...phone.style, animationDuration: '900ms' }}>
-          <PhoneMock at={at} play={play} />
+        <div
+          aria-hidden
+          className="absolute right-1.5 top-11 origin-top-right scale-[0.76] min-[820px]:-left-7 min-[820px]:right-auto min-[820px]:top-24 min-[820px]:scale-100"
+        >
+          <div className={phone.className} style={phone.style && { ...phone.style, animationDuration: '900ms' }}>
+            <PhoneMock at={at} play={play} />
+          </div>
         </div>
       </div>
     </div>
