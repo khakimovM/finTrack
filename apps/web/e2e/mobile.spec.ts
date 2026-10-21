@@ -37,3 +37,34 @@ test('on a phone: a bottom tab bar, "+" opens forms as bottom sheets, lists are 
   await page.getByRole('button', { name: 'Hisoblar' }).click();
   await expect(page).toHaveURL(/\/app\/accounts$/);
 });
+
+test('on a phone: pickers put the keyboard away and open in full view, even on a short screen', async ({ page }) => {
+  await signUpThroughTelegram(page, 'Klaviatura');
+  const tabs = page.getByRole('navigation', { name: 'Asosiy menyu' });
+  await tabs.getByRole('button', { name: 'Qo‘shish' }).click();
+  await page.getByRole('dialog', { name: 'Qo‘shish' }).getByRole('button', { name: /^Chiqim/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Yangi tranzaksiya' });
+  await expect(dialog).toBeVisible();
+
+  // Typing the amount holds the keyboard; tapping the account field moves on from it.
+  const amount = dialog.getByLabel('Summa');
+  await amount.tap();
+  await amount.fill('45000');
+  await expect(amount).toBeFocused();
+  await dialog.getByRole('button', { name: 'Hisob' }).tap();
+  await expect(amount).not.toBeFocused();
+  await expect(dialog.getByRole('listbox')).toBeInViewport({ ratio: 1 });
+  await dialog.getByRole('option', { name: /Naqd pul/ }).getByRole('button').tap();
+
+  // What the keyboard leaves of the screen in Telegram: the category list still opens in full
+  // view, without raising the keyboard for its search box.
+  await page.setViewportSize({ width: 412, height: 560 });
+  await dialog.getByRole('button', { name: 'Kategoriya' }).tap();
+  await expect(dialog.getByRole('textbox', { name: 'Kategoriyani qidirish' })).not.toBeFocused();
+  await expect(dialog.getByRole('listbox')).toBeInViewport({ ratio: 1 });
+  await dialog.getByRole('option', { name: /Transport/ }).getByRole('button').tap();
+  await expect(dialog.getByRole('button', { name: 'Kategoriya' })).toContainText('Transport');
+
+  await dialog.getByRole('button', { name: 'Saqlash' }).tap();
+  await expect(dialog).toBeHidden();
+});

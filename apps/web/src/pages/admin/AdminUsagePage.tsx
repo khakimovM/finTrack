@@ -7,10 +7,10 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { BarList } from '../../components/charts/BarList';
 import { WidgetCard } from '../../features/dashboard/components/WidgetCard';
 import { AdminPageHeader } from '../../features/admin/components/AdminShell';
-import { ShareDonut, Stat } from '../../features/admin/components/AdminCharts';
+import { ChannelBars, Stat } from '../../features/admin/components/AdminCharts';
 import { useAdminUsage } from '../../features/admin/hooks/useAdminData';
 import { formatCount, percentOf } from '../../features/admin/format';
-import { CHANNELS, SOURCES } from '../../features/admin/labels';
+import { SOURCES } from '../../features/admin/labels';
 import { RANGE_LABELS, rangeOf, type AdminRange } from '../../features/admin/periods';
 import { formatRange } from '../../lib/format';
 
@@ -118,18 +118,13 @@ export function AdminUsagePage() {
       ) : (
         <div className="grid items-start gap-3 sm:gap-4 xl:grid-cols-2">
           <WidgetCard title="Faol foydalanuvchilar kanallar bo‘yicha">
-            <ShareDonut
-              ariaLabel="Faol foydalanuvchilar kanallar bo‘yicha"
-              centerLabel="faol"
-              total={data.activeUsers.total}
-              items={CHANNELS.map((c) => ({ ...c, value: data.activeUsers[c.key] }))}
-            />
-            <p className="text-[13px] text-text-muted">Bir odam bir nechta kanaldan foydalanishi mumkin, shuning uchun ulushlar kanallar orasida.</p>
+            <ChannelBars active={data.activeUsers} />
           </WidgetCard>
 
           <WidgetCard title="Yozuvlar qayerdan">
             {data.entries.total > 0 ? (
               <BarList
+                max={data.entries.total}
                 items={SOURCES.map((s) => ({
                   key: s.key,
                   label: s.label,
@@ -146,6 +141,7 @@ export function AdminUsagePage() {
           <WidgetCard title="Funksiyalar" extra={<span className="text-[13px] text-text-secondary">hozirgi {formatCount(data.features.users)} foydalanuvchidan</span>}>
             {data.features.users > 0 ? (
               <BarList
+                max={data.features.users}
                 items={FEATURES.map((f, i) => ({
                   key: f.key,
                   label: f.label,

@@ -142,6 +142,27 @@ describe('Activity and entry sources (e2e)', () => {
     expect((await ctx.prisma.user.findUnique({ where: { id: user.userId } }))?.lastSeenAt).toBeInstanceOf(Date);
   });
 
+  it('counts the sign-up day of an account that did nothing else that day, once, and leaves recorded days alone', async () => {
+    const tashkentDay = (at: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(at);
+    const daysOf = async (userId: string) =>
+      (await ctx.prisma.userActivityDay.findMany({ where: { userId }, orderBy: [{ day: 'asc' }, { channel: 'asc' }] })).map(
+        (d) => [d.day.toISOString().slice(0, 10), d.channel],
+      );
+    // Registered in the bot before activity was recorded (20:00 UTC is already the next day in Tashkent).
+    const quiet = await ctx.prisma.user.create({ data: { name: 'Jim', createdAt: new Date('2025-06-02T20:00:00Z') } });
+    // Registered since: the bot recorded that day itself.
+    const recorded = await ctx.prisma.user.create({ data: { name: 'Yozilgan', createdAt: new Date('2025-06-02T08:00:00Z') } });
+    await ctx.prisma.userActivityDay.create({ data: { userId: recorded.id, day: new Date('2025-06-02T00:00:00Z'), channel: 'BOT' } });
+
+    const sql = readFileSync(resolve(__dirname, '../prisma/migrations/0009_signup_activity/migration.sql'), 'utf8');
+    const statement = sql.replace(/--.*$/gm, '').trim().replace(/;$/, '');
+    for (let run = 0; run < 2; run++) await ctx.prisma.$executeRawUnsafe(statement);
+
+    expect(tashkentDay(quiet.createdAt)).toBe('2025-06-03');
+    expect(await daysOf(quiet.id)).toEqual([['2025-06-03', 'UNKNOWN']]);
+    expect(await daysOf(recorded.id)).toEqual([['2025-06-02', 'BOT']]);
+  });
+
   it('the activity of a client without a session is not recorded', async () => {
     const before = await ctx.prisma.userActivityDay.count();
     const stranger = new ApiClient(ctx);

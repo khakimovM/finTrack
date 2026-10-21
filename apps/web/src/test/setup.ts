@@ -14,6 +14,7 @@ afterEach(() => {
   server.resetHandlers();
   testViewport.width = 1280;
   testViewport.reducedMotion = true;
+  testViewport.touch = false;
 });
 afterAll(() => server.close());
 
@@ -37,6 +38,7 @@ if (!window.matchMedia) {
 
 function evaluateQuery(query: string): boolean {
   if (query.includes('prefers-reduced-motion')) return testViewport.reducedMotion;
+  if (query.includes('pointer: coarse')) return testViewport.touch;
   const width = testViewport.width;
   const min = /min-width:\s*(\d+)px/.exec(query);
   const max = /max-width:\s*(\d+)px/.exec(query);

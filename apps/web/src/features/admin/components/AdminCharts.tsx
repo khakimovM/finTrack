@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
-import { AdminGrowthPoint, AdminStatsGroupBy } from '@fintrack/shared';
+import { AdminGrowthPoint, AdminStatsGroupBy, AdminUsageResponse } from '@fintrack/shared';
 import { AreaTrend, type TrendSeries } from '../../../components/charts/AreaTrend';
-import { Donut } from '../../../components/charts/Donut';
+import { BarList } from '../../../components/charts/BarList';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { bucketLabel, bucketTitle, formatCount, percentOf } from '../format';
+import { CHANNELS } from '../labels';
+import { adminToday, bucketInProgress } from '../periods';
 
 /** Colours of the panel's series, the same on every page. */
 export const SERIES_COLORS = {
@@ -62,9 +64,11 @@ export function GrowthChart({
       />
     );
   }
+  const today = adminToday();
   const data = points.map((p) => ({
     label: bucketLabel(p.bucket, groupBy),
-    title: bucketTitle(p.bucket, groupBy),
+    // The last bucket is still filling up: its lower count is not a drop.
+    title: `${bucketTitle(p.bucket, groupBy)}${bucketInProgress(p.bucket, groupBy, today) ? ' · davom etmoqda' : ''}`,
     ...Object.fromEntries(series.map((s) => [s.key, p[s.key as keyof AdminGrowthPoint] as number])),
   }));
   return (
@@ -74,42 +78,30 @@ export function GrowthChart({
   );
 }
 
-export interface ShareItem {
-  key: string;
-  label: string;
-  value: number;
-  color: string;
-}
-
-/** A donut with its legend: label, count and share of the total. */
-export function ShareDonut({ items, total, centerLabel, ariaLabel }: { items: ShareItem[]; total: number; centerLabel: string; ariaLabel: string }) {
-  const shown = items.filter((i) => i.value > 0);
-  if (shown.length === 0) {
-    return <EmptyState variant="widget" title="Hali ma’lumot yo‘q" className="min-h-[156px]" />;
+/**
+ * Active users per channel as shares of everyone active. One person often uses several channels,
+ * so the shares add up to more than 100%: parts of a whole (a donut) would misstate them.
+ */
+export function ChannelBars({ active }: { active: AdminUsageResponse['activeUsers'] }) {
+  if (active.total === 0) {
+    return <EmptyState variant="widget" title="Bu davrda faol foydalanuvchi yo‘q" className="min-h-[156px]" />;
   }
-  const sum = shown.reduce((acc, i) => acc + i.value, 0);
   return (
-    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
-      <Donut
-        ariaLabel={ariaLabel}
-        data={shown.map((i) => ({ name: i.label, value: i.value, color: i.color, detail: `${percentOf(i.value, sum)}%` }))}
-        center={
-          <>
-            <span className="text-[12px] text-text-muted">{centerLabel}</span>
-            <span className="text-[20px] font-semibold leading-7">{formatCount(total)}</span>
-          </>
-        }
+    <div className="flex flex-col gap-3">
+      <BarList
+        max={active.total}
+        items={CHANNELS.map((c) => ({
+          key: c.key,
+          label: c.label,
+          value: active[c.key],
+          color: c.color,
+          display: `${formatCount(active[c.key])} · ${percentOf(active[c.key], active.total)}%`,
+        }))}
       />
-      <ul className="flex w-full min-w-0 flex-col gap-2.5">
-        {items.map((i) => (
-          <li key={i.key} className="flex items-center gap-2.5 text-[14px]">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: i.color }} aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-text-secondary">{i.label}</span>
-            <span className="font-semibold tabular-nums">{formatCount(i.value)}</span>
-            <span className="w-11 text-right text-[13px] text-text-muted tabular-nums">{percentOf(i.value, sum)}%</span>
-          </li>
-        ))}
-      </ul>
+      <p className="text-[13px] text-text-muted">
+        {formatCount(active.total)} faol foydalanuvchidan. Bir kishi bir nechta kanaldan foydalanishi mumkin, shuning uchun foizlar
+        yig‘indisi 100% dan oshishi mumkin.
+      </p>
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { createTestApp, TestApp } from './helpers/app';
 import { ApiClient, categoryId, firstAccountId, newUser, today } from './helpers/api-client';
 import { forgetAdminStats, registerOwner, signInAsAdmin } from './helpers/admin';
 import { DailyMetricsService } from '../src/modules/activity/daily-metrics.service';
+import { ADMIN_STATS_CACHE_PREFIX } from '../src/modules/admin/stats/admin-stats.service';
+import { RedisService } from '../src/infra/redis/redis.service';
 
 const TZ = 'Asia/Tashkent';
 const shift = (day: string, days: number) => formatIsoDate(addDays(parseIsoDate(day), days));
@@ -44,9 +46,10 @@ describe('Admin statistics (e2e)', () => {
     createdAt: Date,
     type: TransactionType = 'EXPENSE',
     source: TransactionSource | null = null,
+    deletedAt: Date | null = null,
   ) {
     await ctx.prisma.transaction.create({
-      data: { userId: who.id, accountId: who.accountId, type, amount: 100n, date: createdAt, createdAt, source },
+      data: { userId: who.id, accountId: who.accountId, type, amount: 100n, date: createdAt, createdAt, source, deletedAt },
     });
   }
 
@@ -69,6 +72,8 @@ describe('Admin statistics (e2e)', () => {
       await entry(a, new Date('2025-03-09T20:00:00Z'), 'ADJUSTMENT'); // an opening balance: not an entry
       await entry(b, new Date('2025-03-10T05:00:00Z'), 'TRANSFER_OUT', 'WEB');
       await entry(b, new Date('2025-03-10T05:00:00Z'), 'TRANSFER_IN', 'WEB'); // the same transfer: one entry
+      // Made and deleted again: not an entry anywhere, so no window ever counts more than the total.
+      await entry(b, new Date('2025-03-10T06:00:00Z'), 'EXPENSE', 'MINIAPP', new Date('2025-03-10T06:05:00Z'));
     });
 
     it('puts sign-ups, activity and entries on the right day, week and month', async () => {
@@ -137,7 +142,7 @@ describe('Admin statistics (e2e)', () => {
 
     const user = await newUser(ctx, 'Bugungi');
     const acc = await firstAccountId(user);
-    await user.post('/transactions', { type: 'EXPENSE', accountId: acc, amount: '1000', categoryId: await categoryId(user, 'Oziq-ovqat'), date: today() });
+    const made = await user.post('/transactions', { type: 'EXPENSE', accountId: acc, amount: '1000', categoryId: await categoryId(user, 'Oziq-ovqat'), date: today() });
 
     // Within the cache minute the panel still shows the earlier numbers.
     expect((await admin.get('/admin/stats/overview')).body.data).toEqual(before);
@@ -149,6 +154,33 @@ describe('Admin statistics (e2e)', () => {
     expect(after.users.activeToday).toBe(before.users.activeToday + 1);
     expect(after.entries.today).toBe(before.entries.today + 1);
     expect(after.entries.total).toBe(before.entries.total + 1);
+
+    // Deleted again, the entry stops counting in every window at once, not only in the total.
+    expect((await user.delete(`/transactions/${made.body.data.transaction.id}`)).status).toBe(204);
+    const gone = await get('/admin/stats/overview');
+    expect(gone.entries.today).toBe(before.entries.today);
+    expect(gone.entries.last7d.current).toBe(before.entries.last7d.current);
+    expect(gone.entries.total).toBe(before.entries.total);
+  });
+
+  it('keeps nothing of a deleted account but the count, and forgets the past days it was active on', async () => {
+    const leaving = await newUser(ctx, 'Ketuvchi');
+    // Active on a finished week of 2025 where nothing else lives.
+    await active(leaving.userId, '2025-05-07');
+    const week = '/admin/stats/growth?from=2025-05-05&to=2025-05-11&groupBy=week';
+    const before = await get('/admin/stats/overview');
+    expect((await get(week)).points[0].activeUsers).toBe(1);
+
+    expect((await leaving.send('delete', '/users/me', { confirm: 'O‘CHIRISH' })).status).toBe(200);
+
+    // The 60-second answers are dropped as in the other tests; the finished week, kept for days,
+    // must not survive the account.
+    await ctx.app.get(RedisService).delPattern(`${ADMIN_STATS_CACHE_PREFIX}growth:*`);
+    await ctx.app.get(RedisService).delPattern(`${ADMIN_STATS_CACHE_PREFIX}overview:*`);
+    expect((await admin.get(week)).body.data.points[0].activeUsers).toBe(0);
+    const after = (await admin.get('/admin/stats/overview')).body.data;
+    expect(after.users.deleted).toBe(before.users.deleted + 1);
+    expect(after.users.total).toBe(before.users.total - 1);
   });
 
   it('reports the features people use and the AI assistant’s results', async () => {

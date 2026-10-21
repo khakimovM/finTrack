@@ -34,7 +34,7 @@ const STATUS_TABS: Array<{ value: AdminUserFilter; label: string }> = [
   { value: 'active', label: 'Faol' },
   { value: 'banned', label: 'Bloklangan' },
   { value: 'botBlocked', label: 'Botni bloklagan' },
-  { value: 'deleted', label: 'O‘chirilgan' },
+  // No "deleted" tab: deleting an account erases it, so there is never anyone to list.
 ];
 
 const SORT_OPTIONS: Array<{ value: AdminUserSort; label: string }> = [

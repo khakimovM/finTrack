@@ -130,8 +130,9 @@ Rejadan farqlar: (1) yangi indekslar (0007): `transactions (createdAt, type)`,
 (bir yil haftalab, 10 000 kishi: `COUNT(DISTINCT)` bilan 2,7 s). Ikki yechim qo'llandi: so'rov "avval
 DISTINCT, keyin COUNT" ko'rinishida (hash, 4 marta tezroq) va **tugagan bucket'lar keshi**: oraliq
 ichida to'liq yotgan va bugundan oldin tugagan hafta/oy sanog'i Redis hash'da
-(`admin:stats:closed-active:{groupBy}`) bir hafta saqlanadi, keyingi so'rov faqat qolganlarini
-hisoblaydi.
+(`admin:stats:closed-active:{versiya}:{groupBy}`) bir hafta saqlanadi, keyingi so'rov faqat qolganlarini
+hisoblaydi. Versiya (`activity:history-version`) akkaunt o'chirilganda oshadi: o'chirilgan akkaunt o'zining
+faol kunlarini ham olib ketadi, eski sanoqlar esa endi to'g'ri emas.
 
 ### J4 — Foydalanuvchilar va tizim API
 `GET /admin/users?q&sort&status&page` (ism, @username, telefon niqoblangan `+998 •• ••• •• 12`,
@@ -155,7 +156,7 @@ oldin, yozilmasa fayl ham berilmaydi; (4) ro'yxatdagi "kanallar" — oxirgi 30 k
 qidiruv yo'q (faqat ism, @username, Telegram ID).
 
 ### J5 — Admin UI
-`/admin`: Umumiy ko'rinish (KPI + o'sish grafigi + faol foydalanuvchilar + kanallar donut + yangi
+`/admin`: Umumiy ko'rinish (KPI + o'sish grafigi + faol foydalanuvchilar + kanallar ulushi + yangi
 ro'yxatdan o'tganlar), Foydalanuvchilar (jadval, qidiruv, filtr, CSV, tafsilot paneli: faollik
 kalendari, bloklash, sessiyalarni tugatish — `useConfirm` bilan), O'sish va qaytish (kogorta heatmap),
 Foydalanish (funksiyalar, bot vs sayt, ovozli yordamchi), Tizim, Audit jurnali. Dizayn tizimi va
@@ -205,6 +206,31 @@ admin kirishi (mock Telegram), ruxsatsiz rad etish, bloklash oqimi. Railway: `.r
 (qiymat hali qo'yilmagan, preserve uni yaratmaydi ham, o'chirmaydi ham). Windows'da `plan`/`apply` uchun
 SDK CLI versiyasini `_` env orqali tekshiradi: PowerShell'da
 `$env:_ = "$env:APPDATA\npm\node_modules\@railway\cli\bin\railway.exe"; & $env:_ config plan`.
+
+## Statistika ta'riflari (tekshiruv, 2026-10-21)
+
+Production'dagi raqamlar bir-biriga zid chiqqani uchun ("↑1700%", "7 kunda 34 yozuv, jami 22",
+grafikda bor faollik KPI'da "yangi") hamma ko'rsatkich qayta tekshirildi. Endi ular quyidagicha:
+
+- **Akkaunt o'chirilsa** u barcha ma'lumoti bilan butunlay o'chadi (`UsersRepository.deleteUserData`),
+  shuning uchun hamma sanoq hozir mavjud akkauntlar haqida: o'chgan akkaunt o'tgan kunlar grafigidan ham
+  chiqadi. Undan qoladigan yagona iz — kunlik hisoblagich `account.deleted` (Redis, 120 kun);
+  `overview.users.deleted` — **oxirgi 30 kunda** o'chirilganlar soni. "O'chirilgan" filtri olib
+  tashlandi: ro'yxatda ko'rsatadigan odam hech qachon bo'lmaydi.
+- **Yozuv** — o'chirilmagan qator (`ADJUSTMENT` va `TRANSFER_IN` dan tashqari) hamma joyda bir xil:
+  KPI, grafik, manbalar, voronka. Ilgari jami o'chirilganlarsiz, davrlar esa ular bilan sanalardi.
+- **Faollik.** Ro'yxatdan o'tish ham foydalanish: bot ro'yxatdan o'tkazgan xabarni o'sha kunning faolligi
+  deb yozadi. Faollik yozila boshlashidan oldingi akkauntlarning ro'yxatdan o'tgan kuni 0009 migratsiyasida
+  `UNKNOWN` kanal bilan qo'shildi (faqat o'sha kuni hech qanday qator bo'lmasa).
+- **KPI belgilari** har biri o'zi turgan raqamni solishtiradi: foydalanuvchilar — hozirgi soni 7 kun
+  avvalgisiga (jami − 7 kundagi yangilar) nisbatan; "7 kunda faol" va "30 kunda faol" — oldingi shuncha
+  kunga nisbatan; bugungi faollar izoh qatorida (kun tugamagan, solishtirib bo'lmaydi).
+- **Kanallar** — faol foydalanuvchilarning ulushi; bir odam bir nechta kanalda bo'lgani uchun yig'indi
+  100% dan oshishi mumkin, shuning uchun donut emas, chiziqlar (`BarList max` = jami faollar).
+- **O'sish grafigi** hafta/oy bo'yicha birinchi hafta yoki oyning boshidan so'raladi (qirqilgan birinchi
+  bucket yolg'on pasayish ko'rsatardi); davom etayotgan oxirgi bucket tooltip'da "davom etmoqda".
+- **Voronka**: "2-haftada qaytdi" faqat ro'yxatdan o'tganiga 14 kun to'lganlar orasida (alohida
+  `/funnel?to=bugun−14` so'rovi) — yangiroqlarning ikkinchi haftasi hali tugamagan.
 
 ## Production'ga chiqarish
 
