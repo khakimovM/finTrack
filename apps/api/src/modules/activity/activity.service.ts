@@ -10,6 +10,8 @@ import { ClockService } from '../../infra/clock/clock.service';
 const SEEN_EVERY_SECONDS = 5 * 60;
 /** A day key outlives its day by a little, whatever the server's clock skew. */
 const DAY_KEY_SECONDS = 26 * 3600;
+/** Changes whenever days already over lose rows: an erased account takes its days with it. */
+const HISTORY_VERSION_KEY = 'activity:history-version';
 
 /**
  * Records that people use FinTrack, for the admin panel's active users and cohorts: one
@@ -47,6 +49,18 @@ export class ActivityService {
     } catch (err) {
       this.logger.warn(`Activity not recorded for ${userId}: ${String(err)}`);
     }
+  }
+
+  /**
+   * Activity of finished days only grows, except when an account is erased: anything worked out
+   * from those days and kept (the admin panel's closed periods) is valid for one version.
+   */
+  async historyVersion(): Promise<string> {
+    return (await this.redis.get(HISTORY_VERSION_KEY)) ?? '0';
+  }
+
+  async historyChanged(): Promise<void> {
+    await this.redis.incr(HISTORY_VERSION_KEY);
   }
 
   /** A bot update: the sender is looked up at most once per window, not on every message. */

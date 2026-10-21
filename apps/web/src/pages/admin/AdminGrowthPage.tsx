@@ -10,7 +10,7 @@ import { GrowthChart, Legend, Stat, seriesOf } from '../../features/admin/compon
 import { RetentionHeatmap } from '../../features/admin/components/RetentionHeatmap';
 import { useAdminFunnel, useAdminGrowth, useAdminRetention } from '../../features/admin/hooks/useAdminData';
 import { formatCount, percentOf } from '../../features/admin/format';
-import { RANGE_LABELS, rangeOf, type AdminRange } from '../../features/admin/periods';
+import { RANGE_LABELS, rangeOf, shiftDay, wholeBuckets, type AdminRange } from '../../features/admin/periods';
 
 const RANGES: AdminRange[] = ['30d', '90d', '365d'];
 const GROUPS: Array<{ value: AdminStatsGroupBy; label: string }> = [
@@ -23,14 +23,20 @@ const PEOPLE = seriesOf(['activeUsers', 'newUsers']);
 const TOTAL = seriesOf(['registeredUsers']);
 const ENTRIES = seriesOf(['entries']);
 
+/** Days 7–13 after signing up are the second week: only after day 13 is "came back" settled. */
+const WEEK2_SETTLED_DAYS = 14;
+
 /** Growth over time, who comes back week after week, and how far new people get. */
 export function AdminGrowthPage() {
   const [range, setRange] = useState<AdminRange>('90d');
   const [groupBy, setGroupBy] = useState<AdminStatsGroupBy>('week');
   const period = rangeOf(range);
-  const growth = useAdminGrowth(period, groupBy);
+  const growth = useAdminGrowth(wholeBuckets(period, groupBy), groupBy);
   const retention = useAdminRetention(12);
   const funnel = useAdminFunnel(period);
+  // Whoever signed up in the last two weeks cannot have come back in their second week yet;
+  // counting them would pull the share down for no reason, so that step has its own base.
+  const settled = useAdminFunnel({ from: period.from, to: shiftDay(period.to, -WEEK2_SETTLED_DAYS) });
   const points = growth.data?.points ?? [];
   const chart = (series: typeof PEOPLE, label: string) => (
     <WidgetState
@@ -44,12 +50,12 @@ export function AdminGrowthPage() {
   );
 
   const f = funnel.data;
+  const s = settled.data;
   const steps = f
     ? [
         { key: 'registered', label: 'Ro‘yxatdan o‘tdi', value: f.registered },
         { key: 'firstEntry', label: 'Birinchi yozuv', value: f.firstEntry },
         { key: 'fiveEntries', label: '5 va undan ko‘p yozuv', value: f.fiveEntries },
-        { key: 'returnedWeek2', label: '2-haftada qaytdi', value: f.returnedWeek2 },
       ]
     : [];
 
@@ -85,25 +91,47 @@ export function AdminGrowthPage() {
 
       <WidgetCard title={`Yangi foydalanuvchilar yo‘li, ${RANGE_LABELS[range]}`}>
         <WidgetState
-          isLoading={funnel.isLoading}
-          isError={funnel.isError}
-          onRetry={() => void funnel.refetch()}
+          isLoading={funnel.isLoading || settled.isLoading}
+          isError={funnel.isError || settled.isError}
+          onRetry={() => {
+            void funnel.refetch();
+            void settled.refetch();
+          }}
           errorTitle="Ma’lumotni yuklab bo‘lmadi"
           skeleton={<Skeleton className="h-[160px] w-full" />}
         >
           {f && f.registered > 0 ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               <BarList
-                items={steps.map((s, i) => ({
-                  key: s.key,
-                  label: s.label,
-                  value: s.value,
-                  color: `var(--chart-${[2, 1, 5, 4][i]})`,
-                  display: `${formatCount(s.value)} · ${percentOf(s.value, f.registered)}%`,
+                max={f.registered}
+                items={steps.map((step, i) => ({
+                  key: step.key,
+                  label: step.label,
+                  value: step.value,
+                  color: `var(--chart-${[2, 1, 5][i]})`,
+                  display: `${formatCount(step.value)} · ${percentOf(step.value, f.registered)}%`,
                 }))}
               />
+              {s && s.registered > 0 ? (
+                <BarList
+                  max={s.registered}
+                  items={[
+                    {
+                      key: 'returnedWeek2',
+                      label: '2-haftada qaytdi',
+                      value: s.returnedWeek2,
+                      color: 'var(--chart-4)',
+                      display: `${formatCount(s.returnedWeek2)} · ${percentOf(s.returnedWeek2, s.registered)}%`,
+                    },
+                  ]}
+                />
+              ) : (
+                <p className="text-[14px] text-text-secondary">2-haftada qaytganlar: hali erta — davrda ro‘yxatdan o‘tganlarning hech biriga 14 kun to‘lmagan.</p>
+              )}
               <p className="text-[13px] text-text-muted">
-                Davrda ro‘yxatdan o‘tganlar. “2-haftada qaytdi” — ro‘yxatdan o‘tgandan keyingi 7–13-kunlarda faol bo‘lganlar.
+                Davrda ro‘yxatdan o‘tganlar. “2-haftada qaytdi” — ro‘yxatdan o‘tgandan keyingi 7–13-kunlarda yana faol bo‘lganlar; u
+                faqat 14 kuni to‘lganlar orasida hisoblanadi{s && s.registered > 0 ? ` (${formatCount(s.registered)} kishi)` : ''}, chunki
+                yangiroqlarning ikkinchi haftasi hali tugamagan.
               </p>
             </div>
           ) : (

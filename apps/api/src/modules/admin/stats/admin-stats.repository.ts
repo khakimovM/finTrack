@@ -10,6 +10,9 @@ import { ENTRY } from '../core/admin-sql';
  * a balance, a name or a note; test/admin-stats.e2e-spec.ts walks every answer to hold that line.
  *
  * Timestamps are stored as UTC wall time; calendar days are those of `tz` (Asia/Tashkent).
+ *
+ * Deleting an account erases it with all its rows (UsersRepository.deleteUserData), so every
+ * count here is about the accounts that exist now: an erased one leaves the past figures too.
  */
 
 /** Local midnight of `day` in `tz`, as the UTC wall time `created_at` columns hold. */
@@ -33,7 +36,6 @@ export interface UserCountsRow {
   new30Prev: number;
   botBlocked: number;
   banned: number;
-  deleted: number;
 }
 
 export interface ActiveCountsRow {
@@ -110,8 +112,7 @@ export class AdminStatsRepository {
         COUNT(*) FILTER (WHERE "created_at" >= ${midnight(shift(today, -59), tz)}
                            AND "created_at" < ${midnight(shift(today, -29), tz)})::int AS "new30Prev",
         COUNT(*) FILTER (WHERE "telegram_blocked_at" IS NOT NULL AND "deleted_at" IS NULL)::int AS "botBlocked",
-        COUNT(*) FILTER (WHERE "banned_at" IS NOT NULL AND "deleted_at" IS NULL)::int AS "banned",
-        COUNT(*) FILTER (WHERE "deleted_at" IS NOT NULL)::int AS "deleted"
+        COUNT(*) FILTER (WHERE "banned_at" IS NOT NULL AND "deleted_at" IS NULL)::int AS "banned"
       FROM "users"
     `);
     return row;
@@ -134,7 +135,7 @@ export class AdminStatsRepository {
   async entryCounts(today: string, tz: string): Promise<EntryCountsRow> {
     const [row] = await this.run((db) => db.$queryRaw<EntryCountsRow[]>`
       SELECT
-        COUNT(*) FILTER (WHERE t."deleted_at" IS NULL)::int AS "total",
+        COUNT(*)::int AS "total",
         COUNT(*) FILTER (WHERE t."created_at" >= ${midnight(today, tz)})::int AS "today",
         COUNT(*) FILTER (WHERE t."created_at" >= ${midnight(shift(today, -6), tz)})::int AS "d7",
         COUNT(*) FILTER (WHERE t."created_at" >= ${midnight(shift(today, -13), tz)}

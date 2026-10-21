@@ -9,12 +9,12 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { WidgetCard, WidgetState } from '../../features/dashboard/components/WidgetCard';
 import { AdminPageHeader } from '../../features/admin/components/AdminShell';
-import { GrowthChart, Legend, ShareDonut, Stat, seriesOf } from '../../features/admin/components/AdminCharts';
+import { ChannelBars, GrowthChart, Legend, Stat, seriesOf } from '../../features/admin/components/AdminCharts';
 import { useAdminGrowth, useAdminOverview, useAdminUsage, useAdminUsers } from '../../features/admin/hooks/useAdminData';
 import { changePercent, formatCount, percentOf } from '../../features/admin/format';
-import { CHANNELS, SOURCES } from '../../features/admin/labels';
+import { SOURCES } from '../../features/admin/labels';
 import { BarList } from '../../components/charts/BarList';
-import { rangeOf } from '../../features/admin/periods';
+import { adminToday, rangeOf } from '../../features/admin/periods';
 import { formatDate, formatRelativeDay } from '../../lib/format';
 
 const TREND = seriesOf(['activeUsers', 'newUsers']);
@@ -30,35 +30,37 @@ function Kpis({ data }: { data: AdminOverviewResponse | undefined }) {
     );
   }
   const { users, entries } = data;
-  const vs = 'oldingi davrga nisbatan';
+  // Each chip compares the number it sits under. A deleted account is erased, so the users there
+  // were a week ago are today's total less the week's sign-ups.
+  const usersWeekAgo = Math.max(0, users.total - users.new7d.current);
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
       <KpiCard
         label="Foydalanuvchilar"
         value={formatCount(users.total)}
-        change={<ChangeChip value={changePercent(users.new7d.current, users.new7d.previous)} upIsGood />}
+        change={<ChangeChip value={changePercent(users.total, usersWeekAgo)} upIsGood />}
         vsText={`7 kunda +${formatCount(users.new7d.current)}`}
         sub={`Bugun +${formatCount(users.newToday)}, 30 kunda +${formatCount(users.new30d.current)}`}
       />
       <KpiCard
-        label="Bugun faol"
-        value={formatCount(users.activeToday)}
+        label="7 kunda faol"
+        value={formatCount(users.active7d.current)}
         change={<ChangeChip value={changePercent(users.active7d.current, users.active7d.previous)} upIsGood />}
-        vsText={`7 kunda ${formatCount(users.active7d.current)}`}
-        sub={vs}
+        vsText="oldingi 7 kunga nisbatan"
+        sub={`Bugun ${formatCount(users.activeToday)} kishi`}
       />
       <KpiCard
         label="30 kunda faol"
         value={formatCount(users.active30d.current)}
         change={<ChangeChip value={changePercent(users.active30d.current, users.active30d.previous)} upIsGood />}
-        vsText={vs}
-        sub={users.total > 0 ? `Foydalanuvchilarning ${Math.round((users.active30d.current / users.total) * 100)}%` : undefined}
+        vsText="oldingi 30 kunga nisbatan"
+        sub={users.total > 0 ? `Foydalanuvchilarning ${percentOf(users.active30d.current, users.total)}%` : undefined}
       />
       <KpiCard
         label="Yozuvlar, 7 kun"
         value={formatCount(entries.last7d.current)}
         change={<ChangeChip value={changePercent(entries.last7d.current, entries.last7d.previous)} upIsGood />}
-        vsText={vs}
+        vsText="oldingi 7 kunga nisbatan"
         sub={`Bugun ${formatCount(entries.today)}, jami ${formatCount(entries.total)}`}
       />
     </div>
@@ -91,7 +93,7 @@ function NewestUsers() {
                       {user.telegramUsername ? `@${user.telegramUsername}` : 'username yo‘q'}
                     </span>
                   </span>
-                  <span className="text-[13px] text-text-secondary">{formatRelativeDay(user.createdAt.slice(0, 10), rangeOf('7d').to)}</span>
+                  <span className="text-[13px] text-text-secondary">{formatRelativeDay(adminToday(new Date(user.createdAt)), adminToday())}</span>
                 </Link>
               </li>
             ))}
@@ -133,7 +135,7 @@ export function AdminOverviewPage() {
         <section aria-label="Hisoblar holati" className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-card p-4 sm:px-6 sm:py-5">
           <Stat label="Botni bloklagan" value={formatCount(data.users.botBlocked)} />
           <Stat label="Bloklangan" value={formatCount(data.users.banned)} />
-          <Stat label="O‘chirilgan" value={formatCount(data.users.deleted)} />
+          <Stat label="O‘chirilgan, 30 kun" value={formatCount(data.users.deleted)} hint="statistikadan ham chiqib ketadi" />
         </section>
       )}
 
@@ -155,14 +157,7 @@ export function AdminOverviewPage() {
             onRetry={() => void usage.refetch()}
             skeleton={<Skeleton className="h-[220px] w-full" />}
           >
-            {usage.data && (
-              <ShareDonut
-                ariaLabel="Faol foydalanuvchilar kanallar bo‘yicha"
-                centerLabel="faol"
-                total={usage.data.activeUsers.total}
-                items={CHANNELS.map((c) => ({ ...c, value: usage.data.activeUsers[c.key] }))}
-              />
-            )}
+            {usage.data && <ChannelBars active={usage.data.activeUsers} />}
           </WidgetState>
         </WidgetCard>
       </div>
@@ -177,6 +172,7 @@ export function AdminOverviewPage() {
           >
             {usage.data && usage.data.entries.total > 0 ? (
               <BarList
+                max={usage.data.entries.total}
                 items={SOURCES.map((s) => ({
                   key: s.key,
                   label: s.label,

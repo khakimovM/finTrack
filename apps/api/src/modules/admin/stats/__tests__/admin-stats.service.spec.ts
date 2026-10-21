@@ -4,11 +4,13 @@ import { AdminStatsRepository, BucketRow } from '../admin-stats.repository';
 import { ClockService } from '../../../../infra/clock/clock.service';
 import { RedisService } from '../../../../infra/redis/redis.service';
 import { DailyMetricsService } from '../../../activity/daily-metrics.service';
+import { ActivityService } from '../../../activity/activity.service';
 
 /** Mondays from 2026-09-07; "today" is Thursday 2026-10-08, so the week of 2026-10-05 is still open. */
 const TODAY = '2026-10-08';
 
 function setup() {
+  let historyVersion = 0;
   const hashes = new Map<string, Record<string, string>>();
   const redis = {
     get: jest.fn(async () => null),
@@ -35,9 +37,13 @@ function setup() {
     { todayIn: () => TODAY } as unknown as ClockService,
     redis as unknown as RedisService,
     {} as DailyMetricsService,
+    { historyVersion: async () => String(historyVersion) } as unknown as ActivityService,
     { get: () => 'Asia/Tashkent' } as unknown as ConfigService,
   );
-  return { service, activeUsersByBucket, hashes };
+  const eraseAnAccount = () => {
+    historyVersion += 1;
+  };
+  return { service, activeUsersByBucket, hashes, eraseAnAccount };
 }
 
 function mondayOf(day: string): string {
@@ -55,7 +61,7 @@ describe('AdminStatsService: active users per finished bucket', () => {
     expect(activeUsersByBucket).toHaveBeenCalledTimes(1);
     expect(activeUsersByBucket).toHaveBeenCalledWith('2026-09-03', TODAY, 'week');
     // 2026-08-31 starts before the range and 2026-10-05 has not ended: neither is kept.
-    expect(Object.keys(hashes.get('admin:stats:closed-active:week') ?? {})).toEqual([
+    expect(Object.keys(hashes.get('admin:stats:closed-active:0:week') ?? {})).toEqual([
       '2026-09-07',
       '2026-09-14',
       '2026-09-21',
@@ -77,9 +83,20 @@ describe('AdminStatsService: active users per finished bucket', () => {
     ]);
   });
 
+  it('asks again for the finished weeks once an account has been erased with its activity', async () => {
+    const { service, activeUsersByBucket, eraseAnAccount } = setup();
+    await service.growth({ from: '2026-09-03', to: TODAY, groupBy: 'week' });
+    eraseAnAccount();
+    activeUsersByBucket.mockClear();
+
+    await service.growth({ from: '2026-09-03', to: TODAY, groupBy: 'week' });
+
+    expect(activeUsersByBucket.mock.calls).toEqual([['2026-09-03', TODAY, 'week']]);
+  });
+
   it('does not keep a week cut short by the end of the range', async () => {
     const { service, hashes } = setup();
     await service.growth({ from: '2026-09-07', to: '2026-09-16', groupBy: 'week' });
-    expect(Object.keys(hashes.get('admin:stats:closed-active:week') ?? {})).toEqual(['2026-09-07']);
+    expect(Object.keys(hashes.get('admin:stats:closed-active:0:week') ?? {})).toEqual(['2026-09-07']);
   });
 });

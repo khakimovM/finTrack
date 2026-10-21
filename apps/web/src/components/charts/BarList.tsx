@@ -11,11 +11,12 @@ export interface BarListItem {
 }
 
 /**
- * Horizontal bars scaled to the largest value: name | bar | value on wide screens, name and
+ * Horizontal bars scaled to the largest value, or to `max` when the rows are shares of a whole
+ * (so a bar is as long as the percentage beside it): name | bar | value on wide screens, name and
  * value over a full-width bar on phones.
  */
-export function BarList({ items, className }: { items: BarListItem[]; className?: string }) {
-  const max = Math.max(1, ...items.map((item) => item.value));
+export function BarList({ items, max: whole, className }: { items: BarListItem[]; max?: number; className?: string }) {
+  const max = Math.max(1, whole ?? Math.max(...items.map((item) => item.value)));
   return (
     <ul className={cn('flex flex-col gap-3', className)}>
       {items.map((item, index) => (

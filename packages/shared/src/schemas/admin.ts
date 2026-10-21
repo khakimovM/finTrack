@@ -37,8 +37,9 @@ export type AdminWebAppSessionResponse = z.infer<typeof AdminWebAppSessionRespon
 // ------------------------------------------------------------------
 // Statistics. Counts and dates only: no amounts, balances or free text ever leave these
 // endpoints (decided with the owner, docs/09). Days are Asia/Tashkent calendar days.
-// "Entries" are ledger rows a person made or a rule booked: opening balances are left out and a
-// transfer counts once.
+// "Entries" are live ledger rows a person made or a rule booked: deleted ones and opening balances
+// are left out, and a transfer counts once. Deleting an account erases it with everything in it,
+// so every count is about the accounts that exist now.
 // ------------------------------------------------------------------
 
 const count = z.number().int().nonnegative();
@@ -62,6 +63,7 @@ export const AdminOverviewResponseSchema = z.object({
     /** Blocked the bot (Telegram answers 403). */
     botBlocked: count,
     banned: count,
+    /** Accounts their owners deleted in the last 30 days: the one trace an erased account leaves. */
     deleted: count,
   }),
   entries: z.object({
@@ -92,7 +94,7 @@ export const AdminGrowthPointSchema = z.object({
   /** First day of the bucket (a Monday for weeks). Buckets are clipped to the range. */
   bucket: z.string(),
   newUsers: count,
-  /** Everyone registered up to the end of the bucket, deleted accounts included. */
+  /** Accounts registered up to the end of the bucket (that still exist: see above). */
   registeredUsers: count,
   activeUsers: count,
   entries: count,

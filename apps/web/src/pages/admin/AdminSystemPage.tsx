@@ -16,6 +16,7 @@ const QUEUE_LABELS: Record<string, string> = {
   'debt-reminders': 'Qarz eslatmalari',
   'telegram-outbox': 'Telegram xabarlari',
   'daily-digest': 'Kunlik xulosa',
+  broadcast: 'Ommaviy xabarlar',
 };
 
 function Health({ ok, label }: { ok: boolean; label?: string }) {

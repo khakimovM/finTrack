@@ -2,6 +2,7 @@ import { AdminRetentionResponse } from '@fintrack/shared';
 import { formatShortDate } from '../../../lib/format';
 import { cn } from '../../../lib/utils';
 import { formatCount, percentOf } from '../format';
+import { shiftDay } from '../periods';
 
 /** Cell colour: the share of the cohort active that week, as the strength of one colour. */
 function shade(pct: number): string {
@@ -16,6 +17,8 @@ function shade(pct: number): string {
  */
 export function RetentionHeatmap({ data }: { data: AdminRetentionResponse }) {
   const weeks = Array.from({ length: data.weeks }, (_, n) => n);
+  // The newest cohort signed up this week; a cell in this week is still filling up.
+  const thisWeek = data.cohorts[data.cohorts.length - 1]?.week;
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] border-separate border-spacing-[3px] text-[12.5px]">
@@ -45,13 +48,15 @@ export function RetentionHeatmap({ data }: { data: AdminRetentionResponse }) {
               {cohort.active.map((active, n) => {
                 if (active === null) return <td key={n} aria-label="hali kelmagan" />;
                 const pct = percentOf(active, cohort.size);
+                const inProgress = shiftDay(cohort.week, 7 * n) === thisWeek;
                 return (
                   <td
                     key={n}
-                    title={`${formatCount(active)} / ${formatCount(cohort.size)}`}
+                    title={`${formatCount(active)} / ${formatCount(cohort.size)}${inProgress ? ' · hafta davom etmoqda' : ''}`}
                     className={cn(
                       'h-9 min-w-[48px] rounded-[8px] text-center tabular-nums',
                       cohort.size === 0 ? 'text-text-muted' : pct >= 55 ? 'font-semibold text-white' : 'text-text',
+                      inProgress && cohort.size > 0 && 'opacity-60',
                     )}
                     style={{ background: cohort.size === 0 ? 'transparent' : shade(pct) }}
                   >
@@ -63,6 +68,7 @@ export function RetentionHeatmap({ data }: { data: AdminRetentionResponse }) {
           ))}
         </tbody>
       </table>
+      <p className="mt-2 text-[12px] text-text-muted">Xira kataklar — joriy hafta: u hali tugamagan, foiz o‘sishi mumkin.</p>
     </div>
   );
 }

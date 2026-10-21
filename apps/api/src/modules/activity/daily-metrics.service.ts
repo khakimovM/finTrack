@@ -6,6 +6,9 @@ import { ClockService } from '../../infra/clock/clock.service';
 /** The admin panel looks back at most this far. */
 export const METRICS_RETENTION_SECONDS = 120 * 24 * 3600;
 
+/** An account deleted by its owner: the one trace it leaves, a count for the day. */
+export const ACCOUNT_DELETED_METRIC = 'account.deleted';
+
 /**
  * Daily counters for things the database does not record, such as AI assistant calls:
  * `metrics:<YYYY-MM-DD>:<metric>` in Redis, kept for 120 days. A lost increment is acceptable;

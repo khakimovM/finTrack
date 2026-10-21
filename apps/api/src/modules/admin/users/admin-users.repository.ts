@@ -40,7 +40,7 @@ const ORDER: Record<AdminUserSort, Prisma.Sql> = {
   newest: Prisma.sql`u."created_at" DESC, u."id"`,
   oldest: Prisma.sql`u."created_at" ASC, u."id"`,
   lastSeen: Prisma.sql`u."last_seen_at" DESC NULLS LAST, u."id"`,
-  entries: Prisma.sql`(SELECT COUNT(*) FROM "transactions" t WHERE t."user_id" = u."id" AND t."deleted_at" IS NULL AND ${ENTRY}) DESC, u."id"`,
+  entries: Prisma.sql`(SELECT COUNT(*) FROM "transactions" t WHERE t."user_id" = u."id" AND ${ENTRY}) DESC, u."id"`,
   name: Prisma.sql`lower(u."name"), u."id"`,
 };
 
@@ -98,7 +98,7 @@ export class AdminUsersRepository {
              u."banned_at" AS "bannedAt", u."ban_reason" AS "banReason", u."deleted_at" AS "deletedAt",
              u."telegram_blocked_at" AS "telegramBlockedAt",
              (SELECT COUNT(*)::int FROM "transactions" t
-               WHERE t."user_id" = u."id" AND t."deleted_at" IS NULL AND ${ENTRY}) AS "entries",
+               WHERE t."user_id" = u."id" AND ${ENTRY}) AS "entries",
              (SELECT COUNT(*)::int FROM "accounts" a WHERE a."user_id" = u."id" AND a."deleted_at" IS NULL) AS "accounts",
              ARRAY(SELECT DISTINCT d."channel"::text AS "c" FROM "user_activity_days" d
                WHERE d."user_id" = u."id" AND d."day" >= ${since}::date ORDER BY "c") AS "channels"

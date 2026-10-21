@@ -20,7 +20,8 @@ import {
 } from '@fintrack/shared';
 import { ClockService } from '../../../infra/clock/clock.service';
 import { RedisService } from '../../../infra/redis/redis.service';
-import { DailyMetricsService } from '../../activity/daily-metrics.service';
+import { ActivityService } from '../../activity/activity.service';
+import { ACCOUNT_DELETED_METRIC, DailyMetricsService } from '../../activity/daily-metrics.service';
 import { PROVIDER_FAILURES, PROVIDER_NAMES } from '../../assistant/assistant.types';
 import { AdminStatsRepository, BucketRow } from './admin-stats.repository';
 
@@ -30,7 +31,7 @@ export const ADMIN_STATS_CACHE_PREFIX = 'admin:stats:';
 
 const OUTCOMES = ['ok', 'limit', 'unavailable'] as const;
 
-/** How long the counts of finished weeks and months are kept (they cannot change). */
+/** How long the counts of finished weeks and months are kept (see activeUsersByBucket). */
 const CLOSED_BUCKET_SECONDS = 7 * 24 * 3600;
 
 const shift = (day: string, days: number) => formatIsoDate(addDays(parseIsoDate(day), days));
@@ -69,6 +70,7 @@ export class AdminStatsService {
     private readonly clock: ClockService,
     private readonly redis: RedisService,
     private readonly metrics: DailyMetricsService,
+    private readonly activity: ActivityService,
     config: ConfigService,
   ) {
     this.timeZone = config.get<string>('APP_TIMEZONE') ?? 'Asia/Tashkent';
@@ -77,10 +79,11 @@ export class AdminStatsService {
   overview(): Promise<AdminOverviewResponse> {
     const today = this.today();
     return this.cached(`overview:${today}`, async () => {
-      const [users, active, entries] = await Promise.all([
+      const [users, active, entries, deletions] = await Promise.all([
         this.repository.userCounts(today, this.timeZone),
         this.repository.activeCounts(today),
         this.repository.entryCounts(today, this.timeZone),
+        this.metrics.sum([ACCOUNT_DELETED_METRIC], generateDateBuckets(shift(today, -29), today, 'day')),
       ]);
       return {
         today,
@@ -94,7 +97,7 @@ export class AdminStatsService {
           active30d: { current: active.d30, previous: active.d30Prev },
           botBlocked: users.botBlocked,
           banned: users.banned,
-          deleted: users.deleted,
+          deleted: deletions.get(ACCOUNT_DELETED_METRIC) ?? 0,
         },
         entries: { total: entries.total, today: entries.today, last7d: { current: entries.d7, previous: entries.d7Prev } },
       };
@@ -193,14 +196,14 @@ export class AdminStatsService {
   /**
    * Distinct active users per bucket: the one aggregate that cannot be summed from days, and the
    * slowest (a year of weeks at 10 000 users is most of a second). A bucket that lies wholly
-   * inside the range and ended before today no longer changes (short of an account being
-   * purged), so it is kept for a week;
-   * only the rest (a clipped first bucket, the current one, anything not seen yet) is queried,
-   * one query per unbroken run of them.
+   * inside the range and ended before today changes only when an account is erased with its
+   * activity, so it is kept for a week under the activity history's version, which the erasure
+   * changes. Only the rest (a clipped first bucket, the current one, anything not seen yet) is
+   * queried, one query per unbroken run of them.
    */
   private async activeUsersByBucket(from: string, to: string, groupBy: AdminStatsGroupBy): Promise<Map<string, number>> {
     const today = this.today();
-    const cacheKey = `${ADMIN_STATS_CACHE_PREFIX}closed-active:${groupBy}`;
+    const cacheKey = `${ADMIN_STATS_CACHE_PREFIX}closed-active:${await this.activity.historyVersion()}:${groupBy}`;
     const buckets = generateDateBuckets(from, to, groupBy);
     const closed = new Set(buckets.filter((b) => b >= from && bucketEnd(b, groupBy) <= to && bucketEnd(b, groupBy) < today));
     const kept = await this.redis.hashGetAll(cacheKey);

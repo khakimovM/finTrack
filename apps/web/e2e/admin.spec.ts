@@ -65,7 +65,7 @@ test('inside Telegram the bot’s /admin button opens the panel signed in, once 
 
   const launch = await openFromBot(page, OWNER);
   await expect(page.getByRole('heading', { name: 'Umumiy ko‘rinish' })).toBeVisible();
-  await expect(page.getByText('Bugun faol')).toBeVisible();
+  await expect(page.getByText('7 kunda faol')).toBeVisible();
   await page.getByRole('link', { name: 'Foydalanuvchilar' }).click();
   await expect(page.getByLabel('Foydalanuvchini qidirish')).toBeVisible();
   // The session travels in a header, not in a cookie.
@@ -98,7 +98,7 @@ test('the owner signs in, bans and unbans a person, broadcasts a message, and ch
   const person = await registerInBot(`Bloklanuvchi ${stamp}`);
   await signInAsOwner(page);
   await expect(page.getByRole('heading', { name: 'Umumiy ko‘rinish' })).toBeVisible();
-  await expect(page.getByText('Bugun faol')).toBeVisible();
+  await expect(page.getByText('7 kunda faol')).toBeVisible();
   await expect(page.getByRole('banner').getByText('Ega', { exact: true })).toBeVisible();
 
   // Find the person and open their card.

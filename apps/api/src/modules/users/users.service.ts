@@ -7,6 +7,8 @@ import { SessionStateService } from '../auth/session-state.service';
 import { BalanceService } from '../accounts/balance.service';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { NotFoundDomainException } from '../../common/exceptions/domain.exception';
+import { ActivityService } from '../activity/activity.service';
+import { ACCOUNT_DELETED_METRIC, DailyMetricsService } from '../activity/daily-metrics.service';
 
 @Injectable()
 export class UsersService {
@@ -19,6 +21,8 @@ export class UsersService {
     private readonly sessions: SessionStateService,
     private readonly balanceService: BalanceService,
     private readonly telegram: TelegramBotService,
+    private readonly activity: ActivityService,
+    private readonly metrics: DailyMetricsService,
   ) {}
 
   async updateProfile(userId: string, dto: UpdateProfileInput): Promise<UserResponse> {
@@ -37,6 +41,10 @@ export class UsersService {
     await this.repository.deleteUserData(userId);
     await this.sessions.forgetUser(userId);
     await this.balanceService.invalidate(userId);
+    // The admin panel may count that an account went, nothing more; the days it was active on
+    // are gone from the statistics, so their kept figures are too.
+    await this.metrics.increment(ACCOUNT_DELETED_METRIC);
+    await this.activity.historyChanged();
 
     if (user.telegramId !== null) {
       await this.telegram
