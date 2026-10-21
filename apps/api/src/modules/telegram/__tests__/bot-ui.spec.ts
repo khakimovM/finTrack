@@ -1,4 +1,4 @@
-import { MENU, adminPanelUrl, mainMenu, miniAppUrl, openAdminKeyboard, openAppKeyboard } from '../bot-ui';
+import { MENU, TEXT, adminPanelUrl, mainMenu, miniAppUrl, openAdminKeyboard, openAppKeyboard } from '../bot-ui';
 
 describe('Mini App entry points in the bot', () => {
   it('opens the app only over HTTPS, always on /app', () => {
@@ -31,5 +31,18 @@ describe('Mini App entry points in the bot', () => {
     expect(openAppKeyboard('https://fintrack.uz/app').inline_keyboard[0][0]).toMatchObject({
       web_app: { url: 'https://fintrack.uz/app' },
     });
+  });
+});
+
+describe('the main menu keyboard', () => {
+  it('can be put away and brought back from the chat, and stays up until the person does that', () => {
+    const menu = mainMenu('https://fintrack.uz');
+    expect(menu.is_persistent ?? false).toBe(false);
+    expect(menu.one_time_keyboard ?? false).toBe(false);
+    expect(menu.resize_keyboard).toBe(true);
+  });
+
+  it('tells how to put it away', () => {
+    expect(TEXT.menuIntro).toContain('yashirish');
   });
 });

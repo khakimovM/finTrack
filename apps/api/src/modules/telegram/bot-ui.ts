@@ -27,6 +27,8 @@ export function miniAppUrl(webAppUrl?: string): string | undefined {
 /**
  * A web_app button on this reply keyboard would open the Mini App without initData (Telegram
  * does not sign keyboard launches), so "Ilova" is a plain button answered with an inline one.
+ * Not persistent: a persistent menu takes half a phone screen and Telegram gives no way to put it
+ * away; without the flag the chat's input field gets a button that hides and brings it back.
  */
 export function mainMenu(webAppUrl?: string): ReplyKeyboardMarkup {
   const rows: ReplyKeyboardMarkup['keyboard'] = [
@@ -36,7 +38,7 @@ export function mainMenu(webAppUrl?: string): ReplyKeyboardMarkup {
     [{ text: MENU.debts }, { text: MENU.settings }],
   ];
   if (miniAppUrl(webAppUrl)) rows.push([{ text: MENU.app }]);
-  return { keyboard: rows, resize_keyboard: true, is_persistent: true };
+  return { keyboard: rows, resize_keyboard: true };
 }
 
 export function openAppKeyboard(url: string): InlineKeyboardMarkup {
@@ -76,7 +78,8 @@ export const TEXT = {
   menuIntro:
     'Xarajat yoki kirimni shunchaki yozing, masalan:\n' +
     '• <code>50000 taksi</code>\n• <code>45k tushlik</code>\n• <code>+8 500 000 oylik</code>\n• <code>kecha 1,2 mln ijara</code>\n\n' +
-    'Yoki pastdagi menyudan foydalaning 👇',
+    'Yoki pastdagi menyudan foydalaning 👇\n' +
+    '<i>Menyuni yashirish yoki qayta ochish uchun yozish maydoni yonidagi tugmalar belgisini bosing.</i>',
   notRegistered: 'Avval ro‘yxatdan o‘ting: /start bosing va raqamingizni ulashing.',
   askEntry: (type: 'INCOME' | 'EXPENSE') =>
     type === 'INCOME'
