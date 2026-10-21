@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Check, ChevronDown, ChevronUp, Search, TriangleAlert } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { formatAmount } from '../../lib/money';
+import { dismissKeyboard, isTouchScreen, reveal, revealAboveKeyboard } from '../../lib/keyboard';
 import { EmojiTile } from './EmojiTile';
 import { Field, useFieldId } from './Field';
 import { useDismiss } from './Popover';
@@ -37,14 +38,26 @@ function Balance({ tiyin, className }: { tiyin: string; className?: string }) {
   );
 }
 
-/** Shared open/close + keyboard plumbing of the two pickers. */
+/**
+ * Shared open/close + keyboard plumbing of the two pickers. Opening puts a phone's keyboard away
+ * and scrolls the field with its list into view, so every option can be seen and tapped.
+ */
 function usePicker() {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const close = React.useCallback(() => setOpen(false), []);
   useDismiss([rootRef], open, close);
-  return { open, setOpen, rootRef, triggerRef, close };
+  const toggle = () => {
+    if (!open) dismissKeyboard();
+    setOpen(!open);
+  };
+  React.useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => reveal(rootRef.current));
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
+  return { open, setOpen, toggle, rootRef, triggerRef, close };
 }
 
 export interface AccountPickerProps {
@@ -74,7 +87,7 @@ export function AccountPicker({
   className,
 }: AccountPickerProps) {
   const fieldId = useFieldId();
-  const { open, setOpen, rootRef, triggerRef } = usePicker();
+  const { open, setOpen, toggle, rootRef, triggerRef } = usePicker();
   const selected = accounts.find((a) => a.id === value);
 
   const choose = (id: string) => {
@@ -92,7 +105,7 @@ export function AccountPicker({
           type="button"
           aria-haspopup="listbox"
           aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
+          onClick={toggle}
           onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
           className={cn(triggerClasses, error || invalid ? 'border-danger' : 'border-input', open && openRing)}
         >
@@ -156,8 +169,15 @@ export interface CategoryPickerProps {
 /** Search, then parents (bold) with their children indented; only one type is ever offered. */
 export function CategoryPicker({ label, categories, value, onChange, error, className }: CategoryPickerProps) {
   const fieldId = useFieldId();
-  const { open, setOpen, rootRef, triggerRef } = usePicker();
+  const { open, setOpen, toggle, rootRef, triggerRef } = usePicker();
   const [query, setQuery] = React.useState('');
+  const searchRef = React.useRef<HTMLInputElement>(null);
+
+  // A keyboard user types to search right away. On a phone that would raise the on-screen
+  // keyboard over the list, so there the list opens alone and the search waits for a tap.
+  React.useEffect(() => {
+    if (open && !isTouchScreen()) searchRef.current?.focus();
+  }, [open]);
 
   const flat = React.useMemo(
     () =>
@@ -192,7 +212,7 @@ export function CategoryPicker({ label, categories, value, onChange, error, clas
           type="button"
           aria-haspopup="listbox"
           aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
+          onClick={toggle}
           className={cn(triggerClasses, error ? 'border-danger' : 'border-input', open && openRing)}
         >
           {selected ? (
@@ -216,8 +236,9 @@ export function CategoryPicker({ label, categories, value, onChange, error, clas
             <div className="flex h-[42px] items-center gap-2 border-b border-border px-3">
               <Search className="h-4 w-4 text-text-muted" aria-hidden />
               <input
-                autoFocus
+                ref={searchRef}
                 value={query}
+                onFocus={() => revealAboveKeyboard(rootRef.current)}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && rows[0]) {

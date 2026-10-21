@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { EXIT_MS, popMotion, usePresence } from '../../lib/motion';
+import { dismissKeyboard, reveal } from '../../lib/keyboard';
 import { Field, useFieldId } from './Field';
 import { useDismiss } from './Popover';
 
@@ -79,9 +80,17 @@ export function Dropdown({
   const solid = (isSet && !plain) || open;
 
   const openList = () => {
+    // A phone's keyboard would stay over the list: the field it belongs to is done with.
+    dismissKeyboard();
     setActive(Math.max(0, options.findIndex((o) => o.value === value)));
     setOpen(true);
   };
+
+  React.useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => reveal(rootRef.current));
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
 
   React.useEffect(() => {
     if (!open || active < 0) return;

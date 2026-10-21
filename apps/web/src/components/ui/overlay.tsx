@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { useDismissKeyboardOnTap } from '../../lib/keyboard';
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -9,7 +10,8 @@ let savedOverflow = '';
 
 /**
  * Shared behaviour of modals and sheets: Escape closes, Tab stays inside, the page behind does
- * not scroll, focus moves in on open and returns to the opener on close.
+ * not scroll, focus moves in on open and returns to the opener on close, and on a phone a tap
+ * outside the text fields puts the keyboard away.
  */
 export function useOverlay(panelRef: React.RefObject<HTMLElement | null>, isOpen: boolean, onClose: () => void) {
   // Callers pass inline onClose functions: depending on them would re-run this effect on every
@@ -24,6 +26,7 @@ export function useOverlay(panelRef: React.RefObject<HTMLElement | null>, isOpen
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   }
   wasOpenRef.current = isOpen;
+  useDismissKeyboardOnTap(panelRef, isOpen);
 
   React.useEffect(() => {
     if (!isOpen) return;

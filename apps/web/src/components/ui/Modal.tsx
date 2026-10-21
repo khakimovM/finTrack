@@ -2,6 +2,7 @@ import * as React from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { EXIT_MS, useOpenSnapshot, usePresence } from '../../lib/motion';
+import { useKeyboardFrame } from '../../lib/keyboard';
 import { Portal, useOverlay } from './overlay';
 
 export interface ModalProps {
@@ -38,6 +39,7 @@ export function Modal({
   const descriptionId = React.useId();
   useOverlay(panelRef, isOpen, onClose);
   const { mounted, closing } = usePresence(isOpen, EXIT_MS.slow);
+  const keyboardFrame = useKeyboardFrame(isOpen);
   const view = useOpenSnapshot(isOpen, { title, description, children, footer });
 
   if (!mounted) return null;
@@ -46,6 +48,7 @@ export function Modal({
     <Portal>
       <div
         className={cn('fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-6', closing && 'pointer-events-none')}
+        style={keyboardFrame}
         aria-hidden={closing || undefined}
       >
         <div
@@ -65,7 +68,7 @@ export function Modal({
             // Phone: full-height sheet sliding up, 12px of the page still visible on top.
             'h-[calc(100%-12px)] rounded-t-2xl',
             // Tablet and up: centred dialog sized to its content.
-            'sm:h-auto sm:max-h-[min(860px,calc(100vh-48px))] sm:rounded-2xl',
+            'sm:h-auto sm:max-h-[min(860px,100%)] sm:rounded-2xl',
             closing ? 'animate-ft-sheet-out sm:animate-ft-dialog-out' : 'animate-ft-sheet-in sm:animate-ft-dialog-in',
             size === 'lg' ? 'sm:max-w-[640px]' : 'sm:max-w-[520px]',
             className,

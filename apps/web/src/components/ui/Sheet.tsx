@@ -2,6 +2,7 @@ import * as React from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { EXIT_MS, useOpenSnapshot, usePresence } from '../../lib/motion';
+import { useKeyboardFrame } from '../../lib/keyboard';
 import { Portal, useOverlay } from './overlay';
 
 export interface SheetProps {
@@ -43,13 +44,14 @@ export function Sheet({
   const titleId = React.useId();
   useOverlay(panelRef, isOpen, onClose);
   const { mounted, closing } = usePresence(isOpen, EXIT_MS.slow);
+  const keyboardFrame = useKeyboardFrame(isOpen);
   const view = useOpenSnapshot(isOpen, { title, headerExtra, children, footer });
 
   if (!mounted) return null;
 
   return (
     <Portal>
-      <div className={cn('fixed inset-0 z-50', closing && 'pointer-events-none')} aria-hidden={closing || undefined}>
+      <div className={cn('fixed inset-0 z-50', closing && 'pointer-events-none')} style={keyboardFrame} aria-hidden={closing || undefined}>
         <div
           className={cn('absolute inset-0 bg-overlay', closing ? 'animate-ft-fade-out' : 'animate-ft-fade-in')}
           onClick={onClose}
