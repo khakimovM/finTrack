@@ -18,7 +18,7 @@ import {
   startOfMonth,
   endOfMonth,
   generateDateBuckets,
-  calculatePreviousPeriod,
+  comparablePreviousPeriod,
 } from '@fintrack/shared';
 import { UserCacheService } from '../../infra/redis/user-cache.service';
 import { ClockService } from '../../infra/clock/clock.service';
@@ -49,14 +49,16 @@ export class StatsService {
   }
 
   async getSummary(userId: string, query: StatsSummaryQuery): Promise<StatsSummaryResponse> {
-    const today = parseIsoDate(await this.clock.todayFor(userId));
+    const todayIso = await this.clock.todayFor(userId);
+    const today = parseIsoDate(todayIso);
     const from = query.from ?? formatIsoDate(startOfMonth(today));
     const to = query.to ?? formatIsoDate(endOfMonth(today));
 
-    return this.cached(userId, `summary:${from}:${to}`, async () => {
+    // While the period runs, what it is compared with moves on every day.
+    return this.cached(userId, `summary:${from}:${to}:${todayIso}`, async () => {
       const fromDate = parseIsoDate(from);
       const toDate = parseIsoDate(to);
-      const prev = calculatePreviousPeriod(from, to);
+      const prev = comparablePreviousPeriod(from, to, todayIso);
       const prevFromDate = parseIsoDate(prev.from);
       const prevToDate = parseIsoDate(prev.to);
 

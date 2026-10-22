@@ -516,6 +516,12 @@ o'chirilgan bo'lsa — `409 RECURRING_ALREADY_RAN`.
 ```
 Qarz yozuvlari kirim/chiqimga **kirmaydi** — faqat `INCOME` va `EXPENSE`.
 
+`previousPeriod` — solishtiriladigan davr (`comparablePreviousPeriod`, `packages/shared`): butun oylar
+oldingi kalendar oylari bilan (oktabr — 1–30-sentabr bilan), boshqa oraliq — undan oldingi shuncha kun
+bilan. Davr hali tugamagan bo'lsa (bugun uning ichida), faqat o'tgan kunlari solishtiriladi: 22-oktabrda
+"shu oy" 1–22-sentabr bilan. `changePercent` — oldingi qiymatning mutlaq kattaligiga nisbatan
+(`/stats/compare` da ham).
+
 ### `GET /stats/timeseries?groupBy=day&from=&to=`
 `groupBy`: `day` | `week` | `month` | `year`. Bo'sh davrlar `0` bilan to'ldiriladi. Oraliq cheklangan
 (`day` uchun ≤ 400 kun), aks holda `400 VALIDATION_ERROR`.
@@ -543,8 +549,11 @@ Oldingi qiymat 0 va joriysi musbat bo'lsa `changePercent` = 100 (UI buni "yangi"
              "limitAmount": "200000000", "spent": "184800000", "remaining": "15200000", "percent": 92.4, "state": "WARNING" }],
   "meta": { "month": "2026-08", "totalLimit": "500000000", "totalSpent": "437500000" } }
 ```
-`state`: `OK` (< 80) · `WARNING` (80–100) · `EXCEEDED` (> 100). Subkategoriyalar xarajati ota kategoriya
-byudjetiga qo'shiladi.
+`state`: `OK` (< 80) · `WARNING` (80–100) · `EXCEEDED` (> 100). `EXCEEDED` — sarflangan limitdan ko'p
+(tiyinda solishtiriladi: bir xonali `percent` biroz ortiqchada ham "100" bo'ladi, limitga teng xarajat esa
+`WARNING`). 80%/limitdan oshish bildirishnomalari ham shu chegaralarda. Subkategoriyalar xarajati ota kategoriya
+byudjetiga qo'shiladi. Shu sababli `meta.totalLimit`/`totalSpent` ga ota kategoriyasida ham byudjet bor
+subkategoriya byudjeti qayta qo'shilmaydi (u ota limiti ichida, xarajati ikki marta sanalmaydi).
 
 ## Eksport
 `GET /export/transactions.csv` va `.xlsx` — `GET /transactions` filtrlari bilan. Formula injection'ga

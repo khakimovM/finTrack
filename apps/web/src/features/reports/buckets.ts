@@ -32,13 +32,23 @@ export function bucketPlan(preset: ReportPreset, comparison: Comparison): Bucket
   const { current, previous } = comparison;
 
   if (preset === 'this_month' || preset === 'last_month') {
-    const last = endOfMonth(parseIsoDate(current.from)).getUTCDate();
+    const days = endOfMonth(parseIsoDate(current.from)).getUTCDate();
+    const daysBefore = endOfMonth(parseIsoDate(previous.from)).getUTCDate();
+    // A longer previous month (31 January before February) keeps its last days on the chart.
+    const last = Math.max(days, Number(previous.to.slice(8, 10)));
     const month = MONTHS[Number(current.from.slice(5, 7)) - 1];
     const before = MONTHS[Number(previous.from.slice(5, 7)) - 1];
-    const weeks = WEEKS.filter(([a]) => a <= last).map(([a, b]): [number, number] => [a, Math.min(b, last)]);
+    const weeks = WEEKS.filter(([a]) => a <= last);
+    const span = (a: number, b: number, end: number) => `${a}–${Math.min(b, end)}`;
     return {
       groupBy: 'day',
-      buckets: weeks.map(([a, b]) => ({ label: `${a}–${b}`, title: `${a}–${b}-${month} / ${before}` })),
+      buckets: weeks.map(([a, b]) => {
+        const now = a <= days ? span(a, b, days) : null;
+        const then = a <= daysBefore ? span(a, b, daysBefore) : null;
+        const title =
+          now === then ? `${now}-${month} / ${before}` : [now && `${now}-${month}`, then && `${then}-${before}`].filter(Boolean).join(' / ');
+        return { label: now ?? then ?? '', title };
+      }),
       indexOf: (bucket) => {
         const day = Number(bucket.slice(8, 10));
         return weeks.findIndex(([a, b]) => day >= a && day <= b);
@@ -71,8 +81,9 @@ export function bucketPlan(preset: ReportPreset, comparison: Comparison): Bucket
       label: a === b ? formatShortDate(dayOf(a)) : `${Number(dayOf(a).slice(8, 10))}–${formatShortDate(dayOf(b))}`,
       title: a === b ? `${a + 1}-kun` : `${a + 1}–${b + 1}-kunlar`,
     })),
+    // A previous period a few days longer (whole months: 31 days before 30) ends in the last stretch.
     indexOf: (bucket, from) => {
-      const offset = Math.max(0, diffInDays(from, bucket));
+      const offset = Math.min(Math.max(0, diffInDays(from, bucket)), length - 1);
       return edges.findIndex(([a, b]) => offset >= a && offset <= b);
     },
   };

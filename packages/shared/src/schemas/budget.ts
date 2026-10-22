@@ -69,6 +69,7 @@ export const BudgetStatusResponseSchema = z.object({
   data: z.array(BudgetStatusItemSchema),
   meta: z.object({
     month: z.string(),
+    /** Budgets of subcategories whose parent has one too are inside it and not added again. */
     totalLimit: z.string(),
     totalSpent: z.string(),
   }),

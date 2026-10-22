@@ -14,7 +14,10 @@ export function calcChangePercent(current: bigint, previous: bigint): number {
   if (previous === 0n) {
     return current > 0n ? 100.0 : 0.0;
   }
-  return Math.round(Number(((current - previous) * 10000n) / previous)) / 100;
+  // Against the size of the previous value: a net result going from −200 to +500 rose by 350%;
+  // dividing by the negative −200 would call it a fall.
+  const base = previous < 0n ? -previous : previous;
+  return Math.round(Number(((current - previous) * 10000n) / base)) / 100;
 }
 
 export interface CategoryLookup {

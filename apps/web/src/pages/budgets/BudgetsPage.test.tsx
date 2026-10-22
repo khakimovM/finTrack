@@ -58,6 +58,17 @@ describe('BudgetsPage', () => {
     expect(within(over).getByText('Limitdan 100 000 so‘m ko‘p sarflandi')).toBeTruthy();
   });
 
+  it('calls a little over the limit over, though the percent rounds to 100, and the limit spent exactly not', async () => {
+    // 500 so'm over 2 mln reads 100.0%; the API says EXCEEDED.
+    serve([{ ...item(food, '200000000', '200050000', 100), state: 'EXCEEDED' }, item(fun, '20000000', '20000000', 100)]);
+    renderWithProviders(<BudgetsPage />, { route: '/app/budgets?month=2026-10' });
+
+    const over = await screen.findByRole('article', { name: 'Oziq-ovqat' });
+    expect(within(over).getByText('Oshib ketdi')).toBeTruthy();
+    expect(within(over).getByText('Limitdan 500 so‘m ko‘p sarflandi')).toBeTruthy();
+    expect(within(screen.getByRole('article', { name: 'Ko‘ngilochar' })).getByText('80% dan oshdi')).toBeTruthy();
+  });
+
   it('moves between months', async () => {
     const { months } = serve([]);
     renderWithProviders(<BudgetsPage />, { route: '/app/budgets?month=2026-01' });

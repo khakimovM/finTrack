@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   BudgetResponse,
+  BudgetState,
   BudgetStatusItem,
   BudgetStatusResponse,
   CreateBudgetInput,
@@ -37,10 +38,18 @@ export function percentOf(spent: bigint, limit: bigint): number {
   return Number((spent * 1000n) / limit) / 10;
 }
 
-function thresholdReached(percent: number): number {
-  if (percent >= EXCEEDED_THRESHOLD) return EXCEEDED_THRESHOLD;
-  if (percent >= WARNING_THRESHOLD) return WARNING_THRESHOLD;
-  return 0;
+/**
+ * Over the limit means more spent than the limit, compared in tiyin: the one-decimal percent says
+ * "100%" for a little over, and exactly the limit is spent, not exceeded. Cards and alerts agree.
+ */
+export function budgetState(spent: bigint, limit: bigint): BudgetState {
+  if (spent > limit) return 'EXCEEDED';
+  return percentOf(spent, limit) >= WARNING_THRESHOLD ? 'WARNING' : 'OK';
+}
+
+function thresholdReached(spent: bigint, limit: bigint): number {
+  const state = budgetState(spent, limit);
+  return state === 'EXCEEDED' ? EXCEEDED_THRESHOLD : state === 'WARNING' ? WARNING_THRESHOLD : 0;
 }
 
 @Injectable()
@@ -67,12 +76,17 @@ export class BudgetsService {
       this.spentByCategory(userId, month),
     ]);
 
+    // A subcategory's budget is a limit inside its parent's, whose spending already includes it:
+    // adding both would count the same money twice.
+    const budgeted = new Set(budgets.map((b) => b.categoryId));
     let totalLimit = 0n;
     let totalSpent = 0n;
     const data: BudgetStatusItem[] = budgets.map((b) => {
       const spent = spentByCategory.get(b.categoryId) ?? 0n;
-      totalLimit += b.limitAmount;
-      totalSpent += spent;
+      if (!(b.category.parentId && budgeted.has(b.category.parentId))) {
+        totalLimit += b.limitAmount;
+        totalSpent += spent;
+      }
       const percent = percentOf(spent, b.limitAmount);
       return {
         id: b.id,
@@ -81,7 +95,7 @@ export class BudgetsService {
         spent: spent.toString(),
         remaining: (b.limitAmount > spent ? b.limitAmount - spent : 0n).toString(),
         percent,
-        state: percent > 100 ? 'EXCEEDED' : percent >= WARNING_THRESHOLD ? 'WARNING' : 'OK',
+        state: budgetState(spent, b.limitAmount),
       };
     });
 
@@ -121,7 +135,7 @@ export class BudgetsService {
     }
   }
 
-  /** Re-arms alerts: after raising a limit the user is told again when they cross 80%/100%. */
+  /** Re-arms alerts: after raising a limit the user is told again at 80% and when over it. */
   async update(userId: string, id: string, dto: UpdateBudgetInput): Promise<BudgetResponse> {
     const existing = await this.repository.findById(userId, id);
     if (!existing) throw new NotFoundDomainException('Byudjet topilmadi');
@@ -130,7 +144,7 @@ export class BudgetsService {
     const spent = (await this.spentByCategory(userId, existing.month)).get(existing.categoryId) ?? 0n;
     const updated = await this.repository.update(userId, id, {
       limitAmount,
-      notifiedAt: thresholdReached(percentOf(spent, limitAmount)),
+      notifiedAt: thresholdReached(spent, limitAmount),
     });
     return this.mapToResponse(updated);
   }
@@ -162,7 +176,7 @@ export class BudgetsService {
 
         const spent = spentByCategory.get(candidateId) ?? 0n;
         const percent = percentOf(spent, budget.limitAmount);
-        await this.announceThreshold(userId, budget, percent);
+        await this.announceThreshold(userId, budget, spent, percent);
 
         if (!alert && percent >= WARNING_THRESHOLD) {
           alert = {
@@ -180,8 +194,13 @@ export class BudgetsService {
     }
   }
 
-  private async announceThreshold(userId: string, budget: BudgetWithCategory, percent: number): Promise<void> {
-    const threshold = thresholdReached(percent);
+  private async announceThreshold(
+    userId: string,
+    budget: BudgetWithCategory,
+    spent: bigint,
+    percent: number,
+  ): Promise<void> {
+    const threshold = thresholdReached(spent, budget.limitAmount);
     if (threshold === 0) return;
     if (!(await this.repository.claimThreshold(userId, budget.id, threshold))) return;
 

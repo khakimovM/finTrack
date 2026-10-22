@@ -1,4 +1,4 @@
-import { MENU, TEXT, adminPanelUrl, mainMenu, miniAppUrl, openAdminKeyboard, openAppKeyboard } from '../bot-ui';
+import { MENU, TEXT, adminPanelUrl, mainMenu, miniAppUrl, openAdminKeyboard, openAppKeyboard, periodLabel } from '../bot-ui';
 
 describe('Mini App entry points in the bot', () => {
   it('opens the app only over HTTPS, always on /app', () => {
@@ -44,5 +44,14 @@ describe('the main menu keyboard', () => {
 
   it('tells how to put it away', () => {
     expect(TEXT.menuIntro).toContain('yashirish');
+  });
+});
+
+describe('report dates', () => {
+  it('reads as the app writes them, never as raw ISO dates', () => {
+    expect(periodLabel('2026-10-01', '2026-10-22')).toBe('1–22-oktabr');
+    expect(periodLabel('2026-09-28', '2026-10-04')).toBe('28-sentabr – 4-oktabr');
+    expect(periodLabel('2026-12-28', '2027-01-03')).toBe('28-dekabr, 2026 – 3-yanvar, 2027');
+    expect(periodLabel('2026-10-22', '2026-10-22')).toBe('22-oktabr');
   });
 });

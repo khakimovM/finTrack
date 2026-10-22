@@ -2,7 +2,7 @@ import { Info, Pencil, Trash2 } from 'lucide-react';
 import type { BudgetStatusItem } from '@fintrack/shared';
 import { Chip } from '../../../components/ui/Chip';
 import { EmojiTile } from '../../../components/ui/EmojiTile';
-import { Progress, budgetTone } from '../../../components/ui/Progress';
+import { Progress, budgetToneOf } from '../../../components/ui/Progress';
 import { formatAmount, formatAmountNumber } from '../../../lib/money';
 import { cn } from '../../../lib/utils';
 
@@ -17,7 +17,7 @@ export interface BudgetCardProps {
 }
 
 export function BudgetCard({ budget, hasChildren, onEdit, onDelete }: BudgetCardProps) {
-  const tone = budgetTone(budget.percent);
+  const tone = budgetToneOf(BigInt(budget.spent), BigInt(budget.limitAmount));
   // The API stops `remaining` at zero; over the limit the card says by how much.
   const left = BigInt(budget.limitAmount) - BigInt(budget.spent);
 

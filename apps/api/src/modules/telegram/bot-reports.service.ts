@@ -14,7 +14,7 @@ import { StatsService } from '../stats/stats.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { ClockService } from '../../infra/clock/clock.service';
 import { escapeHtml } from '../auth/telegram-login.messages';
-import { bar, dayLabel, money, signedMoney } from './bot-ui';
+import { bar, dayLabel, money, periodLabel, signedMoney } from './bot-ui';
 
 export type ReportPeriod = 'today' | 'week' | 'month';
 
@@ -48,10 +48,13 @@ export class BotReportsService {
   ) {}
 
   async balance(user: User): Promise<string> {
-    const { data, meta } = await this.accounts.list(user.id);
-    const lines = data.map((a) => {
+    const { data, meta } = await this.accounts.list(user.id, true);
+    // An archived account still holds its money and is in the total; listed, the lines add up to it.
+    const shown = data.filter((a) => a.archivedAt === null || BigInt(a.balance) !== 0n);
+    const lines = shown.map((a) => {
       const warn = BigInt(a.balance) < 0n ? ' ⚠️' : '';
-      return `${a.icon} ${escapeHtml(a.name)}: <b>${signedMoney(BigInt(a.balance))}</b>${warn}`;
+      const archived = a.archivedAt === null ? '' : ' <i>(arxivda)</i>';
+      return `${a.icon} ${escapeHtml(a.name)}${archived}: <b>${signedMoney(BigInt(a.balance))}</b>${warn}`;
     });
     return ['💰 <b>Balans</b>', '', ...lines, '', `Jami: <b>${signedMoney(BigInt(meta.totalBalance))}</b>`].join('\n');
   }
@@ -104,12 +107,13 @@ export class BotReportsService {
     const income = BigInt(summary.periodIncome);
     const expense = BigInt(summary.periodExpense);
 
-    if (digest && summary.transactionCount === 0) {
+    // transactionCount is income and expense only: a day of transfers or debts was not empty.
+    if (digest && summary.transactionCount === 0 && !(await this.recordedAnything(user, from, to))) {
       return `${title}\n\nBugun hech narsa yozilmadi. Xarajatlaringizni shu yerga yozishni unutmang 🙂`;
     }
 
     const lines = [
-      `📊 <b>${title}</b>${from === to ? '' : ` (${from} – ${to})`}`,
+      `📊 <b>${title}</b>${from === to ? '' : ` (${periodLabel(from, to)})`}`,
       '',
       `⬆️ Kirim: <b>${money(income)}</b>`,
       `⬇️ Chiqim: <b>${money(expense)}</b>`,
@@ -124,5 +128,11 @@ export class BotReportsService {
     }
     lines.push('', `💰 Umumiy balans: <b>${signedMoney(BigInt(summary.totalBalance))}</b>`);
     return lines.join('\n');
+  }
+
+  /** Any ledger row in the range: transfers and debt movements too. */
+  private async recordedAnything(user: User, from: string, to: string): Promise<boolean> {
+    const { meta } = await this.transactions.list(user.id, ListTransactionsQuerySchema.parse({ from, to, limit: 1 }));
+    return meta.total > 0;
   }
 }

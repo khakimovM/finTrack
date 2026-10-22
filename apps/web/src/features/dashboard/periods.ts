@@ -14,14 +14,38 @@ export const PERIOD_OPTIONS: Array<{ value: PeriodPreset; label: string }> = [
   { value: 'custom', label: 'Oraliq' },
 ];
 
-/** What the KPI change chips compare with. */
-export const VS_TEXT: Record<PeriodPreset, string> = {
+/** What the income and expense chips compare with (`summary.previousPeriod`). */
+const VS_TEXT: Record<PeriodPreset, string> = {
   today: 'kechaga nisbatan',
   this_week: 'o‘tgan haftaga nisbatan',
   this_month: 'o‘tgan oyga nisbatan',
   this_year: 'o‘tgan yilga nisbatan',
   custom: 'oldingi davrga nisbatan',
 };
+
+/** A period still running is compared with the same days of the one before (comparablePreviousPeriod). */
+const VS_TEXT_SO_FAR: Partial<Record<PeriodPreset, string>> = {
+  this_week: 'o‘tgan haftaning shu kunlariga nisbatan',
+  this_month: 'o‘tgan oyning shu kunlariga nisbatan',
+  this_year: 'o‘tgan yilning shu davriga nisbatan',
+};
+
+/** What the balance chip compares with: the balance just before the period began. */
+const BALANCE_VS_TEXT: Record<PeriodPreset, string> = {
+  today: 'kechaga nisbatan',
+  this_week: 'hafta boshiga nisbatan',
+  this_month: 'oy boshiga nisbatan',
+  this_year: 'yil boshiga nisbatan',
+  custom: 'davr boshiga nisbatan',
+};
+
+export function comparisonTexts(range: { preset: PeriodPreset; from: string; to: string }, today: string) {
+  const running = range.from <= today && today < range.to;
+  return {
+    flow: (running && VS_TEXT_SO_FAR[range.preset]) || VS_TEXT[range.preset],
+    balance: BALANCE_VS_TEXT[range.preset],
+  };
+}
 
 /**
  * Percent change for a chip: null when the previous value was 0 and there is something now

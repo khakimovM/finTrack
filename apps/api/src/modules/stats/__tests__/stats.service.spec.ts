@@ -5,6 +5,7 @@ import { RedisService } from '../../../infra/redis/redis.service';
 import { UserCacheService } from '../../../infra/redis/user-cache.service';
 import { ClockService } from '../../../infra/clock/clock.service';
 import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
+import { todayInTimeZone } from '@fintrack/shared';
 import { BalanceService } from '../../accounts/balance.service';
 import { DebtsRepository } from '../../debts/debts.repository';
 
@@ -14,6 +15,7 @@ describe('StatsService', () => {
   let balanceService: jest.Mocked<BalanceService>;
   let debtsRepository: jest.Mocked<DebtsRepository>;
   let redisService: { get: jest.Mock; set: jest.Mock; incr: jest.Mock };
+  let clock: ReturnType<typeof clockStub>;
 
   const userId = 'user-test-123';
 
@@ -62,7 +64,7 @@ describe('StatsService', () => {
         { provide: StatsRepository, useValue: mockRepo },
         { provide: RedisService, useValue: mockRedis },
         UserCacheService,
-        { provide: ClockService, useValue: clockStub() },
+        { provide: ClockService, useValue: (clock = clockStub()) },
         { provide: BalanceService, useValue: mockBalanceService },
         { provide: DebtsRepository, useValue: mockDebtsRepo },
       ],
@@ -134,11 +136,40 @@ describe('StatsService', () => {
       expect(balanceService.getTotalBalance).toHaveBeenCalledWith(userId);
       expect(debtsRepository.summary).toHaveBeenCalledWith(userId, expect.any(Date));
       expect(redisService.set).toHaveBeenCalledWith(
-        `cache:${userId}:g0:stats:summary:2026-08-01:2026-08-31`,
+        `cache:${userId}:g0:stats:summary:2026-08-01:2026-08-31:${todayInTimeZone('Asia/Tashkent')}`,
         expect.any(String),
         300,
       );
 
+    });
+
+    const totals = { income: 0n, expense: 0n, transactionCount: 0 };
+    const previousAsked = () => {
+      const [, from, to] = repository.getPeriodTotals.mock.calls[1];
+      return [from.toISOString().slice(0, 10), to.toISOString().slice(0, 10)];
+    };
+
+    it('compares a month in progress with the same days of the month before, not with all of it', async () => {
+      clock.todayFor.mockResolvedValue('2026-10-22');
+      repository.getPeriodTotals.mockResolvedValue(totals);
+      repository.getAccountStatRows.mockResolvedValue([]);
+      repository.getTopExpenseCategory.mockResolvedValue(null);
+
+      await service.getSummary(userId, { from: '2026-10-01', to: '2026-10-31' });
+
+      expect(previousAsked()).toEqual(['2026-09-01', '2026-09-22']);
+    });
+
+    it('compares a finished month with the whole calendar month before it', async () => {
+      clock.todayFor.mockResolvedValue('2026-12-05');
+      repository.getPeriodTotals.mockResolvedValue(totals);
+      repository.getAccountStatRows.mockResolvedValue([]);
+      repository.getTopExpenseCategory.mockResolvedValue(null);
+
+      // 30 days before 1 November would be 2–31 October: the 1st, often payday, left out.
+      await service.getSummary(userId, { from: '2026-11-01', to: '2026-11-30' });
+
+      expect(previousAsked()).toEqual(['2026-10-01', '2026-10-31']);
     });
   });
 
@@ -386,6 +417,24 @@ describe('StatsService', () => {
         change: '30000000',
         changePercent: 20, // (180M - 150M) / 150M = 20%
       });
+    });
+
+    it('calls a net result going from a loss to a profit a rise (the contract example)', async () => {
+      repository.getPeriodTotals
+        .mockResolvedValueOnce({ income: 800000000n, expense: 300000000n, transactionCount: 12 })
+        .mockResolvedValueOnce({ income: 0n, expense: 200000000n, transactionCount: 7 });
+      repository.getCategoryExpensesForPeriod.mockResolvedValue([]);
+
+      const result = await service.getCompare(userId, {
+        currentFrom: '2026-09-01',
+        currentTo: '2026-09-28',
+        previousFrom: '2026-08-01',
+        previousTo: '2026-08-28',
+      });
+
+      // From −2 000 000 to +5 000 000 so'm: up by 7 000 000, 350% of the 2 000 000 lost before.
+      expect(result.changes.netChange).toBe('700000000');
+      expect(result.changes.netChangePercent).toBe(350);
     });
   });
 

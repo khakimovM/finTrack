@@ -9,6 +9,15 @@ export function budgetTone(percent: number): 'success' | 'warning' | 'danger' {
   return 'success';
 }
 
+/**
+ * The zone of real money, as the API's budget `state`: a little over the limit is red although the
+ * one-decimal percent still reads 100, and the limit spent exactly is reached, not exceeded.
+ */
+export function budgetToneOf(spent: bigint, limit: bigint): 'success' | 'warning' | 'danger' {
+  if (spent > limit) return 'danger';
+  return limit > 0n && spent * 10n >= limit * 8n ? 'warning' : 'success';
+}
+
 const FILL: Record<ProgressTone, string> = {
   success: 'bg-success',
   warning: 'bg-warning',

@@ -5,6 +5,22 @@
 
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Month names as the app and the bot write dates ("3-oktabr"); lowercase, as Uzbek has them. */
+export const UZ_MONTHS = [
+  'yanvar',
+  'fevral',
+  'mart',
+  'aprel',
+  'may',
+  'iyun',
+  'iyul',
+  'avgust',
+  'sentabr',
+  'oktabr',
+  'noyabr',
+  'dekabr',
+] as const;
+
 /**
  * Validates whether a string is a valid ISO date in `YYYY-MM-DD` format
  * and corresponds to an actual calendar date (e.g., checking leap years, 30-day months).
@@ -192,6 +208,44 @@ export function calculatePreviousPeriod(
   return {
     from: formatIsoDate(prevFrom),
     to: formatIsoDate(prevTo),
+  };
+}
+
+/** Whole calendar months a range covers (1st of a month to the last day of one), else 0. */
+function wholeMonths(from: Date, to: Date): number {
+  if (from.getUTCDate() !== 1 || to.getTime() !== endOfMonth(to).getTime()) return 0;
+  return (to.getUTCFullYear() - from.getUTCFullYear()) * 12 + to.getUTCMonth() - from.getUTCMonth() + 1;
+}
+
+/**
+ * What a period is compared with ("o‘tgan oyga nisbatan"). Whole months are set against the
+ * months just before them (October against 1–30 September, not the 31 days before it, which
+ * would take in 31 August); any other range against as many days right before it. While the
+ * period is still running only its days so far are matched: a month on its 22nd day is set
+ * against the 1st–22nd of the previous one, or every month would look cheaper until its end.
+ */
+export function comparablePreviousPeriod(
+  from: string,
+  to: string,
+  today: string,
+): { from: string; to: string } {
+  const start = parseIsoDate(from);
+  const months = wholeMonths(start, parseIsoDate(to));
+  const running = from <= today && today < to;
+
+  if (months > 0) {
+    const prevTo = addDays(start, -1);
+    // addMonths clamps 31 March to 28 February.
+    const sameDay = addMonths(parseIsoDate(today), -months);
+    const end = running && sameDay.getTime() < prevTo.getTime() ? sameDay : prevTo;
+    return { from: formatIsoDate(addMonths(start, -months)), to: formatIsoDate(end) };
+  }
+
+  const previous = calculatePreviousPeriod(from, to);
+  if (!running) return previous;
+  return {
+    from: previous.from,
+    to: formatIsoDate(addDays(parseIsoDate(previous.from), diffInDays(from, today))),
   };
 }
 

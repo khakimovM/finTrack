@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '../../../lib/queryKeys';
 import { dashboardApi } from '../api/dashboard.api';
 import { usePeriodStore } from '../../../stores/periodStore';
-import { StatsCategoryType } from '@fintrack/shared';
+import { StatsCategoryType, todayLocalIso } from '@fintrack/shared';
 
 export function useStatsSummary() {
   const { from, to } = usePeriodStore();
@@ -33,8 +33,11 @@ export function useStatsByCategory(type: StatsCategoryType = 'EXPENSE') {
   });
 }
 
+/** Up to today: days still ahead have no balance yet, only a flat line pretending to know it. */
 export function useStatsBalanceTrend() {
-  const { from, to } = usePeriodStore();
+  const { from, to: end } = usePeriodStore();
+  const today = todayLocalIso();
+  const to = end > today && from <= today ? today : end;
 
   return useQuery({
     queryKey: queryKeys.stats.balanceTrend(from, to),

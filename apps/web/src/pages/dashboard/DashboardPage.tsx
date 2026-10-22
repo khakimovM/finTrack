@@ -5,7 +5,8 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { useStatsBalanceTrend, useStatsSummary } from '../../features/dashboard/hooks/useDashboard';
 import { useTransactions } from '../../features/transactions/hooks/useTransactions';
 import { useAccounts } from '../../features/accounts/hooks/useAccounts';
-import { VS_TEXT } from '../../features/dashboard/periods';
+import { todayLocalIso } from '@fintrack/shared';
+import { comparisonTexts } from '../../features/dashboard/periods';
 import { DashboardPeriod } from '../../features/dashboard/components/DashboardPeriod';
 import { KpiGrid } from '../../features/dashboard/components/KpiGrid';
 import { ExpenseRatioCard } from '../../features/dashboard/components/ExpenseRatioCard';
@@ -21,7 +22,8 @@ import { FirstSteps } from '../../features/dashboard/components/FirstSteps';
  */
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
-  const preset = usePeriodStore((s) => s.preset);
+  const { preset, from, to } = usePeriodStore();
+  const vs = comparisonTexts({ preset, from, to }, todayLocalIso());
   const summary = useStatsSummary();
   const trend = useStatsBalanceTrend();
   // Same query as the recent-transactions widget; its total tells whether anything was ever recorded.
@@ -46,7 +48,7 @@ export function DashboardPage() {
           className="rounded-xl border border-border bg-card"
         />
       ) : (
-        <KpiGrid summary={summary.data} trend={trend.data} isLoading={summary.isLoading} vsText={VS_TEXT[preset]} empty={empty} />
+        <KpiGrid summary={summary.data} trend={trend.data} isLoading={summary.isLoading} vs={vs} empty={empty} />
       )}
 
       {!empty && (

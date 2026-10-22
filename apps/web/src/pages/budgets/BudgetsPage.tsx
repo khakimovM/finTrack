@@ -5,7 +5,7 @@ import { BudgetStatusItem, addMonths, formatIsoDate, parseIsoDate, todayLocalIso
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { Progress, budgetTone } from '../../components/ui/Progress';
+import { Progress, budgetToneOf } from '../../components/ui/Progress';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { formatMonth } from '../../lib/format';
@@ -125,11 +125,11 @@ export function BudgetsPage() {
               label="Sarflangan"
               tiyin={totalSpent}
               sub={`Limitdan ${Math.round(percent)}% sarflandi`}
-              className={percent > 100 ? 'text-danger' : undefined}
+              className={totalSpent > totalLimit ? 'text-danger' : undefined}
             />
             <Total label="Qoldiq" tiyin={left} className={left < 0n ? 'text-danger' : 'text-success'} />
           </div>
-          <Progress value={percent} size="lg" tone={budgetTone(percent)} aria-label={`Limitdan ${Math.round(percent)}% sarflandi`} />
+          <Progress value={percent} size="lg" tone={budgetToneOf(totalSpent, totalLimit)} aria-label={`Limitdan ${Math.round(percent)}% sarflandi`} />
         </section>
         <div className="ft-stagger grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[repeat(auto-fill,minmax(360px,1fr))]">
           {budgets.map((budget) => (

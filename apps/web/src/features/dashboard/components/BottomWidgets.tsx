@@ -9,7 +9,7 @@ import { Avatar } from '../../../components/ui/Avatar';
 import { Chip } from '../../../components/ui/Chip';
 import { EmojiTile } from '../../../components/ui/EmojiTile';
 import { EmptyState } from '../../../components/ui/EmptyState';
-import { Progress, budgetTone } from '../../../components/ui/Progress';
+import { Progress, budgetToneOf } from '../../../components/ui/Progress';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useBudgetsStatus } from '../../budgets/hooks/useBudgets';
 import { BUDGET_LABEL } from '../../budgets/components/BudgetCard';
@@ -60,7 +60,7 @@ export function BudgetsWidget() {
         ) : (
           <ul className="flex flex-col gap-4">
             {items.map((b) => {
-              const tone = budgetTone(b.percent);
+              const tone = budgetToneOf(BigInt(b.spent), BigInt(b.limitAmount));
               return (
                 <li key={b.id} className="flex flex-col gap-2">
                   <div className="flex items-center gap-2.5">
@@ -157,8 +157,13 @@ export function DebtsWidget() {
     .filter((d) => d.status !== 'PAID' && (d.isOverdue || (d.daysLeft !== null && d.daysLeft <= 7)))
     .sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue) || (a.daysLeft ?? 0) - (b.daysLeft ?? 0))
     .slice(0, 3);
+  // People, not debts: lending to Ali twice is still one person who owes.
   const people = (direction: DebtResponse['direction']) =>
-    (debts.data?.data ?? []).filter((d) => d.direction === direction && d.status !== 'PAID').length;
+    new Set(
+      (debts.data?.data ?? [])
+        .filter((d) => d.direction === direction && d.status !== 'PAID')
+        .map((d) => d.personName.trim().toLocaleLowerCase('uz')),
+    ).size;
 
   return (
     <WidgetCard title="Qarzlar" to="/app/debts">
