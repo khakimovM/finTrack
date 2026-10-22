@@ -165,6 +165,16 @@ describe('Managing money from the Telegram bot (e2e)', () => {
       await say(user, '💰 Balans');
       expect(lastText(user)).toContain('Jami: <b>750 000 so‘m</b>');
 
+      // Money on an archived account is in the total, so it is listed too; an empty one is not.
+      const box = await user.post('/accounts', { name: 'Eski karta', type: 'CARD', openingBalance: '10000000' });
+      const empty = await user.post('/accounts', { name: 'Bo‘sh karta', type: 'CARD' });
+      await user.post(`/accounts/${box.body.data.id}/archive`, {});
+      await user.post(`/accounts/${empty.body.data.id}/archive`, {});
+      await say(user, '💰 Balans');
+      expect(lastText(user)).toContain('Eski karta <i>(arxivda)</i>: <b>100 000 so‘m</b>');
+      expect(lastText(user)).not.toContain('Bo‘sh karta');
+      expect(lastText(user)).toContain('Jami: <b>850 000 so‘m</b>');
+
       await say(user, '📋 Oxirgi amallar');
       expect(lastText(user)).toContain('−250 000 so‘m');
       expect(lastText(user)).toContain('+1 000 000 so‘m');
@@ -172,6 +182,7 @@ describe('Managing money from the Telegram bot (e2e)', () => {
       await say(user, '📊 Hisobot');
       expect(lastText(user)).toContain('Kirim: <b>1 000 000 so‘m</b>');
       expect(lastText(user)).toContain('Chiqim: <b>250 000 so‘m</b>');
+      expect(lastText(user)).not.toMatch(/\d{4}-\d{2}-\d{2}/);
       await tap(user, 'r:today');
       expect(lastText(user)).toContain('Bugun');
     });
@@ -310,6 +321,21 @@ describe('Managing money from the Telegram bot (e2e)', () => {
       expect(digests(user)).toHaveLength(1);
       expect(digests(user)[0]).toContain('30 000 so‘m');
       expect(digests(silent)).toHaveLength(0);
+    });
+
+    it('does not call a day of transfers only an empty one', async () => {
+      const user = await newUser(ctx);
+      await say(user, '⚙️ Sozlamalar');
+      await tap(user, 'set:digest');
+      const from = await firstAccountId(user);
+      const to = (await user.post('/accounts', { name: 'Humo', type: 'CARD', openingBalance: '0' })).body.data.id as string;
+      await user.post('/transfers', { fromAccountId: from, toAccountId: to, amount: '100', date: today() });
+
+      await ctx.app.get(DailyDigestService).run();
+
+      const digest = ctx.telegram.messagesTo(tg(user).id).find((m) => m.includes('🌙 Kunlik xulosa')) ?? '';
+      expect(digest).toContain('Umumiy balans');
+      expect(digest).not.toContain('hech narsa yozilmadi');
     });
   });
 });

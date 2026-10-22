@@ -3,21 +3,10 @@
  * shanba", "1–31-oktabr, 2026". Own name tables instead of date-fns' uz locale, which
  * capitalises months and abbreviates weekdays differently ("Cho", "Sha").
  */
+import { UZ_MONTHS } from '@fintrack/shared';
 
-export const MONTHS = [
-  'yanvar',
-  'fevral',
-  'mart',
-  'aprel',
-  'may',
-  'iyun',
-  'iyul',
-  'avgust',
-  'sentabr',
-  'oktabr',
-  'noyabr',
-  'dekabr',
-] as const;
+/** Shared with the bot, which writes the same dates. */
+export const MONTHS = UZ_MONTHS;
 
 export const MONTHS_SHORT = ['yan', 'fev', 'mar', 'apr', 'may', 'iyun', 'iyul', 'avg', 'sen', 'okt', 'noy', 'dek'] as const;
 

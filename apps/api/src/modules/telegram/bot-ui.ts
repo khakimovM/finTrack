@@ -1,5 +1,5 @@
 import type { InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup } from 'grammy/types';
-import { diffInDays, formatMoney } from '@fintrack/shared';
+import { UZ_MONTHS, diffInDays, formatMoney } from '@fintrack/shared';
 import { escapeHtml } from '../auth/telegram-login.messages';
 import { TransactionDraft } from './drafts/draft.store';
 
@@ -112,6 +112,17 @@ export function dayLabel(date: string, today: string): string {
   if (diff === 0) return `${human} (bugun)`;
   if (diff === 1) return `${human} (kecha)`;
   return human;
+}
+
+/** A report's dates as the app writes them: "1–22-oktabr", "28-sentabr – 4-oktabr". */
+export function periodLabel(from: string, to: string): string {
+  const [a, b] = [from, to].map((iso) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return { y, m, d, day: `${d}-${UZ_MONTHS[m - 1]}` };
+  });
+  if (a.y !== b.y) return `${a.day}, ${a.y} – ${b.day}, ${b.y}`;
+  if (a.m !== b.m) return `${a.day} – ${b.day}`;
+  return a.d === b.d ? a.day : `${a.d}–${b.day}`;
 }
 
 export interface DraftView {

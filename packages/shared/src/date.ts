@@ -5,6 +5,22 @@
 
 const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Month names as the app and the bot write dates ("3-oktabr"); lowercase, as Uzbek has them. */
+export const UZ_MONTHS = [
+  'yanvar',
+  'fevral',
+  'mart',
+  'aprel',
+  'may',
+  'iyun',
+  'iyul',
+  'avgust',
+  'sentabr',
+  'oktabr',
+  'noyabr',
+  'dekabr',
+] as const;
+
 /**
  * Validates whether a string is a valid ISO date in `YYYY-MM-DD` format
  * and corresponds to an actual calendar date (e.g., checking leap years, 30-day months).
