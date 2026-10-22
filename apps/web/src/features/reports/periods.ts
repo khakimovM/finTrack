@@ -1,6 +1,6 @@
 import {
   addMonths,
-  calculatePreviousPeriod,
+  comparablePreviousPeriod,
   endOfMonth,
   formatIsoDate,
   parseIsoDate,
@@ -33,33 +33,29 @@ const range = (from: Date, to: Date): DateRange => ({
 });
 
 /**
- * The previous period is the same stretch of time before. A month (or year) in progress is
- * compared with the same days of the previous one: against the whole previous month every
- * month would look cheaper until its last day. addMonths clamps 31 March to 28 February.
+ * A month or year in progress is shown up to today and compared with the same days of the
+ * previous one (comparablePreviousPeriod, the rule the dashboard's chips follow too).
  */
 export function comparisonFor(preset: ReportPreset, today: string, custom?: DateRange): Comparison {
   const t = parseIsoDate(today);
+  const whole = (from: Date, to: Date): Comparison => {
+    const { from: start, to: end } = range(from, to);
+    return { current: { from: start, to: end < today ? end : today }, previous: comparablePreviousPeriod(start, end, today) };
+  };
   switch (preset) {
-    case 'this_month': {
-      const from = startOfMonth(t);
-      return { current: range(from, t), previous: range(addMonths(from, -1), addMonths(t, -1)) };
-    }
+    case 'this_month':
+      return whole(startOfMonth(t), endOfMonth(t));
     case 'last_month': {
       const from = startOfMonth(addMonths(t, -1));
-      const before = addMonths(from, -1);
-      return {
-        current: range(from, endOfMonth(from)),
-        previous: range(before, endOfMonth(before)),
-      };
+      return whole(from, endOfMonth(from));
     }
     case 'this_year': {
       const from = startOfYear(t);
-      return { current: range(from, t), previous: range(addMonths(from, -12), addMonths(t, -12)) };
+      return whole(from, new Date(Date.UTC(from.getUTCFullYear(), 11, 31)));
     }
     case 'custom': {
       const current = custom ?? { from: today, to: today };
-      return { current, previous: calculatePreviousPeriod(current.from, current.to) };
+      return { current, previous: comparablePreviousPeriod(current.from, current.to, today) };
     }
   }
 }
-

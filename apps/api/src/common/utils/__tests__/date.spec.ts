@@ -10,6 +10,7 @@ import {
   startOfYear,
   generateDateBuckets,
   calculatePreviousPeriod,
+  comparablePreviousPeriod,
   todayInTimeZone,
   diffInDays,
 } from '@fintrack/shared';
@@ -162,6 +163,33 @@ describe('Date Utilities & Off-by-One Boundary Tests', () => {
         to: '2024-02-29',
       });
     });
+  });
+});
+
+describe('comparablePreviousPeriod', () => {
+  const finished = '2027-06-01';
+
+  it('sets a whole month against the calendar month before, whatever their lengths', () => {
+    expect(comparablePreviousPeriod('2026-10-01', '2026-10-31', finished)).toEqual({ from: '2026-09-01', to: '2026-09-30' });
+    expect(comparablePreviousPeriod('2026-11-01', '2026-11-30', finished)).toEqual({ from: '2026-10-01', to: '2026-10-31' });
+    expect(comparablePreviousPeriod('2026-03-01', '2026-03-31', finished)).toEqual({ from: '2026-02-01', to: '2026-02-28' });
+  });
+
+  it('sets a whole year against the year before, a leap year too', () => {
+    expect(comparablePreviousPeriod('2025-01-01', '2025-12-31', finished)).toEqual({ from: '2024-01-01', to: '2024-12-31' });
+  });
+
+  it('matches only the days so far while the period runs', () => {
+    expect(comparablePreviousPeriod('2026-10-01', '2026-10-31', '2026-10-22')).toEqual({ from: '2026-09-01', to: '2026-09-22' });
+    expect(comparablePreviousPeriod('2026-03-01', '2026-03-31', '2026-03-30')).toEqual({ from: '2026-02-01', to: '2026-02-28' });
+    expect(comparablePreviousPeriod('2026-01-01', '2026-12-31', '2026-10-22')).toEqual({ from: '2025-01-01', to: '2025-10-22' });
+    // Monday 19 to Sunday 25 October, on the Thursday: Monday to Thursday of the week before.
+    expect(comparablePreviousPeriod('2026-10-19', '2026-10-25', '2026-10-22')).toEqual({ from: '2026-10-12', to: '2026-10-15' });
+  });
+
+  it('keeps the equally long stretch for any other range, and yesterday for today', () => {
+    expect(comparablePreviousPeriod('2026-09-01', '2026-09-12', finished)).toEqual({ from: '2026-08-20', to: '2026-08-31' });
+    expect(comparablePreviousPeriod('2026-10-22', '2026-10-22', '2026-10-22')).toEqual({ from: '2026-10-21', to: '2026-10-21' });
   });
 });
 

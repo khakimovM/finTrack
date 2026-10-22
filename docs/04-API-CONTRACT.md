@@ -516,6 +516,12 @@ o'chirilgan bo'lsa — `409 RECURRING_ALREADY_RAN`.
 ```
 Qarz yozuvlari kirim/chiqimga **kirmaydi** — faqat `INCOME` va `EXPENSE`.
 
+`previousPeriod` — solishtiriladigan davr (`comparablePreviousPeriod`, `packages/shared`): butun oylar
+oldingi kalendar oylari bilan (oktabr — 1–30-sentabr bilan), boshqa oraliq — undan oldingi shuncha kun
+bilan. Davr hali tugamagan bo'lsa (bugun uning ichida), faqat o'tgan kunlari solishtiriladi: 22-oktabrda
+"shu oy" 1–22-sentabr bilan. `changePercent` — oldingi qiymatning mutlaq kattaligiga nisbatan
+(`/stats/compare` da ham).
+
 ### `GET /stats/timeseries?groupBy=day&from=&to=`
 `groupBy`: `day` | `week` | `month` | `year`. Bo'sh davrlar `0` bilan to'ldiriladi. Oraliq cheklangan
 (`day` uchun ≤ 400 kun), aks holda `400 VALIDATION_ERROR`.

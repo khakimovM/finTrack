@@ -1,4 +1,6 @@
+import { todayLocalIso } from '@fintrack/shared';
 import { formatDayMonth, formatShortDate } from '../../../lib/format';
+import { usePeriodStore } from '../../../stores/periodStore';
 import { formatAmount, tiyinToChartNumber } from '../../../lib/money';
 import { AreaTrend } from '../../../components/charts/AreaTrend';
 import { Amount } from '../../../components/ui/Amount';
@@ -11,6 +13,10 @@ import { WidgetCard, WidgetState } from './WidgetCard';
 export function BalanceTrendCard() {
   const query = useStatsBalanceTrend();
   const data = query.data;
+  // A running period's line stops today (useStatsBalanceTrend), so its last figure is today's balance.
+  const { from, to } = usePeriodStore();
+  const today = todayLocalIso();
+  const running = from <= today && today < to;
   // The line starts from the balance before the period ("Boshi"), so even a single day draws a line.
   const points = data
     ? [
@@ -37,7 +43,7 @@ export function BalanceTrendCard() {
         data ? (
           <div className="flex gap-5">
             {stat('Boshlang‘ich', data.meta.startingBalance)}
-            {stat('Yakuniy', data.meta.endingBalance)}
+            {stat(running ? 'Bugun' : 'Yakuniy', data.meta.endingBalance)}
           </div>
         ) : undefined
       }

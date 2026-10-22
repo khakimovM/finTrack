@@ -11,7 +11,8 @@ interface KpiGridProps {
   summary?: StatsSummaryResponse;
   trend?: StatsBalanceTrendResponse;
   isLoading: boolean;
-  vsText: string;
+  /** What the balance chip and the income and expense chips compare with. */
+  vs: { balance: string; flow: string };
   /** New user: plain zeros, no change chips. */
   empty?: boolean;
 }
@@ -24,7 +25,7 @@ const unit = (
 );
 
 /** Balance, income, expense and debt balance, each against the previous period. */
-export function KpiGrid({ summary, trend, isLoading, vsText, empty = false }: KpiGridProps) {
+export function KpiGrid({ summary, trend, isLoading, vs, empty = false }: KpiGridProps) {
   const grid = 'grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4';
   if (isLoading || !summary) {
     return (
@@ -36,11 +37,11 @@ export function KpiGrid({ summary, trend, isLoading, vsText, empty = false }: Kp
     );
   }
 
-  return <KpiCards summary={summary} trend={trend} vsText={vsText} empty={empty} className={grid} />;
+  return <KpiCards summary={summary} trend={trend} vs={vs} empty={empty} className={grid} />;
 }
 
 /** The loaded cards; their figures count up when they first show and when the period changes. */
-function KpiCards({ summary, trend, vsText, empty, className }: Required<Pick<KpiGridProps, 'summary' | 'vsText' | 'empty'>> & {
+function KpiCards({ summary, trend, vs, empty, className }: Required<Pick<KpiGridProps, 'summary' | 'vs' | 'empty'>> & {
   trend?: StatsBalanceTrendResponse;
   className: string;
 }) {
@@ -49,7 +50,9 @@ function KpiCards({ summary, trend, vsText, empty, className }: Required<Pick<Kp
   const net = BigInt(summary.debt.net);
   const shownNet = useCountingTiyin(net);
   const showChanges = !empty;
-  const balanceChange = trend ? changePercent(BigInt(trend.meta.endingBalance), BigInt(trend.meta.startingBalance)) : undefined;
+  // The balance shown is today's, so its chip measures today's against the one the period began with
+  // (for a past range too, where the trend's own end would be another day's balance).
+  const balanceChange = trend ? changePercent(BigInt(summary.totalBalance), BigInt(trend.meta.startingBalance)) : undefined;
 
   return (
     <div className={className}>
@@ -57,14 +60,14 @@ function KpiCards({ summary, trend, vsText, empty, className }: Required<Pick<Kp
         label="Umumiy balans"
         value={<CountingAmount value={summary.totalBalance} unit="muted" />}
         change={showChanges && balanceChange !== undefined ? <ChangeChip value={balanceChange} upIsGood /> : undefined}
-        vsText={showChanges && balanceChange !== undefined ? vsText : undefined}
+        vsText={showChanges && balanceChange !== undefined ? vs.balance : undefined}
         sub="Barcha hisoblar jami"
       />
       <KpiCard
         label="Kirim"
         value={<CountingAmount value={summary.periodIncome} tone={income === 0n ? 'neutral' : 'income'} unit="muted" />}
         change={showChanges ? <ChangeChip value={changePercent(income, BigInt(summary.previousPeriod.income))} upIsGood /> : undefined}
-        vsText={showChanges ? vsText : undefined}
+        vsText={showChanges ? vs.flow : undefined}
       />
       <KpiCard
         label="Chiqim"
@@ -72,7 +75,7 @@ function KpiCards({ summary, trend, vsText, empty, className }: Required<Pick<Kp
         change={
           showChanges ? <ChangeChip value={changePercent(expense, BigInt(summary.previousPeriod.expense))} upIsGood={false} /> : undefined
         }
-        vsText={showChanges ? vsText : undefined}
+        vsText={showChanges ? vs.flow : undefined}
       />
       <KpiCard
         label="Qarz saldosi"

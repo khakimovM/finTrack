@@ -52,6 +52,29 @@ describe('bucketPlan', () => {
     expect(plan.buckets[0].title).toBe('1–7-sentabr / avgust');
   });
 
+  it('keeps the last days of a longer previous month on the chart', () => {
+    // February against January: 29–31 January still counts, though February has no such days.
+    const comparison = comparisonFor('last_month', '2027-03-15');
+    const plan = bucketPlan('last_month', comparison);
+    expect(plan.buckets.map((b) => b.label)).toEqual(['1–7', '8–14', '15–21', '22–28', '29–31']);
+    expect(plan.buckets[4].title).toBe('29–31-yanvar');
+    const january = [row('2027-01-05', '10'), row('2027-01-30', '7'), row('2027-01-31', '3')];
+    expect(sumIntoBuckets(plan, january, comparison.previous.from, 'expense')).toEqual([10n, 0n, 0n, 0n, 10n]);
+
+    // September against August: the last bucket reads 29–30 for September, 29–31 for August.
+    const autumn = bucketPlan('last_month', comparisonFor('last_month', '2026-10-03'));
+    expect(autumn.buckets[4]).toEqual({ label: '29–30', title: '29–30-sentabr / 29–31-avgust' });
+    expect(autumn.indexOf('2026-08-31', '2026-08-01')).toBe(4);
+  });
+
+  it('puts the extra day of a longer previous range in the last stretch', () => {
+    // A custom September is compared with all of August, a day longer.
+    const comparison = comparisonFor('custom', '2026-10-03', { from: '2026-09-01', to: '2026-09-30' });
+    expect(comparison.previous).toEqual({ from: '2026-08-01', to: '2026-08-31' });
+    const plan = bucketPlan('custom', comparison);
+    expect(plan.indexOf('2026-08-31', comparison.previous.from)).toBe(plan.buckets.length - 1);
+  });
+
   it('drops the fifth week in February', () => {
     const plan = bucketPlan('this_month', comparisonFor('this_month', '2027-02-10'));
     expect(plan.buckets.map((b) => b.label)).toEqual(['1–7', '8–14', '15–21', '22–28']);

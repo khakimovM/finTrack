@@ -90,8 +90,11 @@ Ortiqcha invalidatsiya xavfsiz; yetishmagani foydalanuvchiga eski pulni ko'rsata
 **Davr** (`periodStore`): `Bugun · Shu hafta · Shu oy · Shu yil · Oraliq` (dushanbadan
 boshlanadigan kalendar). Hafta — `groupBy=day`, oy — `week`, yil — `month`.
 
-**KPI (4)**: davr kirimi, davr chiqimi (o'zgarish `summary.previousPeriod` dan), umumiy balans
-(o'zgarish `balance-trend` boshi va oxiridan; manfiy → qizil + ⚠ + minus), qarz saldosi (chip'siz).
+**KPI (4)**: davr kirimi, davr chiqimi (o'zgarish `summary.previousPeriod` dan; davr tugamagan bo'lsa
+"o‘tgan oyning shu kunlariga nisbatan" — 04-API-CONTRACT, `comparablePreviousPeriod`), umumiy balans
+(bugungi balans `balance-trend.meta.startingBalance` ga — davr boshidagiga nisbatan: "oy boshiga
+nisbatan"; manfiy → qizil + ⚠ + minus), qarz saldosi (chip'siz). Balans dinamikasi tugamagan davrda
+bugungacha chiziladi ("Bugun"), qarzlar vidjeti qarzlarni emas, odamlarni sanaydi.
 Kirim/xarajat nisbati paneli: 0–70% yashil, 70–100% sariq, >100% qizil.
 
 **Grafiklar**: kirim-chiqim oqimi (Bugun — `createdAt` soati bo'yicha), xarajat ulushi (donut),

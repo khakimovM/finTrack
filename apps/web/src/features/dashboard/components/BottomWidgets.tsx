@@ -157,8 +157,13 @@ export function DebtsWidget() {
     .filter((d) => d.status !== 'PAID' && (d.isOverdue || (d.daysLeft !== null && d.daysLeft <= 7)))
     .sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue) || (a.daysLeft ?? 0) - (b.daysLeft ?? 0))
     .slice(0, 3);
+  // People, not debts: lending to Ali twice is still one person who owes.
   const people = (direction: DebtResponse['direction']) =>
-    (debts.data?.data ?? []).filter((d) => d.direction === direction && d.status !== 'PAID').length;
+    new Set(
+      (debts.data?.data ?? [])
+        .filter((d) => d.direction === direction && d.status !== 'PAID')
+        .map((d) => d.personName.trim().toLocaleLowerCase('uz')),
+    ).size;
 
   return (
     <WidgetCard title="Qarzlar" to="/app/debts">
