@@ -101,6 +101,37 @@ describe('BudgetsService', () => {
       const res = await t.service.getStatus(USER, '2026-08');
       expect(res.data[0]).toMatchObject({ state: 'EXCEEDED', remaining: '0', percent: 150 });
     });
+
+    it('keeps a limit spent to the last tiyin in WARNING: reached, not exceeded', async () => {
+      const t = setup();
+      t.repository.findManyByMonth.mockResolvedValue([budget({ limitAmount: 100n })]);
+      t.repository.expenseByCategory.mockResolvedValue([{ categoryId: FOOD, parentId: null, spent: 100n }]);
+
+      const res = await t.service.getStatus(USER, '2026-08');
+      expect(res.data[0]).toMatchObject({ state: 'WARNING', remaining: '0', percent: 100 });
+    });
+
+    it('counts a subcategory budget inside its parent’s in the month totals, not on top of it', async () => {
+      const t = setup();
+      const food = budget();
+      const cafe = budget({
+        id: 'b2',
+        categoryId: CAFE,
+        limitAmount: 50_000_000n,
+        category: { ...food.category, id: CAFE, parentId: FOOD, name: 'Kafe', isSystem: false },
+      });
+      t.repository.findManyByMonth.mockResolvedValue([food, cafe]);
+      t.repository.expenseByCategory.mockResolvedValue([
+        { categoryId: FOOD, parentId: null, spent: 150_000_000n },
+        { categoryId: CAFE, parentId: FOOD, spent: 34_800_000n },
+      ]);
+
+      const res = await t.service.getStatus(USER, '2026-08');
+
+      // Each card keeps its own figures; the month spent 184.8 mln of a 200 mln plan, not 219.6 of 250.
+      expect(res.data.map((b) => b.spent)).toEqual(['184800000', '34800000']);
+      expect(res.meta).toEqual({ month: '2026-08', totalLimit: '200000000', totalSpent: '184800000' });
+    });
   });
 
   describe('create', () => {
@@ -149,6 +180,29 @@ describe('BudgetsService', () => {
         expect.objectContaining({ type: 'BUDGET_WARNING' }),
       );
       expect(alert).toMatchObject({ percent: 85, categoryId: FOOD });
+    });
+
+    it('calls the limit spent exactly "used up", and a little over it "over", whatever the rounded percent', async () => {
+      const t = setup();
+      t.repository.findByCategoryAndMonth.mockResolvedValue(budget());
+
+      t.repository.expenseByCategory.mockResolvedValue([{ categoryId: FOOD, parentId: null, spent: 200_000_000n }]);
+      await t.service.checkAndNotify(USER, FOOD, new Date('2026-08-15T00:00:00Z'));
+      expect(t.repository.claimThreshold).toHaveBeenLastCalledWith(USER, 'b1', 80);
+      expect(t.notifications.createSafe).toHaveBeenLastCalledWith(
+        USER,
+        expect.objectContaining({ type: 'BUDGET_WARNING', body: '"Oziq-ovqat" byudjetining 100% qismi sarflandi.' }),
+      );
+
+      // 500 so'm over a 2 mln limit still rounds down to 100.0%.
+      t.repository.expenseByCategory.mockResolvedValue([{ categoryId: FOOD, parentId: null, spent: 200_050_000n }]);
+      await t.service.checkAndNotify(USER, FOOD, new Date('2026-08-15T00:00:00Z'));
+      expect(t.repository.claimThreshold).toHaveBeenLastCalledWith(USER, 'b1', 100);
+      expect(t.notifications.createSafe).toHaveBeenLastCalledWith(USER, expect.objectContaining({ type: 'BUDGET_EXCEEDED' }));
+
+      t.repository.findManyByMonth.mockResolvedValue([budget()]);
+      const status = await t.service.getStatus(USER, '2026-08');
+      expect(status.data[0]).toMatchObject({ percent: 100, state: 'EXCEEDED', remaining: '0' });
     });
 
     it('does not notify when another request already claimed the threshold', async () => {

@@ -9,7 +9,7 @@ import { Avatar } from '../../../components/ui/Avatar';
 import { Chip } from '../../../components/ui/Chip';
 import { EmojiTile } from '../../../components/ui/EmojiTile';
 import { EmptyState } from '../../../components/ui/EmptyState';
-import { Progress, budgetTone } from '../../../components/ui/Progress';
+import { Progress, budgetToneOf } from '../../../components/ui/Progress';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useBudgetsStatus } from '../../budgets/hooks/useBudgets';
 import { BUDGET_LABEL } from '../../budgets/components/BudgetCard';
@@ -60,7 +60,7 @@ export function BudgetsWidget() {
         ) : (
           <ul className="flex flex-col gap-4">
             {items.map((b) => {
-              const tone = budgetTone(b.percent);
+              const tone = budgetToneOf(BigInt(b.spent), BigInt(b.limitAmount));
               return (
                 <li key={b.id} className="flex flex-col gap-2">
                   <div className="flex items-center gap-2.5">

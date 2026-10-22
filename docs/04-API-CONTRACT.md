@@ -549,8 +549,11 @@ Oldingi qiymat 0 va joriysi musbat bo'lsa `changePercent` = 100 (UI buni "yangi"
              "limitAmount": "200000000", "spent": "184800000", "remaining": "15200000", "percent": 92.4, "state": "WARNING" }],
   "meta": { "month": "2026-08", "totalLimit": "500000000", "totalSpent": "437500000" } }
 ```
-`state`: `OK` (< 80) · `WARNING` (80–100) · `EXCEEDED` (> 100). Subkategoriyalar xarajati ota kategoriya
-byudjetiga qo'shiladi.
+`state`: `OK` (< 80) · `WARNING` (80–100) · `EXCEEDED` (> 100). `EXCEEDED` — sarflangan limitdan ko'p
+(tiyinda solishtiriladi: bir xonali `percent` biroz ortiqchada ham "100" bo'ladi, limitga teng xarajat esa
+`WARNING`). 80%/limitdan oshish bildirishnomalari ham shu chegaralarda. Subkategoriyalar xarajati ota kategoriya
+byudjetiga qo'shiladi. Shu sababli `meta.totalLimit`/`totalSpent` ga ota kategoriyasida ham byudjet bor
+subkategoriya byudjeti qayta qo'shilmaydi (u ota limiti ichida, xarajati ikki marta sanalmaydi).
 
 ## Eksport
 `GET /export/transactions.csv` va `.xlsx` — `GET /transactions` filtrlari bilan. Formula injection'ga
