@@ -164,6 +164,7 @@ export const AdminUsageResponseSchema = z.object({
     withOwnCategory: count,
     strictMode: count,
     dailyDigest: count,
+    dailyReminders: count,
     telegramNotifications: count,
   }),
   assistant: z.object({

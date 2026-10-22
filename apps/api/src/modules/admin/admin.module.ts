@@ -38,6 +38,7 @@ import { BroadcastProcessor } from './broadcasts/broadcast.processor';
       { name: QUEUES.TELEGRAM_OUTBOX },
       { name: QUEUES.DAILY_DIGEST },
       { name: QUEUES.BROADCAST },
+      { name: QUEUES.DAILY_REMINDERS },
     ),
   ],
   controllers: [AdminAuthController, AdminStatsController, AdminUsersController, AdminSystemController, BroadcastsController],

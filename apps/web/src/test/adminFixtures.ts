@@ -46,6 +46,7 @@ export const usage: AdminUsageResponse = {
     withOwnCategory: 210,
     strictMode: 30,
     dailyDigest: 140,
+    dailyReminders: 1100,
     telegramNotifications: 900,
   },
   assistant: {

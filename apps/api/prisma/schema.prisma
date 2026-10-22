@@ -84,6 +84,8 @@ model User {
   phone             String?   @unique
   notifyTelegram    Boolean   @default(true) @map("notify_telegram")
   dailyDigest       Boolean   @default(false) @map("daily_digest")
+  /// Bot reminders: every morning at 07:00, and at 22:00 after a day with no activity at all.
+  dailyReminders    Boolean   @default(true) @map("daily_reminders")
   /// Set when Telegram answers 403 (user blocked the bot); outbound messages stop until cleared.
   telegramBlockedAt DateTime? @map("telegram_blocked_at")
   name              String

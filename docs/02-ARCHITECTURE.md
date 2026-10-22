@@ -57,7 +57,7 @@ apps/api/src/
     ├── auth/  users/  accounts/  categories/  tags/
     ├── transactions/  transfers/  debts/  budgets/
     ├── recurring/  stats/  notifications/  export/  health/  jobs/
-    ├── telegram/            bot handlerlari, qoralamalar, outbox, kunlik xulosa, webhook
+    ├── telegram/            bot handlerlari, qoralamalar, outbox, kunlik xulosa, eslatmalar (7:00 / 22:00), webhook
     ├── assistant/           ovoz/matn → yozuvlar (Gemini, Groq, Claude adapterlari)
     ├── activity/            faollik kunlari (guard + bot), kunlik hisoblagichlar (Redis)
     └── admin/               ega paneli: kirish, stats/, users/, system/, broadcasts/ (docs/09)

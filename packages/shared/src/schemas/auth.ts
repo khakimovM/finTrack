@@ -68,6 +68,8 @@ export const UserResponseSchema = z.object({
   strictMode: z.boolean(),
   notifyTelegram: z.boolean(),
   dailyDigest: z.boolean(),
+  /** Bot reminders at 07:00 and, after a quiet day, at 22:00. */
+  dailyReminders: z.boolean(),
   createdAt: z.string(),
 });
 export type UserResponse = z.infer<typeof UserResponseSchema>;

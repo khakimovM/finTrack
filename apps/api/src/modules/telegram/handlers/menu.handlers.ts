@@ -9,6 +9,7 @@ import { DraftStore } from '../drafts/draft.store';
 import { MENU, TEXT, mainMenu, miniAppUrl, openAppKeyboard } from '../bot-ui';
 import { UsersService } from '../../users/users.service';
 import { AuthService } from '../../auth/auth.service';
+import { reminderKeyboard } from '../outbox/reminder-texts';
 
 const REPORT_KEYBOARD = (active: ReportPeriod): InlineKeyboardMarkup => ({
   inline_keyboard: [
@@ -25,6 +26,7 @@ function settingsKeyboard(user: User): InlineKeyboardMarkup {
     inline_keyboard: [
       [{ text: `${mark(user.strictMode)} Qatʼiy rejim`, callback_data: 'set:strict' }],
       [{ text: `${mark(user.notifyTelegram)} Bildirishnomalar`, callback_data: 'set:notify' }],
+      [{ text: `${mark(user.dailyReminders)} Eslatmalar (7:00 / 22:00)`, callback_data: 'set:reminders' }],
       [{ text: `${mark(user.dailyDigest)} Kunlik xulosa (21:00)`, callback_data: 'set:digest' }],
       [{ text: '🚪 Barcha qurilmalardan chiqish', callback_data: 'set:logoutall' }],
     ],
@@ -35,6 +37,7 @@ const SETTINGS_TEXT =
   '⚙️ <b>Sozlamalar</b>\n\n' +
   '<b>Qatʼiy rejim</b> — balansdan ortiq xarajat yozishga ruxsat bermaydi.\n' +
   '<b>Bildirishnomalar</b> — byudjet, qarz va takroriy to‘lov ogohlantirishlari.\n' +
+  '<b>Eslatmalar</b> — har kuni 7:00 da; kun bo‘yi FinTrack’ga kirmasangiz, 22:00 da yana bir bor.\n' +
   '<b>Kunlik xulosa</b> — har kuni kechqurun bugungi kirim-chiqim.';
 
 @Injectable()
@@ -109,7 +112,27 @@ export class MenuHandlers {
         .catch(() => undefined); // "message is not modified" when tapping the active period
     });
 
-    bot.callbackQuery(/^set:(strict|notify|digest|logoutall)$/, async (ctx) => {
+    // Buttons under the 07:00 and 22:00 reminders.
+    bot.callbackQuery(/^rem:(expense|income)$/, async (ctx) => {
+      const user = await this.users.resolve(ctx);
+      if (!user) return;
+      await ctx.answerCallbackQuery();
+      await this.askEntry(ctx, ctx.match[1] === 'income' ? 'INCOME' : 'EXPENSE');
+    });
+
+    bot.callbackQuery('rem:off', async (ctx) => {
+      const user = await this.users.resolve(ctx);
+      if (!user) return;
+      try {
+        await this.usersService.updateProfile(user.id, { dailyReminders: false });
+        await ctx.answerCallbackQuery({ text: 'Eslatmalar o‘chirildi. Qayta yoqish: ⚙️ Sozlamalar', show_alert: true });
+        await ctx.editMessageReplyMarkup({ reply_markup: reminderKeyboard(false) }).catch(() => undefined);
+      } catch (err) {
+        await ctx.answerCallbackQuery({ text: chatErrorMessage(err), show_alert: true });
+      }
+    });
+
+    bot.callbackQuery(/^set:(strict|notify|digest|reminders|logoutall)$/, async (ctx) => {
       const user = await this.users.resolve(ctx);
       if (!user) return;
       try {
@@ -118,7 +141,12 @@ export class MenuHandlers {
           await ctx.answerCallbackQuery({ text: 'Barcha qurilmalardagi sessiyalar yakunlandi', show_alert: true });
           return;
         }
-        const field = { strict: 'strictMode', notify: 'notifyTelegram', digest: 'dailyDigest' } as const;
+        const field = {
+          strict: 'strictMode',
+          notify: 'notifyTelegram',
+          digest: 'dailyDigest',
+          reminders: 'dailyReminders',
+        } as const;
         const key = field[ctx.match[1] as keyof typeof field];
         await this.usersService.updateProfile(user.id, { [key]: !user[key] });
         await ctx.answerCallbackQuery({ text: 'Saqlandi' });

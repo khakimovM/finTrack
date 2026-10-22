@@ -17,6 +17,7 @@ export class SchedulerService implements OnApplicationBootstrap {
     @InjectQueue(QUEUES.RECURRING) private readonly recurringQueue: Queue,
     @InjectQueue(QUEUES.DEBT_REMINDERS) private readonly remindersQueue: Queue,
     @InjectQueue(QUEUES.DAILY_DIGEST) private readonly digestQueue: Queue,
+    @InjectQueue(QUEUES.DAILY_REMINDERS) private readonly reminderQueue: Queue,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -42,6 +43,17 @@ export class SchedulerService implements OnApplicationBootstrap {
         'daily-digest',
         { pattern: '0 21 * * *', tz },
         { name: JOBS.SEND_DAILY_DIGEST, opts: DEFAULT_JOB_OPTIONS },
+      );
+      await this.reminderQueue.upsertJobScheduler(
+        'morning-reminders',
+        { pattern: '0 7 * * *', tz },
+        { name: JOBS.SEND_MORNING_REMINDERS, opts: DEFAULT_JOB_OPTIONS },
+      );
+      // After the 21:00 digest, to people who did not use FinTrack all day.
+      await this.reminderQueue.upsertJobScheduler(
+        'evening-reminders',
+        { pattern: '0 22 * * *', tz },
+        { name: JOBS.SEND_EVENING_REMINDERS, opts: DEFAULT_JOB_OPTIONS },
       );
       this.logger.log(`Job schedulers registered (tz=${tz})`);
     } catch (err: unknown) {

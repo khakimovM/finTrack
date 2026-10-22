@@ -23,8 +23,9 @@ const FEATURES: Array<{ key: Exclude<keyof AdminUsageResponse['features'], 'user
   { key: 'withBudget', label: 'Byudjet' },
   { key: 'withRecurring', label: 'Takroriy to‘lov' },
   { key: 'withTag', label: 'Teglar' },
-  // The last three are settings: "switched on".
+  // The last four are settings: "switched on".
   { key: 'telegramNotifications', label: 'Telegram xabarlari' },
+  { key: 'dailyReminders', label: 'Eslatmalar (7:00 / 22:00)' },
   { key: 'dailyDigest', label: 'Kunlik xulosa' },
   { key: 'strictMode', label: 'Qat’iy rejim' },
 ];

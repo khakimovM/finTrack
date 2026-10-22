@@ -9,6 +9,7 @@ export interface ProfileChanges {
   strictMode?: boolean;
   notifyTelegram?: boolean;
   dailyDigest?: boolean;
+  dailyReminders?: boolean;
 }
 
 @Injectable()
@@ -19,6 +20,23 @@ export class UsersRepository {
   async findDigestRecipients(): Promise<User[]> {
     return this.prisma.user.findMany({
       where: { dailyDigest: true, telegramId: { not: null }, telegramBlockedAt: null, deletedAt: null },
+    });
+  }
+
+  /**
+   * Reachable users who keep the bot reminders on. With `quietOn`, only those with no activity on
+   * any channel that day, and not those whose evening digest already says the day was empty.
+   */
+  async findReminderRecipients(quietOn?: Date): Promise<User[]> {
+    return this.prisma.user.findMany({
+      where: {
+        dailyReminders: true,
+        telegramId: { not: null },
+        telegramBlockedAt: null,
+        bannedAt: null,
+        deletedAt: null,
+        ...(quietOn ? { dailyDigest: false, activityDays: { none: { day: quietOn } } } : {}),
+      },
     });
   }
 
