@@ -64,6 +64,21 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(calls.patches).toEqual([{ strictMode: true }]));
   });
 
+  it('turns the 7:00 and 22:00 reminders off, and only with Telegram linked', async () => {
+    const calls = serve();
+    const { unmount } = renderWithProviders(<SettingsPage />);
+
+    const reminders = screen.getByRole('switch', { name: 'Kunlik eslatmalar' }) as HTMLButtonElement;
+    expect(reminders.getAttribute('aria-checked')).toBe('true');
+    await userEvent.click(reminders);
+    await waitFor(() => expect(calls.patches).toEqual([{ dailyReminders: false }]));
+    unmount();
+
+    useAuthStore.setState({ user: user({ telegramLinked: false }) });
+    renderWithProviders(<SettingsPage />);
+    expect((screen.getByRole('switch', { name: 'Kunlik eslatmalar' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('lists sessions with a partly hidden IP and ends another device', async () => {
     const calls = serve();
     renderWithProviders(<SettingsPage />);

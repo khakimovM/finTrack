@@ -9,6 +9,7 @@ import { QUEUES } from '../../infra/queue/queues';
       { name: QUEUES.RECURRING },
       { name: QUEUES.DEBT_REMINDERS },
       { name: QUEUES.DAILY_DIGEST },
+      { name: QUEUES.DAILY_REMINDERS },
     ),
   ],
   providers: [SchedulerService],

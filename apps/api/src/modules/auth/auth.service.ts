@@ -201,6 +201,7 @@ export class AuthService {
       strictMode: user.strictMode,
       notifyTelegram: user.notifyTelegram,
       dailyDigest: user.dailyDigest,
+      dailyReminders: user.dailyReminders,
       createdAt: user.createdAt.toISOString(),
     };
   }

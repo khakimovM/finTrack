@@ -22,6 +22,7 @@ export const UpdateProfileSchema = z
     strictMode: z.boolean().optional(),
     notifyTelegram: z.boolean().optional(),
     dailyDigest: z.boolean().optional(),
+    dailyReminders: z.boolean().optional(),
   })
   .strict();
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;

@@ -14,6 +14,8 @@ import { DraftStore } from './drafts/draft.store';
 import { TelegramOutboxProcessor } from './outbox/telegram-outbox.processor';
 import { DailyDigestService } from './outbox/daily-digest.service';
 import { DailyDigestProcessor } from './outbox/daily-digest.processor';
+import { DailyRemindersService } from './outbox/daily-reminders.service';
+import { DailyRemindersProcessor } from './outbox/daily-reminders.processor';
 import { AuthModule } from '../auth/auth.module';
 import { AccountsModule } from '../accounts/accounts.module';
 import { CategoriesModule } from '../categories/categories.module';
@@ -29,7 +31,7 @@ import { QUEUES } from '../../infra/queue/queues';
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: QUEUES.TELEGRAM_OUTBOX }, { name: QUEUES.DAILY_DIGEST }),
+    BullModule.registerQueue({ name: QUEUES.TELEGRAM_OUTBOX }, { name: QUEUES.DAILY_DIGEST }, { name: QUEUES.DAILY_REMINDERS }),
     AuthModule,
     AccountsModule,
     CategoriesModule,
@@ -57,6 +59,8 @@ import { QUEUES } from '../../infra/queue/queues';
     TelegramOutboxProcessor,
     DailyDigestService,
     DailyDigestProcessor,
+    DailyRemindersService,
+    DailyRemindersProcessor,
   ],
   exports: [EntryService, EntryHandlers, DraftStore, BotUserService],
 })

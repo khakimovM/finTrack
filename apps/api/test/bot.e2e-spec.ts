@@ -2,6 +2,7 @@ import { createTestApp, TestApp } from './helpers/app';
 import { ApiClient, categoryId, firstAccountId, newUser, today } from './helpers/api-client';
 import { callbackUpdate, FakeTgUser, textUpdate } from './helpers/fake-telegram';
 import { DailyDigestService } from '../src/modules/telegram/outbox/daily-digest.service';
+import { UsersRepository } from '../src/modules/users/users.repository';
 
 interface TxRow {
   id: string;
@@ -192,9 +193,10 @@ describe('Managing money from the Telegram bot (e2e)', () => {
       await say(user, '⚙️ Sozlamalar');
       await tap(user, 'set:digest');
       await tap(user, 'set:notify');
+      await tap(user, 'set:reminders');
 
       const me = (await user.get('/auth/me')).body.data.user;
-      expect(me).toMatchObject({ dailyDigest: true, notifyTelegram: false });
+      expect(me).toMatchObject({ dailyDigest: true, notifyTelegram: false, dailyReminders: false });
     });
 
     it('"log out everywhere" ends the web sessions', async () => {
@@ -302,6 +304,48 @@ describe('Managing money from the Telegram bot (e2e)', () => {
       const after = await ctx.prisma.notification.findUniqueOrThrow({ where: { id: stored.id } });
       expect(after.telegramSentAt).toBeNull();
       expect(ctx.telegram.messagesTo(tg(user).id).some((m) => m.startsWith('🔴'))).toBe(false);
+    });
+
+    it('reminds in the morning everyone who kept reminders on, and at night only those quiet all day', async () => {
+      const [quiet, active, off, digest, banned, blocked] = await Promise.all(
+        Array.from({ length: 6 }, () => newUser(ctx)),
+      );
+      expect((await active.get('/auth/me')).body.data.user.dailyReminders).toBe(true);
+      expect((await off.patch('/users/me', { dailyReminders: false })).body.data.user.dailyReminders).toBe(false);
+      await digest.patch('/users/me', { dailyDigest: true });
+      await ctx.prisma.user.update({ where: { id: banned.userId }, data: { bannedAt: new Date() } });
+      await ctx.prisma.user.update({ where: { id: blocked.userId }, data: { telegramBlockedAt: new Date() } });
+
+      // Signing up counts as using FinTrack that day; forget it for the one who stayed away.
+      const { day } = await ctx.prisma.userActivityDay.findFirstOrThrow({ where: { userId: active.userId } });
+      await ctx.prisma.userActivityDay.deleteMany({ where: { userId: { in: [quiet.userId, digest.userId] } } });
+
+      const users = ctx.app.get(UsersRepository);
+      const ours = [quiet, active, off, digest, banned, blocked].map((c) => c.userId);
+      const pick = async (quietOn?: Date) =>
+        (await users.findReminderRecipients(quietOn)).map((u) => u.id).filter((id) => ours.includes(id)).sort();
+
+      expect(await pick()).toEqual([quiet.userId, active.userId, digest.userId].sort());
+      expect(await pick(day)).toEqual([quiet.userId]);
+    });
+
+    it('the buttons under a reminder start an entry or switch the reminders off', async () => {
+      const user = await newUser(ctx);
+
+      await tap(user, 'rem:expense');
+      expect(lastText(user)).toContain('Chiqim summasi va izohini yozing');
+      await say(user, '15000 kofe');
+      expect(lastText(user)).toContain('15 000 so‘m');
+      await tap(user, 'rem:income');
+      expect(lastText(user)).toContain('Kirim summasi va izohini yozing');
+
+      await tap(user, 'rem:off');
+      expect(lastAnswer()).toBe('Eslatmalar o‘chirildi. Qayta yoqish: ⚙️ Sozlamalar');
+      expect(ctx.telegram.last(tg(user).id)).toMatchObject({
+        method: 'editMessageReplyMarkup',
+        buttons: ['rem:expense', 'rem:income'],
+      });
+      expect((await user.get('/auth/me')).body.data.user.dailyReminders).toBe(false);
     });
 
     it('sends the daily digest once per day to users who asked for it', async () => {

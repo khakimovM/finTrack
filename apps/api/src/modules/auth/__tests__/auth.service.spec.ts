@@ -28,6 +28,7 @@ function user(overrides: Partial<User> = {}): User {
     phone: '+998901234567',
     notifyTelegram: true,
     dailyDigest: false,
+    dailyReminders: true,
     telegramBlockedAt: null,
     name: 'Aziz',
     avatarUrl: null,

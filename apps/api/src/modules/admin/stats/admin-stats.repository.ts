@@ -74,6 +74,7 @@ export interface FeatureRow {
   withOwnCategory: number;
   strictMode: number;
   dailyDigest: number;
+  dailyReminders: number;
   telegramNotifications: number;
 }
 
@@ -262,6 +263,7 @@ export class AdminStatsRepository {
                                          AND c."created_at" > u."created_at" + interval '1 minute'))::int AS "withOwnCategory",
         COUNT(*) FILTER (WHERE u."strict_mode")::int AS "strictMode",
         COUNT(*) FILTER (WHERE u."daily_digest")::int AS "dailyDigest",
+        COUNT(*) FILTER (WHERE u."daily_reminders" AND u."telegram_id" IS NOT NULL AND u."telegram_blocked_at" IS NULL)::int AS "dailyReminders",
         COUNT(*) FILTER (WHERE u."notify_telegram" AND u."telegram_blocked_at" IS NULL)::int AS "telegramNotifications"
       FROM "users" u
       WHERE u."deleted_at" IS NULL

@@ -16,6 +16,7 @@ const QUEUE_LABELS: Record<string, string> = {
   'debt-reminders': 'Qarz eslatmalari',
   'telegram-outbox': 'Telegram xabarlari',
   'daily-digest': 'Kunlik xulosa',
+  'daily-reminders': 'Eslatmalar (7:00 / 22:00)',
   broadcast: 'Ommaviy xabarlar',
 };
 

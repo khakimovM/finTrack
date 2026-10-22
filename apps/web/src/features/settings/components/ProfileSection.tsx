@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Bell, Check, Clock, Globe, ShieldAlert } from 'lucide-react';
+import { AlarmClock, Bell, Check, Clock, Globe, ShieldAlert } from 'lucide-react';
 import type { UserResponse } from '@fintrack/shared';
 import { Input } from '../../../components/ui/Input';
 import { Dropdown } from '../../../components/ui/Dropdown';
@@ -141,6 +141,17 @@ export function PreferencesSection({ user }: { user: UserResponse }) {
       tile: (
         <Tile className="bg-info-soft text-info">
           <Bell className="h-[18px] w-[18px]" aria-hidden />
+        </Tile>
+      ),
+      needsTelegram: true,
+    },
+    {
+      key: 'dailyReminders' as const,
+      title: 'Kunlik eslatmalar',
+      text: 'Har kuni soat 7:00 da yozib borishni eslatamiz. Kun bo‘yi FinTrack’ga kirmasangiz, 22:00 da yana bir bor.',
+      tile: (
+        <Tile className="bg-success-soft text-success">
+          <AlarmClock className="h-[18px] w-[18px]" aria-hidden />
         </Tile>
       ),
       needsTelegram: true,

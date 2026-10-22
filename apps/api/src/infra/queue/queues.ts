@@ -7,6 +7,7 @@ export const QUEUES = {
   TELEGRAM_OUTBOX: 'telegram-outbox',
   DAILY_DIGEST: 'daily-digest',
   BROADCAST: 'broadcast',
+  DAILY_REMINDERS: 'daily-reminders',
 } as const;
 
 export const JOBS = {
@@ -15,6 +16,8 @@ export const JOBS = {
   DELIVER_NOTIFICATION: 'deliver-notification',
   SEND_DAILY_DIGEST: 'send-daily-digest',
   DELIVER_BROADCAST: 'deliver-broadcast',
+  SEND_MORNING_REMINDERS: 'send-morning-reminders',
+  SEND_EVENING_REMINDERS: 'send-evening-reminders',
 } as const;
 
 export const DEFAULT_JOB_OPTIONS: DefaultJobOptions = {

@@ -228,7 +228,8 @@ undan keyin kelsa — butun oila bekor qilinadi, `401 TOKEN_REUSE_DETECTED`.
   "id": "8f1a…", "name": "Aziz", "email": null, "telegramUsername": "aziz",
   "telegramLinked": true, "phone": "+99890***4567", "avatarUrl": null,
   "baseCurrency": "UZS", "locale": "uz", "timezone": "Asia/Tashkent", "strictMode": false,
-  "notifyTelegram": true, "dailyDigest": false, "createdAt": "2026-08-29T09:12:00.000Z"
+  "notifyTelegram": true, "dailyDigest": false, "dailyReminders": true,
+  "createdAt": "2026-08-29T09:12:00.000Z"
 }
 ```
 Telefon raqami hech qachon to'liq qaytmaydi.
@@ -361,7 +362,7 @@ Telegram bildirishnomasini o'chirganlar — `includeOptedOut: true` bo'lmasa (ha
 
 ## Users
 
-- `PATCH /users/me` — `{ name?, locale?, timezone?, strictMode?, notifyTelegram?, dailyDigest? }` (`.strict()`), `200 { user }`.
+- `PATCH /users/me` — `{ name?, locale?, timezone?, strictMode?, notifyTelegram?, dailyDigest?, dailyReminders? }` (`.strict()`), `200 { user }`.
 - `GET /users/me/sessions` — `[{ id, userAgent, ipAddress, createdAt, lastUsedAt, expiresAt, isCurrent }]`.
 - `DELETE /users/me/sessions/:id` — `204`; o'sha sessiyaning tokenlari darhol ishlamay qoladi.
 - `POST /users/me/telegram/link` — eski (email) hisobni Telegram'ga ulash: `{ requestId, deepLink, expiresAt }`.

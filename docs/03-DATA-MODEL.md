@@ -105,7 +105,9 @@ butunlay o'chiriladi. Oxirgi faol hisobni o'chirib/arxivlab bo'lmaydi.
   `email`/`passwordHash` faqat eski hisoblar uchun qolgan, nullable.
 - `User.phone` (`@unique`) — botda **o'z** kontaktini ulashganda yoziladi (kontakt egasi = yozuvchi
   tekshiriladi); API uni faqat maskalangan holda qaytaradi.
-- `notifyTelegram`, `dailyDigest` — bot bildirishnomalari; `telegramBlockedAt` — foydalanuvchi botni
+- `notifyTelegram`, `dailyDigest`, `dailyReminders` — bot bildirishnomalari. `dailyReminders` standart
+  `true`: har kuni 7:00 da eslatma; kun bo'yi hech qaysi kanalda faollik bo'lmasa 22:00 da yana bittasi
+  (kunlik xulosa yoqilganlarga 22:00 dagisi bormaydi). `telegramBlockedAt` — foydalanuvchi botni
   bloklagan (Telegram 403): unga fon xabarlari yuborilmaydi, yangi xabar yozsa tozalanadi.
 - `timezone` — "bugun" shu zonada hisoblanadi (qarz muddati, takroriy to'lov, `FUTURE_DATE`).
 
