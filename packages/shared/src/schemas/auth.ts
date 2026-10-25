@@ -70,6 +70,8 @@ export const UserResponseSchema = z.object({
   dailyDigest: z.boolean(),
   /** Bot reminders at 07:00 and, after a quiet day, at 22:00. */
   dailyReminders: z.boolean(),
+  /** The month's report, text and voice, on its last day at 21:00. */
+  monthlyReport: z.boolean(),
   createdAt: z.string(),
 });
 export type UserResponse = z.infer<typeof UserResponseSchema>;

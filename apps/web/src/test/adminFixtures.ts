@@ -47,6 +47,7 @@ export const usage: AdminUsageResponse = {
     strictMode: 30,
     dailyDigest: 140,
     dailyReminders: 1100,
+    monthlyReport: 1050,
     telegramNotifications: 900,
   },
   assistant: {
@@ -101,6 +102,10 @@ export const system: AdminSystemResponse = {
     { name: 'daily-digest', counts: null, recentFailures: [] },
   ],
   telegram: { mode: 'webhook', webhookHost: 'fintrackuz.up.railway.app', pendingUpdates: 0, lastErrorAt: null, lastError: null },
+  speech: [
+    { provider: 'azure-free', free: true, chars: 12_400, limit: 500_000, available: true },
+    { provider: 'gemini-free', free: true, chars: 0, limit: null, available: false },
+  ],
 };
 
 export const audit: AdminAuditResponse = {

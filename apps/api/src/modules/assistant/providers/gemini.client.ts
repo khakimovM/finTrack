@@ -4,6 +4,7 @@ import { AssistantProviderError, parseJson } from '../assistant.types';
 import { Extraction, ExtractionSchema, GEMINI_EXTRACTION_SCHEMA } from '../extraction.schema';
 import { EXTRACTION_INSTRUCTIONS, ExtractionContext, textPrompt, voicePrompt } from '../extraction.prompt';
 import { RedisService } from '../../../infra/redis/redis.service';
+import { GeminiErrorBody, retryDelaySeconds } from '../../../common/utils/gemini-errors';
 
 const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta';
 const TIMEOUT_MS = 30_000;
@@ -31,18 +32,6 @@ interface GeminiResponse {
     finishReason?: string;
   }>;
   promptFeedback?: { blockReason?: string };
-}
-
-interface GeminiErrorBody {
-  error?: { message?: string; details?: Array<{ retryDelay?: string }> };
-}
-
-/** Google sends no Retry-After header: the delay is in RetryInfo ("44s") or the message. */
-export function retryDelaySeconds(body: GeminiErrorBody | null): number | null {
-  const fromDetails = body?.error?.details?.find((d) => typeof d.retryDelay === 'string')?.retryDelay;
-  const fromMessage = /retry in ([\d.]+)s/i.exec(body?.error?.message ?? '')?.[1];
-  const seconds = Number.parseFloat(fromDetails ?? fromMessage ?? '');
-  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
 }
 
 /**

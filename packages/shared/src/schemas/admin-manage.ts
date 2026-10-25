@@ -150,6 +150,18 @@ export const AdminSystemResponseSchema = z.object({
     lastErrorAt: z.string().nullable(),
     lastError: z.string().nullable(),
   }),
+  /** Text-to-speech accounts (the monthly report's voice), cheapest first: this month's use. */
+  speech: z.array(
+    z.object({
+      provider: z.string(),
+      free: z.boolean(),
+      chars: count,
+      /** The free allowance in characters; null when the provider limits requests instead. */
+      limit: count.nullable(),
+      /** False while it is left alone after a refusal (quota, rate limit, wrong key). */
+      available: z.boolean(),
+    }),
+  ),
 });
 export type AdminSystemResponse = z.infer<typeof AdminSystemResponseSchema>;
 

@@ -122,6 +122,12 @@ export function endOfMonth(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
 }
 
+/** The day the month ends on, e.g. when the monthly report goes out. */
+export function isLastDayOfMonth(day: string): boolean {
+  const date = parseIsoDate(day);
+  return date.getTime() === endOfMonth(date).getTime();
+}
+
 /**
  * Returns the first day of the year for the given date at 00:00:00.000Z.
  */

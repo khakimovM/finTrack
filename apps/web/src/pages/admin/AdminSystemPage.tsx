@@ -17,8 +17,39 @@ const QUEUE_LABELS: Record<string, string> = {
   'telegram-outbox': 'Telegram xabarlari',
   'daily-digest': 'Kunlik xulosa',
   'daily-reminders': 'Eslatmalar (7:00 / 22:00)',
+  'monthly-report': 'Oylik hisobot',
   broadcast: 'Ommaviy xabarlar',
 };
+
+const SPEECH_LABELS: Record<string, string> = {
+  'azure-free': 'Azure (bepul)',
+  'gemini-free': 'Gemini (bepul)',
+  'azure-paid': 'Azure (pulli)',
+  'gemini-paid': 'Gemini (pulli)',
+};
+
+/** Who reads the monthly report aloud this month, in the order they are tried. */
+function Speech({ speech }: { speech: AdminSystemResponse['speech'] }) {
+  if (speech.length === 0) {
+    return <p className="text-[14px] text-text-secondary">Ovoz kaliti sozlanmagan: oylik hisobot faqat matn bo‘lib boradi.</p>;
+  }
+  return (
+    <ul className="flex flex-col divide-y divide-border">
+      {speech.map((s) => (
+        <li key={s.provider} className="flex items-center justify-between gap-3 py-2.5 text-[14px]">
+          <span className="flex items-center gap-2 font-medium">
+            {SPEECH_LABELS[s.provider] ?? s.provider}
+            {!s.available && <Health ok={false} label="Dam olmoqda" />}
+          </span>
+          <span className="tabular-nums text-text-secondary">
+            {formatCount(s.chars)}
+            {s.limit !== null ? ` / ${formatCount(s.limit)}` : ''} belgi
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function Health({ ok, label }: { ok: boolean; label?: string }) {
   return (
@@ -168,6 +199,9 @@ export function AdminSystemPage() {
           </div>
           <WidgetCard title="Fon vazifalari (navbatlar)">
             <Queues queues={data.queues} />
+          </WidgetCard>
+          <WidgetCard title="Ovoz (shu oy)">
+            <Speech speech={data.speech} />
           </WidgetCard>
         </>
       )}

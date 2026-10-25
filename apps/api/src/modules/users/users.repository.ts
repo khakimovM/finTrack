@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
+import { endOfMonth, parseIsoDate, startOfMonth } from '@fintrack/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 
 export interface ProfileChanges {
@@ -10,16 +11,57 @@ export interface ProfileChanges {
   notifyTelegram?: boolean;
   dailyDigest?: boolean;
   dailyReminders?: boolean;
+  monthlyReport?: boolean;
+}
+
+/** A month as two days, both included. */
+export interface MonthRange {
+  from: Date;
+  to: Date;
+}
+
+/** The calendar month a `YYYY-MM-DD` day falls in. */
+export function monthOf(day: string): MonthRange {
+  const date = parseIsoDate(day);
+  return { from: startOfMonth(date), to: endOfMonth(date) };
+}
+
+/** Kept the report on and recorded income or an expense that month: there is something to report. */
+function getsMonthlyReport(month: MonthRange): Prisma.UserWhereInput {
+  return {
+    monthlyReport: true,
+    bannedAt: null,
+    transactions: {
+      some: { type: { in: ['INCOME', 'EXPENSE'] }, deletedAt: null, date: { gte: month.from, lte: month.to } },
+    },
+  };
 }
 
 @Injectable()
 export class UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Opted-in, reachable users for the evening digest. */
-  async findDigestRecipients(): Promise<User[]> {
+  /**
+   * Opted-in, reachable users for the evening digest. On the month's last day, `instead` leaves out
+   * those whose monthly report goes at the same hour, so nobody gets two summaries at once.
+   */
+  async findDigestRecipients(instead?: MonthRange): Promise<User[]> {
     return this.prisma.user.findMany({
-      where: { dailyDigest: true, telegramId: { not: null }, telegramBlockedAt: null, deletedAt: null },
+      where: {
+        dailyDigest: true,
+        telegramId: { not: null },
+        telegramBlockedAt: null,
+        deletedAt: null,
+        ...(instead ? { NOT: getsMonthlyReport(instead) } : {}),
+      },
+    });
+  }
+
+  /** Reachable users who get the month's report. */
+  async findMonthlyRecipients(month: MonthRange): Promise<User[]> {
+    return this.prisma.user.findMany({
+      where: { telegramId: { not: null }, telegramBlockedAt: null, deletedAt: null, ...getsMonthlyReport(month) },
+      orderBy: { createdAt: 'asc' },
     });
   }
 

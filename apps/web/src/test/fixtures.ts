@@ -83,6 +83,7 @@ export function user(over: Partial<UserResponse> = {}): UserResponse {
     notifyTelegram: true,
     dailyDigest: false,
     dailyReminders: true,
+    monthlyReport: true,
     createdAt: '2026-09-01T00:00:00.000Z',
     ...over,
   };

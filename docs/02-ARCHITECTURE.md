@@ -31,7 +31,12 @@ Yon xizmatlar:
 - `BalanceService` — ledgerdan balans + Redis kesh
 - `StatsRepository` — `$queryRaw` agregatsiyalari
 - `NotificationService` — byudjet/qarz hodisalari
-- BullMQ workerlar — takrorlanuvchi tranzaksiyalar, muddati o'tgan qarz tekshiruvi
+- BullMQ workerlar — takrorlanuvchi tranzaksiyalar, muddati o'tgan qarz tekshiruvi, kunlik xulosa va
+  eslatmalar, oylik hisobot (oyning oxirgi kuni 21:00, cron `0 21 L * *`)
+- `TtsService` (`infra/tts/`) — oylik hisobotning ovozi: Azure F0 (bepul) → Gemini (bepul kalit) →
+  pulli (standart o'chiq). Har provayderning oylik belgisi Redis'da sanaladi (bepul limitning 95% i),
+  rad etgani bir muddat chetga qo'yiladi. Gemini WAV/PCM qaytaradi — `opusenc` (Docker image'dagi `opus-tools`, ~1 MB)
+  OGG/Opus'ga o'tkazadi. Hech biri ishlamasa hisobot faqat matn bo'lib ketadi.
 
 ## Backend papka strukturasi
 
@@ -57,7 +62,7 @@ apps/api/src/
     ├── auth/  users/  accounts/  categories/  tags/
     ├── transactions/  transfers/  debts/  budgets/
     ├── recurring/  stats/  notifications/  export/  health/  jobs/
-    ├── telegram/            bot handlerlari, qoralamalar, outbox, kunlik xulosa, eslatmalar (7:00 / 22:00), webhook
+    ├── telegram/            bot handlerlari, qoralamalar, outbox, kunlik xulosa, eslatmalar (7:00 / 22:00), oylik hisobot, webhook
     ├── assistant/           ovoz/matn → yozuvlar (Gemini, Groq, Claude adapterlari)
     ├── activity/            faollik kunlari (guard + bot), kunlik hisoblagichlar (Redis)
     └── admin/               ega paneli: kirish, stats/, users/, system/, broadcasts/ (docs/09)

@@ -86,6 +86,8 @@ model User {
   dailyDigest       Boolean   @default(false) @map("daily_digest")
   /// Bot reminders: every morning at 07:00, and at 22:00 after a day with no activity at all.
   dailyReminders    Boolean   @default(true) @map("daily_reminders")
+  /// The month's report in the bot, as text and as a voice message, on its last day at 21:00.
+  monthlyReport     Boolean   @default(true) @map("monthly_report")
   /// Set when Telegram answers 403 (user blocked the bot); outbound messages stop until cleared.
   telegramBlockedAt DateTime? @map("telegram_blocked_at")
   name              String

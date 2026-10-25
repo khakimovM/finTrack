@@ -7,7 +7,7 @@ import { MenuHandlers } from './handlers/menu.handlers';
 import { DebtHandlers } from './handlers/debt.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
 import { VoiceHandlers } from './handlers/voice.handlers';
-import { ADMIN_COMMAND, BOT_PROFILE, miniAppUrl } from './bot-ui';
+import { ADMIN_COMMANDS, BOT_PROFILE, miniAppUrl } from './bot-ui';
 import { ActivityService } from '../activity/activity.service';
 import { BotUserService } from './bot-user.service';
 import { AdminAccessService } from '../admin/core/admin-access.service';
@@ -147,7 +147,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
   private async showAdminCommand(bot: Bot): Promise<void> {
     for (const id of this.adminAccess.telegramIds) {
       try {
-        await bot.api.setMyCommands([...COMMANDS, ADMIN_COMMAND], { scope: { type: 'chat', chat_id: Number(id) } });
+        await bot.api.setMyCommands([...COMMANDS, ...ADMIN_COMMANDS], { scope: { type: 'chat', chat_id: Number(id) } });
       } catch (err: unknown) {
         this.logger.warn(`Admin command menu not set for an admin chat: ${this.describe(err)}`);
       }

@@ -23,6 +23,7 @@ export const UpdateProfileSchema = z
     notifyTelegram: z.boolean().optional(),
     dailyDigest: z.boolean().optional(),
     dailyReminders: z.boolean().optional(),
+    monthlyReport: z.boolean().optional(),
   })
   .strict();
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;

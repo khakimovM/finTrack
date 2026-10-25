@@ -43,7 +43,8 @@ RUN npm pkg delete scripts.prepare \
 # runtime
 # ---------------------------------------------------------------------------
 FROM base AS runtime
-RUN apk add --no-cache dumb-init
+# opusenc turns Gemini's PCM into the OGG/Opus a Telegram voice message must be.
+RUN apk add --no-cache dumb-init opus-tools
 ENV NODE_ENV=production \
     PORT=5000 \
     WEB_DIST_DIR=/app/apps/web/dist

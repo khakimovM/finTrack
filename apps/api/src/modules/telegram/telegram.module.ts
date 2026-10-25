@@ -16,6 +16,8 @@ import { DailyDigestService } from './outbox/daily-digest.service';
 import { DailyDigestProcessor } from './outbox/daily-digest.processor';
 import { DailyRemindersService } from './outbox/daily-reminders.service';
 import { DailyRemindersProcessor } from './outbox/daily-reminders.processor';
+import { MonthlyReportService } from './outbox/monthly-report.service';
+import { MonthlyReportProcessor } from './outbox/monthly-report.processor';
 import { AuthModule } from '../auth/auth.module';
 import { AccountsModule } from '../accounts/accounts.module';
 import { CategoriesModule } from '../categories/categories.module';
@@ -28,10 +30,16 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AssistantModule } from '../assistant/assistant.module';
 import { AdminCoreModule } from '../admin/core/admin-core.module';
 import { QUEUES } from '../../infra/queue/queues';
+import { TtsModule } from '../../infra/tts/tts.module';
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: QUEUES.TELEGRAM_OUTBOX }, { name: QUEUES.DAILY_DIGEST }, { name: QUEUES.DAILY_REMINDERS }),
+    BullModule.registerQueue(
+      { name: QUEUES.TELEGRAM_OUTBOX },
+      { name: QUEUES.DAILY_DIGEST },
+      { name: QUEUES.DAILY_REMINDERS },
+      { name: QUEUES.MONTHLY_REPORT },
+    ),
     AuthModule,
     AccountsModule,
     CategoriesModule,
@@ -43,6 +51,7 @@ import { QUEUES } from '../../infra/queue/queues';
     NotificationsModule,
     AssistantModule,
     AdminCoreModule,
+    TtsModule,
   ],
   controllers: [TelegramWebhookController],
   providers: [
@@ -61,6 +70,8 @@ import { QUEUES } from '../../infra/queue/queues';
     DailyDigestProcessor,
     DailyRemindersService,
     DailyRemindersProcessor,
+    MonthlyReportService,
+    MonthlyReportProcessor,
   ],
   exports: [EntryService, EntryHandlers, DraftStore, BotUserService],
 })

@@ -121,12 +121,13 @@ describe('TelegramLifecycleService transport', () => {
 
     const [everyone, ...scoped] = api.setMyCommands.mock.calls;
     expect(everyone[0].map((c) => c.command)).not.toContain('admin');
+    expect(everyone[0].map((c) => c.command)).not.toContain('oylik');
     expect(everyone[1]).toBeUndefined();
     expect(scoped.map(([, other]) => other?.scope)).toEqual([
       { type: 'chat', chat_id: 7001 },
       { type: 'chat', chat_id: 7002 },
     ]);
-    expect(scoped[1][0].map((c) => c.command)).toEqual(['start', 'menu', 'balans', 'admin']);
+    expect(scoped[1][0].map((c) => c.command)).toEqual(['start', 'menu', 'balans', 'admin', 'oylik']);
     expect(api.setWebhook).toHaveBeenCalled();
     expect(telegram.enabled).toBe(true);
   });

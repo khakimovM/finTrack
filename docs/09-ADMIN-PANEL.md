@@ -140,7 +140,9 @@ sana, oxirgi faollik, yozuvlar/hisoblar soni, kanallar, holat), `GET /admin/user
 90 kunlik faollik + sanoqlar), `POST /admin/users/:id/ban|unban` (sabab bilan; bloklangan kira olmaydi,
 botga "hisobingiz bloklangan", sessiyalar bekor), `POST /admin/users/:id/revoke-sessions`,
 `GET /admin/users/export.csv`, `GET /admin/system` (DB, Redis, BullMQ navbatlari va oxirgi xatolar,
-`getWebhookInfo`, versiya — `RAILWAY_GIT_COMMIT_SHA`, uptime, DB hajmi), `GET /admin/audit`.
+`getWebhookInfo`, versiya — `RAILWAY_GIT_COMMIT_SHA`, uptime, DB hajmi; oylik hisobot ovozining shu oydagi
+sarfi — provayder bo'yicha belgilar), `GET /admin/audit`. Oylik hisobotni oldindan eshitish: botda `/oylik`
+(faqat admin chatida; boshqalarga javob yo'q) — shu oyning hozirgacha bo'lgan hisoboti, matn va ovoz.
 
 **Qabul mezonlari** (bajarildi, 2026-10-09; `test/admin-users.e2e-spec.ts`)
 - [x] Bloklangan foydalanuvchi: sayt, Mini App va bot orqali kira olmaydi; ochiq sessiyalari tugaydi

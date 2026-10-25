@@ -202,6 +202,7 @@ export class AuthService {
       notifyTelegram: user.notifyTelegram,
       dailyDigest: user.dailyDigest,
       dailyReminders: user.dailyReminders,
+      monthlyReport: user.monthlyReport,
       createdAt: user.createdAt.toISOString(),
     };
   }

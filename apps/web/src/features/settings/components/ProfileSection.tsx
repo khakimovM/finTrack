@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { AlarmClock, Bell, Check, Clock, Globe, ShieldAlert } from 'lucide-react';
+import { AlarmClock, Bell, CalendarCheck, Check, Clock, Globe, ShieldAlert } from 'lucide-react';
 import type { UserResponse } from '@fintrack/shared';
 import { Input } from '../../../components/ui/Input';
 import { Dropdown } from '../../../components/ui/Dropdown';
@@ -163,6 +163,17 @@ export function PreferencesSection({ user }: { user: UserResponse }) {
       tile: (
         <Tile className="bg-secondary text-text">
           <Clock className="h-[18px] w-[18px]" aria-hidden />
+        </Tile>
+      ),
+      needsTelegram: true,
+    },
+    {
+      key: 'monthlyReport' as const,
+      title: 'Oylik hisobot',
+      text: 'Oyning oxirgi kuni soat 21:00 da oy yakuni Telegram’ga keladi: matn va uning ostida ovozli xabar. O‘sha kuni kunlik xulosa o‘rniga.',
+      tile: (
+        <Tile className="bg-info-soft text-info">
+          <CalendarCheck className="h-[18px] w-[18px]" aria-hidden />
         </Tile>
       ),
       needsTelegram: true,

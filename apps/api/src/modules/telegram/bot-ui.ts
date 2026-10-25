@@ -60,10 +60,16 @@ export const ADMIN_TEXT = {
   open: '🛡 <b>Admin panel</b>\n\nTugma faqat sizga ko‘rinadi. Har bir ochilish alohida kirish hisoblanadi va audit’ga yoziladi.',
   /** Local development: Telegram opens only HTTPS Mini Apps. */
   noHttps: (site: string) => `🛡 Admin panel Telegram ichida faqat HTTPS saytda ochiladi. Brauzerda: ${site}/admin/login`,
+  monthlyPreparing: '⏳ Shu oyning hisoboti tayyorlanmoqda: avval matn, keyin ovoz…',
+  monthlyNoVoice: '🔇 Ovoz yaratilmadi: TTS kaliti yo‘q yoki hamma provayder rad etdi. Tafsilot — admin paneldagi “Tizim” sahifasida.',
+  monthlyFailed: 'Hisobotni yuborib bo‘lmadi.',
 };
 
-/** /admin in the command menu: shown only in the admins' own chats (scope chat). */
-export const ADMIN_COMMAND = { command: 'admin', description: 'Admin panel' };
+/** The admins' own command menu (scope chat): the panel, and the monthly report on demand. */
+export const ADMIN_COMMANDS = [
+  { command: 'admin', description: 'Admin panel' },
+  { command: 'oylik', description: 'Oylik hisobot (sinov)' },
+];
 
 /** The bot's profile: under its name (≤120) and on the empty chat and t.me page (≤512). */
 export const BOT_PROFILE = {

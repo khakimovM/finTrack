@@ -228,7 +228,7 @@ undan keyin kelsa — butun oila bekor qilinadi, `401 TOKEN_REUSE_DETECTED`.
   "id": "8f1a…", "name": "Aziz", "email": null, "telegramUsername": "aziz",
   "telegramLinked": true, "phone": "+99890***4567", "avatarUrl": null,
   "baseCurrency": "UZS", "locale": "uz", "timezone": "Asia/Tashkent", "strictMode": false,
-  "notifyTelegram": true, "dailyDigest": false, "dailyReminders": true,
+  "notifyTelegram": true, "dailyDigest": false, "dailyReminders": true, "monthlyReport": true,
   "createdAt": "2026-08-29T09:12:00.000Z"
 }
 ```
@@ -355,14 +355,17 @@ Telegram bildirishnomasini o'chirganlar — `includeOptedOut: true` bo'lmasa (ha
 - `GET /admin/system` — `{ version: { commit, node, environment, startedAt, uptimeSeconds }, database: { status,
   latencyMs, sizeBytes, lastMigration }, redis: { status, latencyMs, usedMemoryBytes }, queues: [{ name, counts:
   { waiting, active, delayed, failed, completed, paused } | null, recentFailures: [{ job, failedAt, attempts,
-  reason }] }], telegram: { mode: webhook|polling|off, webhookHost, pendingUpdates, lastErrorAt, lastError } }`.
+  reason }] }], telegram: { mode: webhook|polling|off, webhookHost, pendingUpdates, lastErrorAt, lastError },
+  speech: [{ provider, free, chars, limit | null, available }] }`. `speech` — oylik hisobot ovozining shu oydagi
+  sarfi, sinash tartibida (kalit sozlanmagan bo'lsa bo'sh massiv); `available: false` — provayder rad etgani
+  uchun vaqtincha chetda.
   Har tekshiruv 2 s bilan cheklangan: ishlamayotgan qism `down`/`null` bo'lib ko'rinadi, sahifa osilib qolmaydi.
 - `GET /admin/audit?action&page&limit` (standart 50) — eng yangisi birinchi: `{ id, action, createdAt, admin:
   { id, name } | null, target: { id, name | null } | null, telegramId, meta, ipAddress }`.
 
 ## Users
 
-- `PATCH /users/me` — `{ name?, locale?, timezone?, strictMode?, notifyTelegram?, dailyDigest?, dailyReminders? }` (`.strict()`), `200 { user }`.
+- `PATCH /users/me` — `{ name?, locale?, timezone?, strictMode?, notifyTelegram?, dailyDigest?, dailyReminders?, monthlyReport? }` (`.strict()`), `200 { user }`.
 - `GET /users/me/sessions` — `[{ id, userAgent, ipAddress, createdAt, lastUsedAt, expiresAt, isCurrent }]`.
 - `DELETE /users/me/sessions/:id` — `204`; o'sha sessiyaning tokenlari darhol ishlamay qoladi.
 - `POST /users/me/telegram/link` — eski (email) hisobni Telegram'ga ulash: `{ requestId, deepLink, expiresAt }`.
