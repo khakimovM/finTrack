@@ -55,6 +55,9 @@ export default defineRailway(() => {
     env: {
       // The owner's Telegram id(s) for the admin panel; empty or unset keeps every /admin route 404.
       ADMIN_TELEGRAM_IDS: preserve(),
+      // The monthly report's voice (Azure Speech, Free F0); unset leaves the report text-only.
+      AZURE_SPEECH_KEY: preserve(),
+      AZURE_SPEECH_REGION: preserve(),
       CLIENT_URL: preserve(),
       DATABASE_URL: preserve(),
       GEMINI_API_KEY: preserve(),

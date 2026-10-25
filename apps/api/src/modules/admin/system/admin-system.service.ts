@@ -7,6 +7,7 @@ import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { RedisService } from '../../../infra/redis/redis.service';
 import { TelegramBotService } from '../../../infra/telegram/telegram-bot.service';
 import { QUEUES } from '../../../infra/queue/queues';
+import { TtsService } from '../../../infra/tts/tts.service';
 
 /** A dependency that hangs must not hang the page that is meant to show it is down. */
 const PROBE_TIMEOUT_MS = 2_000;
@@ -42,22 +43,25 @@ export class AdminSystemService {
     private readonly redis: RedisService,
     private readonly telegram: TelegramBotService,
     private readonly config: ConfigService,
+    private readonly tts: TtsService,
     @InjectQueue(QUEUES.RECURRING) recurring: Queue,
     @InjectQueue(QUEUES.DEBT_REMINDERS) reminders: Queue,
     @InjectQueue(QUEUES.TELEGRAM_OUTBOX) outbox: Queue,
     @InjectQueue(QUEUES.DAILY_DIGEST) digest: Queue,
     @InjectQueue(QUEUES.BROADCAST) broadcast: Queue,
     @InjectQueue(QUEUES.DAILY_REMINDERS) dailyReminders: Queue,
+    @InjectQueue(QUEUES.MONTHLY_REPORT) monthly: Queue,
   ) {
-    this.queues = [recurring, reminders, outbox, digest, broadcast, dailyReminders];
+    this.queues = [recurring, reminders, outbox, digest, broadcast, dailyReminders, monthly];
   }
 
   async status(): Promise<AdminSystemResponse> {
-    const [database, redis, queues, telegram] = await Promise.all([
+    const [database, redis, queues, telegram, speech] = await Promise.all([
       this.database(),
       this.redisStatus(),
       Promise.all(this.queues.map((q) => this.queue(q))),
       this.telegramStatus(),
+      withTimeout(this.tts.usage()).catch(() => []),
     ]);
     const commit = this.config.get<string>('RAILWAY_GIT_COMMIT_SHA');
     return {
@@ -72,6 +76,7 @@ export class AdminSystemService {
       redis,
       queues,
       telegram,
+      speech,
     };
   }
 

@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { isLastDayOfMonth } from '@fintrack/shared';
 import { BotReportsService } from '../bot-reports.service';
-import { UsersRepository } from '../../users/users.repository';
+import { UsersRepository, monthOf } from '../../users/users.repository';
 import { TelegramBotService } from '../../../infra/telegram/telegram-bot.service';
 import { RedisService } from '../../../infra/redis/redis.service';
 import { ClockService } from '../../../infra/clock/clock.service';
@@ -16,6 +18,7 @@ export interface DigestSummary {
 @Injectable()
 export class DailyDigestService {
   private readonly logger = new Logger(DailyDigestService.name);
+  private readonly timeZone: string;
 
   constructor(
     private readonly users: UsersRepository,
@@ -23,10 +26,15 @@ export class DailyDigestService {
     private readonly telegram: TelegramBotService,
     private readonly redis: RedisService,
     private readonly clock: ClockService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.timeZone = config.get<string>('APP_TIMEZONE') ?? 'Asia/Tashkent';
+  }
 
   async run(): Promise<DigestSummary> {
-    const recipients = await this.users.findDigestRecipients();
+    // On the month's last day the monthly report goes at this hour instead, as the scheduler sees it.
+    const today = this.clock.todayIn(this.timeZone);
+    const recipients = await this.users.findDigestRecipients(isLastDayOfMonth(today) ? monthOf(today) : undefined);
     let sent = 0;
 
     for (const user of recipients) {

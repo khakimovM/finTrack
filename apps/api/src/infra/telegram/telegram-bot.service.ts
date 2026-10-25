@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Bot, GrammyError } from 'grammy';
+import { Bot, GrammyError, InputFile } from 'grammy';
 import type { InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove } from 'grammy/types';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -56,13 +56,26 @@ export class TelegramBotService {
     text: string,
     options: { replyMarkup?: TelegramReplyMarkup; html?: boolean } = {},
   ): Promise<SendResult> {
-    if (!this.bot || this.suspended) return 'DISABLED';
-    try {
-      await this.bot.api.sendMessage(Number(chatId), text, {
+    return this.deliver('sendMessage', chatId, (bot) =>
+      bot.api.sendMessage(Number(chatId), text, {
         parse_mode: options.html ? 'HTML' : undefined,
         reply_markup: options.replyMarkup,
         link_preview_options: { is_disabled: true },
-      });
+      }),
+    );
+  }
+
+  /** A voice message (OGG/Opus), with the same never-throw and 403 handling as `send`. */
+  async sendVoice(chatId: number | bigint, audio: Buffer, options: { caption?: string } = {}): Promise<SendResult> {
+    return this.deliver('sendVoice', chatId, (bot) =>
+      bot.api.sendVoice(Number(chatId), new InputFile(audio, 'voice.ogg'), { caption: options.caption }),
+    );
+  }
+
+  private async deliver(method: string, chatId: number | bigint, call: (bot: Bot) => Promise<unknown>): Promise<SendResult> {
+    if (!this.bot || this.suspended) return 'DISABLED';
+    try {
+      await call(this.bot);
       return 'SENT';
     } catch (err: unknown) {
       if (err instanceof GrammyError && err.error_code === 403) {
@@ -72,7 +85,7 @@ export class TelegramBotService {
         return 'BLOCKED';
       }
       // Retry-after and network errors are the outbox's concern; log without message content.
-      this.logger.warn(`sendMessage failed: ${err instanceof GrammyError ? err.description : String(err)}`);
+      this.logger.warn(`${method} failed: ${err instanceof GrammyError ? err.description : String(err)}`);
       return 'FAILED';
     }
   }

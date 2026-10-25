@@ -18,6 +18,7 @@ export class SchedulerService implements OnApplicationBootstrap {
     @InjectQueue(QUEUES.DEBT_REMINDERS) private readonly remindersQueue: Queue,
     @InjectQueue(QUEUES.DAILY_DIGEST) private readonly digestQueue: Queue,
     @InjectQueue(QUEUES.DAILY_REMINDERS) private readonly reminderQueue: Queue,
+    @InjectQueue(QUEUES.MONTHLY_REPORT) private readonly monthlyQueue: Queue,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -54,6 +55,12 @@ export class SchedulerService implements OnApplicationBootstrap {
         'evening-reminders',
         { pattern: '0 22 * * *', tz },
         { name: JOBS.SEND_EVENING_REMINDERS, opts: DEFAULT_JOB_OPTIONS },
+      );
+      // "L": the month's last day, at the digest's hour (the digest steps aside that evening).
+      await this.monthlyQueue.upsertJobScheduler(
+        'monthly-report',
+        { pattern: '0 21 L * *', tz },
+        { name: JOBS.SEND_MONTHLY_REPORT, opts: DEFAULT_JOB_OPTIONS },
       );
       this.logger.log(`Job schedulers registered (tz=${tz})`);
     } catch (err: unknown) {

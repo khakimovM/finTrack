@@ -6,6 +6,8 @@ import { LOGIN_TEXT } from '../../auth/telegram-login.messages';
 import { AdminAccessService } from '../../admin/core/admin-access.service';
 import { ADMIN_TEXT, adminPanelUrl, openAdminKeyboard } from '../bot-ui';
 import { MenuHandlers } from './menu.handlers';
+import { BotUserService } from '../bot-user.service';
+import { MonthlyReportService } from '../outbox/monthly-report.service';
 
 export function toFrom(ctx: Context): TelegramFrom | null {
   const from = ctx.from;
@@ -19,7 +21,7 @@ export function toFrom(ctx: Context): TelegramFrom | null {
   };
 }
 
-/** /start (with login_/link_/admin_ payloads), /id, /admin, shared contacts and the "not me" button. */
+/** /start (with login_/link_/admin_ payloads), /id, /admin, /oylik, shared contacts and the "not me" button. */
 @Injectable()
 export class AuthHandlers {
   private readonly siteUrl?: string;
@@ -28,6 +30,8 @@ export class AuthHandlers {
     private readonly loginBot: TelegramLoginBotService,
     private readonly menu: MenuHandlers,
     private readonly adminAccess: AdminAccessService,
+    private readonly users: BotUserService,
+    private readonly monthly: MonthlyReportService,
     config: ConfigService,
   ) {
     this.siteUrl = config.get<string>('WEB_APP_URL') ?? config.get<string>('CLIENT_URL');
@@ -65,6 +69,18 @@ export class AuthHandlers {
         return;
       }
       await ctx.reply(ADMIN_TEXT.open, { parse_mode: 'HTML', reply_markup: openAdminKeyboard(url) });
+    });
+
+    // The owner hears the monthly report before the last day: this month so far, to their own chat.
+    pm.command('oylik', async (ctx) => {
+      const from = toFrom(ctx);
+      if (!from || !this.adminAccess.isAdmin(BigInt(from.id))) return;
+      const user = await this.users.resolve(ctx);
+      if (!user) return;
+      await ctx.reply(ADMIN_TEXT.monthlyPreparing);
+      const delivery = await this.monthly.preview(user);
+      if (delivery.text !== 'SENT') await ctx.reply(ADMIN_TEXT.monthlyFailed);
+      else if (!delivery.voice) await ctx.reply(ADMIN_TEXT.monthlyNoVoice);
     });
 
     pm.on('message:contact', async (ctx) => {

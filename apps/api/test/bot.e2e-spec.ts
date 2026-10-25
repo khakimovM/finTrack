@@ -194,9 +194,10 @@ describe('Managing money from the Telegram bot (e2e)', () => {
       await tap(user, 'set:digest');
       await tap(user, 'set:notify');
       await tap(user, 'set:reminders');
+      await tap(user, 'set:monthly');
 
       const me = (await user.get('/auth/me')).body.data.user;
-      expect(me).toMatchObject({ dailyDigest: true, notifyTelegram: false, dailyReminders: false });
+      expect(me).toMatchObject({ dailyDigest: true, notifyTelegram: false, dailyReminders: false, monthlyReport: false });
     });
 
     it('"log out everywhere" ends the web sessions', async () => {
@@ -353,6 +354,8 @@ describe('Managing money from the Telegram bot (e2e)', () => {
       const silent = await newUser(ctx);
       await say(user, '⚙️ Sozlamalar');
       await tap(user, 'set:digest');
+      // Run on a month's last day, the monthly report would take this digest's place.
+      await user.patch('/users/me', { monthlyReport: false });
       await quickAdd(user, '30 ming tushlik');
       await quickAdd(silent, '30 ming tushlik');
 

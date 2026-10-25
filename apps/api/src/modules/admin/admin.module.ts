@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUES } from '../../infra/queue/queues';
+import { TtsModule } from '../../infra/tts/tts.module';
 import { AuthModule } from '../auth/auth.module';
 import { AdminCoreModule } from './core/admin-core.module';
 import { AdminAuthController } from './admin-auth.controller';
@@ -39,7 +40,9 @@ import { BroadcastProcessor } from './broadcasts/broadcast.processor';
       { name: QUEUES.DAILY_DIGEST },
       { name: QUEUES.BROADCAST },
       { name: QUEUES.DAILY_REMINDERS },
+      { name: QUEUES.MONTHLY_REPORT },
     ),
+    TtsModule,
   ],
   controllers: [AdminAuthController, AdminStatsController, AdminUsersController, AdminSystemController, BroadcastsController],
   providers: [

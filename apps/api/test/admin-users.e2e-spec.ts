@@ -216,7 +216,9 @@ describe('Admin: people, bans, the system and the audit log (e2e)', () => {
     expect(system.database.sizeBytes).toBeGreaterThan(0);
     expect(system.database.lastMigration).toMatch(/^\d{4}_/);
     expect(system.redis.status).toBe('ok');
-    expect(system.queues.map((q: { name: string }) => q.name)).toEqual(['recurring', 'debt-reminders', 'telegram-outbox', 'daily-digest', 'broadcast', 'daily-reminders']);
+    expect(system.queues.map((q: { name: string }) => q.name)).toEqual(['recurring', 'debt-reminders', 'telegram-outbox', 'daily-digest', 'broadcast', 'daily-reminders', 'monthly-report']);
+    // No voice keys in tests: the monthly report goes as text only.
+    expect(system.speech).toEqual([]);
     for (const queue of system.queues) expect(queue.counts).not.toBeNull();
     expect(system.telegram).toMatchObject({ mode: 'polling', webhookHost: null, pendingUpdates: 0 });
     expect(system.version).toMatchObject({ commit: null, node: process.version, environment: 'test' });

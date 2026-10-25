@@ -1,7 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { Messages } from '@anthropic-ai/sdk/resources/messages/messages';
 import Anthropic from '@anthropic-ai/sdk';
-import { DEFAULT_GEMINI_MODELS, GeminiClient, retryDelaySeconds } from '../providers/gemini.client';
+import { DEFAULT_GEMINI_MODELS, GeminiClient } from '../providers/gemini.client';
+import { retryDelaySeconds } from '../../../common/utils/gemini-errors';
 import { RedisService } from '../../../infra/redis/redis.service';
 import { GroqSpeechToText } from '../providers/groq-stt.client';
 import { ClaudeClient } from '../providers/claude.client';

@@ -28,6 +28,7 @@ function settingsKeyboard(user: User): InlineKeyboardMarkup {
       [{ text: `${mark(user.notifyTelegram)} Bildirishnomalar`, callback_data: 'set:notify' }],
       [{ text: `${mark(user.dailyReminders)} Eslatmalar (7:00 / 22:00)`, callback_data: 'set:reminders' }],
       [{ text: `${mark(user.dailyDigest)} Kunlik xulosa (21:00)`, callback_data: 'set:digest' }],
+      [{ text: `${mark(user.monthlyReport)} Oylik hisobot`, callback_data: 'set:monthly' }],
       [{ text: '🚪 Barcha qurilmalardan chiqish', callback_data: 'set:logoutall' }],
     ],
   };
@@ -38,7 +39,8 @@ const SETTINGS_TEXT =
   '<b>Qatʼiy rejim</b> — balansdan ortiq xarajat yozishga ruxsat bermaydi.\n' +
   '<b>Bildirishnomalar</b> — byudjet, qarz va takroriy to‘lov ogohlantirishlari.\n' +
   '<b>Eslatmalar</b> — har kuni 7:00 da; kun bo‘yi FinTrack’ga kirmasangiz, 22:00 da yana bir bor.\n' +
-  '<b>Kunlik xulosa</b> — har kuni kechqurun bugungi kirim-chiqim.';
+  '<b>Kunlik xulosa</b> — har kuni kechqurun bugungi kirim-chiqim.\n' +
+  '<b>Oylik hisobot</b> — oyning oxirgi kuni 21:00 da: oy yakuni matn va ovozli xabar bo‘lib.';
 
 @Injectable()
 export class MenuHandlers {
@@ -132,7 +134,7 @@ export class MenuHandlers {
       }
     });
 
-    bot.callbackQuery(/^set:(strict|notify|digest|reminders|logoutall)$/, async (ctx) => {
+    bot.callbackQuery(/^set:(strict|notify|digest|reminders|monthly|logoutall)$/, async (ctx) => {
       const user = await this.users.resolve(ctx);
       if (!user) return;
       try {
@@ -146,6 +148,7 @@ export class MenuHandlers {
           notify: 'notifyTelegram',
           digest: 'dailyDigest',
           reminders: 'dailyReminders',
+          monthly: 'monthlyReport',
         } as const;
         const key = field[ctx.match[1] as keyof typeof field];
         await this.usersService.updateProfile(user.id, { [key]: !user[key] });

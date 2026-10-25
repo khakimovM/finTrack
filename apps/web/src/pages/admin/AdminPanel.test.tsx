@@ -155,6 +155,8 @@ describe('Admin panel pages', () => {
     expect(screen.getByText('50 MB')).toBeTruthy();
     expect(screen.getByText('Forbidden: bot was blocked')).toBeTruthy();
     expect(screen.getByText('O‘qib bo‘lmadi')).toBeTruthy();
+    expect(screen.getByText('12 400 / 500 000 belgi')).toBeTruthy();
+    expect(screen.getByText('Dam olmoqda')).toBeTruthy();
   });
 
   it('audit: who did what to whom, and refused sign-ins', async () => {

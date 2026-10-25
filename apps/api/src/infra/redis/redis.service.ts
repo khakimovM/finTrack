@@ -152,6 +152,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** Adds to a counter and sets its TTL on first use (monthly usage meters). */
+  async incrByWithTtl(key: string, by: number, ttlSeconds: number): Promise<number | null> {
+    if (!this.client) return null;
+    try {
+      const [[, count]] = (await this.client.multi().incrby(key, by).expire(key, ttlSeconds, 'NX').exec()) as [
+        [Error | null, number],
+        [Error | null, number],
+      ];
+      return count;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Redis INCRBY/EXPIRE error for key ${key}: ${message}`);
+      return null;
+    }
+  }
+
   async del(key: string): Promise<number> {
     if (!this.client) return 0;
     try {

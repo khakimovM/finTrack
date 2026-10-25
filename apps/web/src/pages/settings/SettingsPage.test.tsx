@@ -64,7 +64,7 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(calls.patches).toEqual([{ strictMode: true }]));
   });
 
-  it('turns the 7:00 and 22:00 reminders off, and only with Telegram linked', async () => {
+  it('turns the 7:00 and 22:00 reminders and the monthly report off, and only with Telegram linked', async () => {
     const calls = serve();
     const { unmount } = renderWithProviders(<SettingsPage />);
 
@@ -72,6 +72,8 @@ describe('SettingsPage', () => {
     expect(reminders.getAttribute('aria-checked')).toBe('true');
     await userEvent.click(reminders);
     await waitFor(() => expect(calls.patches).toEqual([{ dailyReminders: false }]));
+    await userEvent.click(screen.getByRole('switch', { name: 'Oylik hisobot' }));
+    await waitFor(() => expect(calls.patches).toEqual([{ dailyReminders: false }, { monthlyReport: false }]));
     unmount();
 
     useAuthStore.setState({ user: user({ telegramLinked: false }) });

@@ -109,6 +109,9 @@ butunlay o'chiriladi. Oxirgi faol hisobni o'chirib/arxivlab bo'lmaydi.
   `true`: har kuni 7:00 da eslatma; kun bo'yi hech qaysi kanalda faollik bo'lmasa 22:00 da yana bittasi
   (kunlik xulosa yoqilganlarga 22:00 dagisi bormaydi). `telegramBlockedAt` — foydalanuvchi botni
   bloklagan (Telegram 403): unga fon xabarlari yuborilmaydi, yangi xabar yozsa tozalanadi.
+- `monthlyReport` (standart `true`, 0011) — oyning oxirgi kuni 21:00 da oy hisoboti: matn va ovozli xabar.
+  Faqat o'sha oyda kamida bitta INCOME/EXPENSE yozuvi borlarga; ularga o'sha kechagi kunlik xulosa
+  bormaydi (hisobot uning o'rnida). Oy bo'yi yozuvi yo'qlarga xulosa odatdagidek boradi.
 - `timezone` — "bugun" shu zonada hisoblanadi (qarz muddati, takroriy to'lov, `FUTURE_DATE`).
 
 ## Telegram orqali kirish — `TelegramLoginRequest`

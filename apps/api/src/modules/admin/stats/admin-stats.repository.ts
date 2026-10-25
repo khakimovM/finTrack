@@ -3,6 +3,17 @@ import { Prisma } from '@prisma/client';
 import { AdminStatsGroupBy, addDays, formatIsoDate, parseIsoDate } from '@fintrack/shared';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { ENTRY } from '../core/admin-sql';
+import {
+  ActiveCountsRow,
+  BucketRow,
+  CohortRow,
+  EntryCountsRow,
+  FeatureRow,
+  FunnelRow,
+  UserCountsRow,
+} from './admin-stats.rows';
+
+export * from './admin-stats.rows';
 
 /**
  * The admin panel's reads across all users: the one deliberate exception to "every query is
@@ -26,64 +37,6 @@ function localDay(column: Prisma.Sql, tz: string): Prisma.Sql {
 }
 
 const shift = (day: string, days: number) => formatIsoDate(addDays(parseIsoDate(day), days));
-
-export interface UserCountsRow {
-  total: number;
-  newToday: number;
-  new7: number;
-  new7Prev: number;
-  new30: number;
-  new30Prev: number;
-  botBlocked: number;
-  banned: number;
-}
-
-export interface ActiveCountsRow {
-  today: number;
-  d7: number;
-  d7Prev: number;
-  d30: number;
-  d30Prev: number;
-}
-
-export interface EntryCountsRow {
-  total: number;
-  today: number;
-  d7: number;
-  d7Prev: number;
-}
-
-export interface BucketRow {
-  bucket: string;
-  n: number;
-}
-
-export interface CohortRow {
-  week: string;
-  n: number;
-  users: number;
-}
-
-export interface FeatureRow {
-  users: number;
-  withDebt: number;
-  withBudget: number;
-  withRecurring: number;
-  withTag: number;
-  withSeveralAccounts: number;
-  withOwnCategory: number;
-  strictMode: number;
-  dailyDigest: number;
-  dailyReminders: number;
-  telegramNotifications: number;
-}
-
-export interface FunnelRow {
-  registered: number;
-  firstEntry: number;
-  fiveEntries: number;
-  returnedWeek2: number;
-}
 
 @Injectable()
 export class AdminStatsRepository {
@@ -264,6 +217,7 @@ export class AdminStatsRepository {
         COUNT(*) FILTER (WHERE u."strict_mode")::int AS "strictMode",
         COUNT(*) FILTER (WHERE u."daily_digest")::int AS "dailyDigest",
         COUNT(*) FILTER (WHERE u."daily_reminders" AND u."telegram_id" IS NOT NULL AND u."telegram_blocked_at" IS NULL)::int AS "dailyReminders",
+        COUNT(*) FILTER (WHERE u."monthly_report" AND u."telegram_id" IS NOT NULL AND u."telegram_blocked_at" IS NULL)::int AS "monthlyReport",
         COUNT(*) FILTER (WHERE u."notify_telegram" AND u."telegram_blocked_at" IS NULL)::int AS "telegramNotifications"
       FROM "users" u
       WHERE u."deleted_at" IS NULL

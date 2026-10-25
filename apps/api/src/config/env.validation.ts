@@ -80,6 +80,21 @@ export const envSchema = z.object({
   /** Optional paid text extractor. */
   ANTHROPIC_API_KEY: z.string().min(20, 'ANTHROPIC_API_KEY looks too short').optional(),
   ANTHROPIC_MODEL: z.string().regex(/^[a-z0-9.-]+$/, 'ANTHROPIC_MODEL: a model id').default('claude-opus-5'),
+  /** Monthly report read aloud: Azure Speech free tier (F0) first. */
+  AZURE_SPEECH_KEY: z.string().trim().min(20, 'AZURE_SPEECH_KEY looks too short').optional(),
+  // The portal shows "West Europe" in one place and "westeurope" in another: both are taken.
+  AZURE_SPEECH_REGION: z
+    .string()
+    .transform((v) => v.toLowerCase().replace(/\s+/g, ''))
+    .pipe(z.string().regex(/^[a-z0-9]+$/, 'AZURE_SPEECH_REGION: e.g. westeurope'))
+    .optional(),
+  /** The F0 allowance; it is left a little before it runs out. */
+  AZURE_TTS_FREE_CHARS: z.coerce.number().int().positive().default(500_000),
+  /** Speech model used with GEMINI_API_KEY when Azure is spent. */
+  GEMINI_TTS_MODEL: z.string().regex(/^[a-z0-9.-]+$/, 'GEMINI_TTS_MODEL: a model id').optional(),
+  /** The paid fallback once the free ones are spent; off unless set. */
+  TTS_PAID_PROVIDER: z.enum(['azure', 'gemini', 'off']).default('off'),
+  TTS_PAID_KEY: z.string().min(20, 'TTS_PAID_KEY looks too short').optional(),
   VOICE_MAX_SECONDS: z.coerce.number().int().min(5).max(600).default(60),
   /** Per user per day; protects the free quotas from a single chatty user. */
   VOICE_DAILY_LIMIT: z.coerce.number().int().min(0).default(30),

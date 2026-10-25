@@ -54,6 +54,13 @@ describe('env.validation edge cases', () => {
     expect(validateEnv({ ...base, TRUST_PROXY: 'false' }).TRUST_PROXY).toBe(false);
   });
 
+  it('takes the Azure region as the portal writes it, and the key without stray spaces', () => {
+    const parsed = validateEnv({ ...base, AZURE_SPEECH_REGION: ' West Europe ', AZURE_SPEECH_KEY: ` ${'a'.repeat(32)}\n` });
+    expect(parsed.AZURE_SPEECH_REGION).toBe('westeurope');
+    expect(parsed.AZURE_SPEECH_KEY).toBe('a'.repeat(32));
+    expect(() => validateEnv({ ...base, AZURE_SPEECH_REGION: 'west-europe' })).toThrow(/AZURE_SPEECH_REGION/);
+  });
+
   it('rejects an unknown APP_TIMEZONE', () => {
     expect(() => validateEnv({ ...base, APP_TIMEZONE: 'Mars/Olympus' })).toThrow(/APP_TIMEZONE/);
   });
