@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll } from 'vitest';
 import { cleanup, configure } from '@testing-library/react';
 import { server } from './server';
 import { testViewport } from './viewport';
+import { useLocaleStore } from '../stores/localeStore';
 
 // `npm run verify` runs the API suite at the same time; a cold first render can take longer than
 // findBy's default second there. Five seconds waits for slow, not for wrong.
@@ -15,6 +16,7 @@ afterEach(() => {
   testViewport.width = 1280;
   testViewport.reducedMotion = true;
   testViewport.touch = false;
+  useLocaleStore.setState({ locale: 'uz' });
 });
 afterAll(() => server.close());
 

@@ -1,6 +1,6 @@
 import type { StatsBalanceTrendResponse, StatsSummaryResponse } from '@fintrack/shared';
 import { cn } from '../../../lib/utils';
-import { CURRENCY, formatAmountNumber, MINUS, NBSP } from '../../../lib/money';
+import { currencyWord, formatAmountNumber, MINUS, NBSP } from '../../../lib/money';
 import { useCountingTiyin } from '../../../lib/motion';
 import { CountingAmount } from '../../../components/ui/Amount';
 import { ChangeChip } from '../../../components/ui/Chip';
@@ -20,7 +20,7 @@ interface KpiGridProps {
 const unit = (
   <>
     {NBSP}
-    <span className="text-[14px] font-medium tracking-normal text-text-muted">{CURRENCY}</span>
+    <span className="text-[14px] font-medium tracking-normal text-text-muted">{currencyWord()}</span>
   </>
 );
 

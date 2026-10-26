@@ -1,6 +1,6 @@
 import { AdminChannel, AdminStatsGroupBy, addDays, formatIsoDate, parseIsoDate } from '@fintrack/shared';
 import { NBSP } from '../../lib/money';
-import { MONTHS_SHORT, formatDate, formatMonth, formatRange, formatShortDate } from '../../lib/format';
+import { formatDate, formatMonth, formatRange, formatShortDate, monthShortStandaloneNames } from '../../lib/format';
 
 /** 12 345 with a no-break space, like the amounts. */
 export function formatCount(n: number): string {
@@ -27,7 +27,7 @@ export const CHANNEL_LABELS: Record<AdminChannel, string> = {
 
 /** Axis label of a bucket: "15-avg" for days and weeks, "okt" for months. */
 export function bucketLabel(bucket: string, groupBy: AdminStatsGroupBy): string {
-  if (groupBy === 'month') return MONTHS_SHORT[Number(bucket.slice(5, 7)) - 1];
+  if (groupBy === 'month') return monthShortStandaloneNames()[Number(bucket.slice(5, 7)) - 1];
   return formatShortDate(bucket);
 }
 

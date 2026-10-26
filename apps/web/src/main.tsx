@@ -6,9 +6,11 @@ import { launchedFromTelegram, startTelegram } from './lib/telegram';
 import { isAdminPath, signInAdminMiniApp } from './lib/adminMiniApp';
 import { signInMiniApp } from './features/miniapp/signInMiniApp';
 import { MiniAppSplash } from './features/miniapp/MiniAppSplash';
+import { followAccountLanguage } from './lib/i18n/followAccount';
 
 async function bootstrap(): Promise<void> {
   const root = ReactDOM.createRoot(document.getElementById('root')!);
+  followAccountLanguage();
 
   // Inside Telegram, sign in with the launch data before the router can redirect to /login;
   // the splash covers the script load and the exchange instead of a blank page. The bot's

@@ -1,5 +1,5 @@
 import { diffInDays, endOfMonth, parseIsoDate, type StatsTimeseriesItem, type TimeseriesGroupBy } from '@fintrack/shared';
-import { MONTHS, MONTHS_SHORT, formatShortDate } from '../../lib/format';
+import { daysOfMonth, formatShortDate, monthNames, monthShortStandaloneNames, monthStandaloneNames } from '../../lib/format';
 import type { Comparison, ReportPreset } from './periods';
 
 export interface Bucket {
@@ -36,8 +36,8 @@ export function bucketPlan(preset: ReportPreset, comparison: Comparison): Bucket
     const daysBefore = endOfMonth(parseIsoDate(previous.from)).getUTCDate();
     // A longer previous month (31 January before February) keeps its last days on the chart.
     const last = Math.max(days, Number(previous.to.slice(8, 10)));
-    const month = MONTHS[Number(current.from.slice(5, 7)) - 1];
-    const before = MONTHS[Number(previous.from.slice(5, 7)) - 1];
+    const month = Number(current.from.slice(5, 7));
+    const before = Number(previous.from.slice(5, 7));
     const weeks = WEEKS.filter(([a]) => a <= last);
     const span = (a: number, b: number, end: number) => `${a}–${Math.min(b, end)}`;
     return {
@@ -46,7 +46,9 @@ export function bucketPlan(preset: ReportPreset, comparison: Comparison): Bucket
         const now = a <= days ? span(a, b, days) : null;
         const then = a <= daysBefore ? span(a, b, daysBefore) : null;
         const title =
-          now === then ? `${now}-${month} / ${before}` : [now && `${now}-${month}`, then && `${then}-${before}`].filter(Boolean).join(' / ');
+          now === then
+            ? `${daysOfMonth(now ?? '', month)} / ${monthNames()[before - 1]}`
+            : [now && daysOfMonth(now, month), then && daysOfMonth(then, before)].filter(Boolean).join(' / ');
         return { label: now ?? then ?? '', title };
       }),
       indexOf: (bucket) => {
@@ -60,7 +62,10 @@ export function bucketPlan(preset: ReportPreset, comparison: Comparison): Bucket
     const year = Number(current.from.slice(0, 4));
     return {
       groupBy: 'month',
-      buckets: MONTHS_SHORT.map((short, i) => ({ label: capital(short), title: `${capital(MONTHS[i])} ${year} / ${year - 1}` })),
+      buckets: monthShortStandaloneNames().map((short, i) => ({
+        label: capital(short),
+        title: `${capital(monthStandaloneNames()[i])} ${year} / ${year - 1}`,
+      })),
       indexOf: (bucket) => Number(bucket.slice(5, 7)) - 1,
     };
   }
