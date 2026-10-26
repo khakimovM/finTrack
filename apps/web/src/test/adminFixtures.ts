@@ -103,8 +103,8 @@ export const system: AdminSystemResponse = {
   ],
   telegram: { mode: 'webhook', webhookHost: 'fintrackuz.up.railway.app', pendingUpdates: 0, lastErrorAt: null, lastError: null },
   speech: [
+    { provider: 'gemini-free:gemini-3.8-flash-tts', free: true, chars: 3_100, limit: null, available: false },
     { provider: 'azure-free', free: true, chars: 12_400, limit: 500_000, available: true },
-    { provider: 'gemini-free', free: true, chars: 0, limit: null, available: false },
   ],
 };
 

@@ -358,7 +358,8 @@ Telegram bildirishnomasini o'chirganlar — `includeOptedOut: true` bo'lmasa (ha
   reason }] }], telegram: { mode: webhook|polling|off, webhookHost, pendingUpdates, lastErrorAt, lastError },
   speech: [{ provider, free, chars, limit | null, available }] }`. `speech` — oylik hisobot ovozining shu oydagi
   sarfi, sinash tartibida (kalit sozlanmagan bo'lsa bo'sh massiv); `available: false` — provayder rad etgani
-  uchun vaqtincha chetda.
+  uchun vaqtincha chetda. `provider`: `gemini-free:<model>` (har model alohida), `azure-free`, `azure-paid`,
+  `gemini-paid`.
   Har tekshiruv 2 s bilan cheklangan: ishlamayotgan qism `down`/`null` bo'lib ko'rinadi, sahifa osilib qolmaydi.
 - `GET /admin/audit?action&page&limit` (standart 50) — eng yangisi birinchi: `{ id, action, createdAt, admin:
   { id, name } | null, target: { id, name | null } | null, telegramId, meta, ipAddress }`.

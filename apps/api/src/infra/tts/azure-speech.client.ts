@@ -2,9 +2,12 @@ import { SpeechLocale, SpeechProvider, SpeechProviderError } from './tts.types';
 
 const TIMEOUT_MS = 30_000;
 
-/** Neural voices; Azure answers in OGG/Opus itself, so no conversion is needed. */
+/**
+ * Neural voices; Azure answers in OGG/Opus itself, so no conversion is needed. Sardor: the owner
+ * found him closer to Uzbek speech than Madina.
+ */
 const VOICES: Record<SpeechLocale, { lang: string; voice: string }> = {
-  uz: { lang: 'uz-UZ', voice: 'uz-UZ-MadinaNeural' },
+  uz: { lang: 'uz-UZ', voice: 'uz-UZ-SardorNeural' },
   ru: { lang: 'ru-RU', voice: 'ru-RU-SvetlanaNeural' },
 };
 

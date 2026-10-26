@@ -22,11 +22,18 @@ const QUEUE_LABELS: Record<string, string> = {
 };
 
 const SPEECH_LABELS: Record<string, string> = {
-  'azure-free': 'Azure (bepul)',
   'gemini-free': 'Gemini (bepul)',
+  'azure-free': 'Azure (bepul)',
   'azure-paid': 'Azure (pulli)',
   'gemini-paid': 'Gemini (pulli)',
 };
+
+// Free Gemini ids carry the model ("gemini-free:gemini-3.8-flash-tts"): each model has its own quota.
+function speechLabel(provider: string): string {
+  const [account, model] = provider.split(':');
+  const label = SPEECH_LABELS[account] ?? account;
+  return model ? `${label} · ${model}` : label;
+}
 
 /** Who reads the monthly report aloud this month, in the order they are tried. */
 function Speech({ speech }: { speech: AdminSystemResponse['speech'] }) {
@@ -38,7 +45,7 @@ function Speech({ speech }: { speech: AdminSystemResponse['speech'] }) {
       {speech.map((s) => (
         <li key={s.provider} className="flex items-center justify-between gap-3 py-2.5 text-[14px]">
           <span className="flex items-center gap-2 font-medium">
-            {SPEECH_LABELS[s.provider] ?? s.provider}
+            {speechLabel(s.provider)}
             {!s.available && <Health ok={false} label="Dam olmoqda" />}
           </span>
           <span className="tabular-nums text-text-secondary">
