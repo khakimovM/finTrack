@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { formatDate, formatDayMonth, formatRange, MONTHS, WEEKDAYS_SHORT, weekdayIndex } from '../../lib/format';
+import { formatDate, formatDayMonth, formatRange, monthStandaloneNames, weekdayIndex, weekdayShortNames } from '../../lib/format';
 import { Button } from './Button';
 
 export interface DateRange {
@@ -80,7 +80,7 @@ export function RangePicker({ value, onApply, onCancel, max, size = 'md', classN
           <ChevronLeft className="h-4 w-4" aria-hidden />
         </button>
         <span className="text-[14px] font-semibold capitalize" aria-live="polite">
-          {MONTHS[view.m - 1]} {view.y}
+          {monthStandaloneNames()[view.m - 1]} {view.y}
         </span>
         <button
           type="button"
@@ -93,7 +93,7 @@ export function RangePicker({ value, onApply, onCancel, max, size = 'md', classN
         </button>
       </div>
       <div className="grid grid-cols-7 gap-y-0.5 text-center" role="group" aria-label="Kalendar">
-        {WEEKDAYS_SHORT.map((day) => (
+        {weekdayShortNames().map((day) => (
           <span key={day} className="pb-1 text-[12px] font-medium text-text-muted">
             {day}
           </span>

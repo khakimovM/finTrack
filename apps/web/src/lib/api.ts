@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ADMIN_TOKEN_HEADER } from '@fintrack/shared';
 import { useAuthStore } from '../stores/authStore';
 import { adminMiniAppToken } from './adminMiniApp';
+import { currentLocale } from './i18n';
 import { resetSessionCache } from './queryClient';
 import {
   exchangeInitData,
@@ -24,9 +25,12 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = miniAppAccessToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const toAdmin = config.url?.startsWith('/admin/') ?? false;
   // The admin panel opened from the bot: its session goes only to the admin API.
   const adminToken = adminMiniAppToken();
-  if (adminToken && config.url?.startsWith('/admin/')) config.headers[ADMIN_TOKEN_HEADER] = adminToken;
+  if (adminToken && toAdmin) config.headers[ADMIN_TOKEN_HEADER] = adminToken;
+  // The API writes its error messages in this language; the admin panel stays Uzbek.
+  config.headers['Accept-Language'] = toAdmin ? 'uz' : currentLocale();
   return config;
 });
 

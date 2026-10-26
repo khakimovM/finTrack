@@ -1,6 +1,15 @@
 import type { StatsTimeseriesItem, TimeseriesGroupBy, TransactionResponse } from '@fintrack/shared';
 import type { PeriodPreset } from '../../stores/periodStore';
-import { formatDayMonth, formatShortDate, MONTHS, MONTHS_SHORT, WEEKDAYS, WEEKDAYS_SHORT, weekdayIndex } from '../../lib/format';
+import {
+  capitalise,
+  formatDayMonth,
+  formatShortDate,
+  monthShortStandaloneNames,
+  monthStandaloneNames,
+  weekdayIndex,
+  weekdayNames,
+  weekdayShortNames,
+} from '../../lib/format';
 import { tiyinToChartNumber } from '../../lib/money';
 import type { TrendPoint } from '../../components/charts/AreaTrend';
 
@@ -103,12 +112,12 @@ export function flowPoints(
         ({ label, title } = weekLabels(item.bucket, range.from, range.to));
       } else if (groupBy === 'month' || groupBy === 'year') {
         const m = month(item.bucket);
-        label = MONTHS_SHORT[m - 1].charAt(0).toUpperCase() + MONTHS_SHORT[m - 1].slice(1);
-        title = `${MONTHS[m - 1].charAt(0).toUpperCase()}${MONTHS[m - 1].slice(1)} ${item.bucket.slice(0, 4)}`;
+        label = capitalise(monthShortStandaloneNames()[m - 1]);
+        title = `${capitalise(monthStandaloneNames()[m - 1])} ${item.bucket.slice(0, 4)}`;
       } else {
         const weekday = weekdayIndex(item.bucket);
-        label = range.preset === 'this_week' ? WEEKDAYS_SHORT[weekday] : formatShortDate(item.bucket);
-        title = `${formatDayMonth(item.bucket)}, ${WEEKDAYS[weekday]}`;
+        label = range.preset === 'this_week' ? weekdayShortNames()[weekday] : formatShortDate(item.bucket);
+        title = `${formatDayMonth(item.bucket)}, ${weekdayNames()[weekday]}`;
       }
       return { label, title, income: tiyinToChartNumber(item.income), expense: tiyinToChartNumber(item.expense) };
     });

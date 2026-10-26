@@ -138,4 +138,30 @@ describe('AllExceptionsFilter', () => {
       }),
     );
   });
+  describe('the language of the message', () => {
+    const hostWith = (acceptLanguage?: string) =>
+      ({
+        switchToHttp: () => ({
+          getResponse: () => ({ status: mockStatus }),
+          getRequest: () => ({ id: 'req-1', method: 'POST', url: '/x', headers: acceptLanguage ? { 'accept-language': acceptLanguage } : {} }),
+        }),
+      }) as unknown as ArgumentsHost;
+    const sentError = () => (mockSend.mock.calls[0][0] as { error: { code: string; message: string } }).error;
+
+    it('answers a Russian request with the shared Russian text of the code', () => {
+      filter.catch(new DomainException('Hisobda mablag‘ yetarli emas', 'INSUFFICIENT_BALANCE'), hostWith('ru-RU,ru;q=0.9'));
+      expect(sentError()).toEqual({ code: 'INSUFFICIENT_BALANCE', message: 'На счёте недостаточно средств' });
+    });
+
+    it('keeps the thrown Uzbek message for Uzbek, for no header, and for a code without a Russian text', () => {
+      filter.catch(new NotFoundDomainException('Hisob topilmadi'), hostWith('uz'));
+      expect(sentError().message).toBe('Hisob topilmadi');
+      mockSend.mockClear();
+      filter.catch(new NotFoundDomainException('Hisob topilmadi'), hostWith());
+      expect(sentError().message).toBe('Hisob topilmadi');
+      mockSend.mockClear();
+      filter.catch(new DomainException('Avval sinab ko‘ring', 'BROADCAST_NOT_TESTED'), hostWith('ru'));
+      expect(sentError().message).toBe('Avval sinab ko‘ring');
+    });
+  });
 });

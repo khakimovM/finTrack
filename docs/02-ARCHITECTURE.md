@@ -95,6 +95,15 @@ apps/web/src/
 └── styles/
 ```
 
+**Tillar (uz, ru).** Kutubxonasiz, tiplangan lug'atlar:
+- **Asosiy lug'at.** `lib/i18n/uz.ts` asosiy lug'at. `ru.ts` uning `Dict` tipiga yoziladi, shuning uchun yetishmagan kalitni kompilyator ushlaydi.
+- **Matn olish.** Komponentlarda `useT()`, React'dan tashqarida `t()` / `currentLocale()`.
+- **Til qayerda saqlanadi.** Til `stores/localeStore.ts` da va `localStorage` da turadi. Kirgan foydalanuvchida `user.locale` ham hisobga olinadi.
+- **Til almashganda** butun router qayta chiziladi: sana va summalar render paytida yoziladi.
+- **Umumiy jadvallar.** Oy va hafta kunlari nomlari, valyuta so'zi, qisqa birliklar, `plural()` va xato kodlarining matni (`ERROR_TEXT`) `packages/shared/src/i18n/` da. Ularni web ham, bot ham ishlatadi.
+- **Admin panel** har doim o'zbekcha.
+- **Rus tili hozircha yashirin.** `RUSSIAN_READY` (`lib/i18n/index.ts`) hamma sahifa tarjima qilinguncha `false`. Shu vaqtgacha til tanlagich faqat dev serverda ko'rinadi.
+
 ## Ma'lumot oqimi
 
 ```

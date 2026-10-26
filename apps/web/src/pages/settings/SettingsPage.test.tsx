@@ -8,6 +8,7 @@ import { ok, server } from '../../test/server';
 import { user } from '../../test/fixtures';
 import { useAuthStore } from '../../stores/authStore';
 import { maskIp } from '../../features/settings/components/SecuritySections';
+import { useLocaleStore } from '../../stores/localeStore';
 
 const sessions = [
   { id: 's1', userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/130.0', ipAddress: '84.54.12.7', createdAt: '', lastUsedAt: '2026-10-05T09:00:00.000Z', expiresAt: '', isCurrent: true },
@@ -39,6 +40,20 @@ beforeEach(() => useAuthStore.setState({ user: user({ name: 'Aziz Karimov', tele
 afterEach(() => useAuthStore.setState({ user: null }));
 
 describe('SettingsPage', () => {
+  it('switches the language on this device; the account keeps Uzbek until Russian is ready', async () => {
+    const calls = serve();
+    renderWithProviders(<SettingsPage />);
+
+    const languages = screen.getByRole('radiogroup', { name: 'Til' });
+    expect(within(languages).getByRole('radio', { name: 'O‘zbekcha' }).getAttribute('aria-checked')).toBe('true');
+    await userEvent.click(within(languages).getByRole('radio', { name: 'Русский' }));
+
+    expect(useLocaleStore.getState().locale).toBe('ru');
+    expect(document.documentElement.lang).toBe('ru');
+    expect(await screen.findByRole('radiogroup', { name: 'Язык' })).toBeTruthy();
+    expect(calls.patches).toEqual([]);
+  });
+
   it('saves the profile only when it changed and is valid', async () => {
     const calls = serve();
     renderWithProviders(<SettingsPage />);

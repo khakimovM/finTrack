@@ -39,7 +39,11 @@ Sxemalarning manbasi: `packages/shared/src/schemas/*` (Zod), hujjat ular bilan m
   "meta": { "requestId": "01J9...", "timestamp": "2026-08-29T10:00:00.000Z" }
 }
 ```
-`message` — foydalanuvchiga ko'rsatish mumkin bo'lgan o'zbekcha matn; stack trace hech qachon qaytmaydi.
+`message` — foydalanuvchiga ko'rsatish mumkin bo'lgan matn; stack trace hech qachon qaytmaydi.
+Til `Accept-Language` dan olinadi: `ru` bo'lsa kodning ruscha matni (`packages/shared/src/i18n/errors.ts`,
+`ERROR_TEXT`), boshqa hollarda o'zbekcha. Lug'atda yo'q kodlar (admin kodlari) har doim o'zbekcha.
+`details.issues[].message` (Zod) hozircha faqat o'zbekcha. Web har bir so'rovda o'z tilini yuboradi,
+admin API'ga esa `uz`.
 
 ## Xato kodlari
 

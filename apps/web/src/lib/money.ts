@@ -1,10 +1,12 @@
-import { TIYIN_PER_SOM } from '@fintrack/shared';
+import { AMOUNT_UNITS, CURRENCY_WORD, TIYIN_PER_SOM } from '@fintrack/shared';
+import { currentLocale } from './i18n';
 
 /** No-break space: an amount never wraps between its digits and "so‘m". */
 export const NBSP = String.fromCharCode(0x00a0);
 /** Typographic minus (U+2212), the same width as "+". */
 export const MINUS = String.fromCharCode(0x2212);
-export const CURRENCY = 'so‘m';
+/** "so‘m", "сум". */
+export const currencyWord = () => CURRENCY_WORD[currentLocale()];
 
 export type AmountTone = 'income' | 'expense' | 'transfer' | 'debt' | 'adjustment' | 'neutral';
 
@@ -39,7 +41,7 @@ export function formatAmount(
   else if (sign === 'auto') prefix = value < 0n ? MINUS : value > 0n ? '+' : '';
   // Balances: a minus when below zero, nothing otherwise.
   else if (sign === 'negative') prefix = value < 0n ? MINUS : '';
-  return `${prefix}${formatAmountNumber(value)}${currency ? `${NBSP}${CURRENCY}` : ''}`;
+  return `${prefix}${formatAmountNumber(value)}${currency ? `${NBSP}${currencyWord()}` : ''}`;
 }
 
 /** How a ledger entry is shown: sign plus colour. Debt and transfer amounts carry no sign. */
@@ -85,13 +87,14 @@ function oneDecimal(value: number): string {
   return String(rounded).replace('.', ',');
 }
 
-/** Chart axis / donut centre form, from so‘m: "1,5 mln", "250 ming", "2 mlrd", "800". */
+/** Chart axis / donut centre form, from so‘m: "1,5 mln", "250 ming", "2 mlrd", "800"; "1,5 млн" in Russian. */
 export function shortSom(som: number): string {
   const abs = Math.abs(som);
   const sign = som < 0 ? MINUS : '';
-  if (abs >= 1_000_000_000) return `${sign}${oneDecimal(abs / 1_000_000_000)} mlrd`;
-  if (abs >= 1_000_000) return `${sign}${oneDecimal(abs / 1_000_000)} mln`;
-  if (abs >= 1_000) return `${sign}${oneDecimal(abs / 1_000)} ming`;
+  const unit = AMOUNT_UNITS[currentLocale()];
+  if (abs >= 1_000_000_000) return `${sign}${oneDecimal(abs / 1_000_000_000)} ${unit.billion}`;
+  if (abs >= 1_000_000) return `${sign}${oneDecimal(abs / 1_000_000)} ${unit.million}`;
+  if (abs >= 1_000) return `${sign}${oneDecimal(abs / 1_000)} ${unit.thousand}`;
   return `${sign}${Math.round(abs)}`;
 }
 

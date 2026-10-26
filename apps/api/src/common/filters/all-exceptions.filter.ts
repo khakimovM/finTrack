@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { errorText, localeFromAcceptLanguage } from '@fintrack/shared';
 import { Prisma } from '@prisma/client';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { ZodValidationException } from 'nestjs-zod';
@@ -55,12 +56,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const stack = exception instanceof Error ? exception.stack : String(exception);
       this.logger.error(`[${requestId}] ${request?.method} ${request?.url} failed`, stack);
     }
+    // Uzbek keeps the thrown message (often more specific); Russian gets the shared text of the
+    // code, and the Uzbek message where the code has none (admin-only codes).
+    const locale = localeFromAcceptLanguage(request?.headers?.['accept-language']);
+    const message = (locale === 'ru' && errorText('ru', mapped.code)) || mapped.message;
 
     response.status(mapped.status).send({
       success: false,
       error: {
         code: mapped.code,
-        message: mapped.message,
+        message,
         ...(mapped.details ? { details: mapped.details } : {}),
       },
       meta: { requestId, timestamp: new Date().toISOString() },

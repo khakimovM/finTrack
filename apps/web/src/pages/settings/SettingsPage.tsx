@@ -11,6 +11,8 @@ import {
   SettingsCard,
 } from '../../features/settings/components/ProfileSection';
 import { DangerZoneSection, SessionsSection, TelegramSection } from '../../features/settings/components/SecuritySections';
+import { LanguageSection } from '../../features/settings/components/LanguageSection';
+import { LANGUAGE_SWITCH_VISIBLE } from '../../lib/i18n';
 
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user);
@@ -35,6 +37,7 @@ export function SettingsPage() {
         <>
           <ProfileSection user={user} />
           <PreferencesSection user={user} />
+          {LANGUAGE_SWITCH_VISIBLE && <LanguageSection />}
           {/* Inside Telegram the theme follows the Telegram app. */}
           {!inMiniApp && <AppearanceSection />}
           <TelegramSection user={user} />

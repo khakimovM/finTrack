@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { useLocaleStore } from '../stores/localeStore';
 import { formatAmount, formatAmountNumber, MINUS, NBSP, shortMoney, shortSom, signOf, toneOf } from './money';
 
 const nb = (text: string) => text.replace(/ /g, NBSP);
@@ -40,5 +41,15 @@ describe('short chart labels', () => {
 
   it('reads tiyin strings from the API', () => {
     expect(shortMoney('638000000')).toBe('6,4 mln');
+  });
+});
+
+describe('amounts in Russian', () => {
+  it('writes сум and тыс. / млн / млрд', () => {
+    useLocaleStore.setState({ locale: 'ru' });
+    expect(formatAmount('970000000', { sign: '+' })).toBe(nb('+9 700 000 сум'));
+    expect(shortSom(250_000)).toBe('250 тыс.');
+    expect(shortSom(1_500_000)).toBe('1,5 млн');
+    expect(shortSom(2_000_000_000)).toBe('2 млрд');
   });
 });

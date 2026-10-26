@@ -1,5 +1,5 @@
 import { AdminChannel, addDays, formatIsoDate, parseIsoDate } from '@fintrack/shared';
-import { WEEKDAYS_SHORT, formatDayMonth } from '../../../lib/format';
+import { formatDayMonth, weekdayShortNames } from '../../../lib/format';
 import { cn } from '../../../lib/utils';
 import { channelsText } from './UserBits';
 
@@ -32,7 +32,7 @@ export function ActivityCalendar({ activity, today }: { activity: Array<{ day: s
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-1" role="img" aria-label={`So‘nggi 90 kundan ${activeDays} kunida faol`}>
         <div className="flex flex-col gap-[3px] pr-0.5 text-[10px] leading-[14px] text-text-muted" aria-hidden>
-          {WEEKDAYS_SHORT.map((d, i) => (
+          {weekdayShortNames().map((d, i) => (
             <span key={d} className={cn('h-[14px]', i % 2 === 1 && 'invisible')}>
               {d}
             </span>

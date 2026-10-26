@@ -11,6 +11,7 @@ export * from './money';
 export * from './date';
 export * from './number-words';
 export * from './recurrence';
+export * from './i18n';
 export * from './schemas/auth';
 export * from './schemas/admin';
 export * from './schemas/admin-manage';
