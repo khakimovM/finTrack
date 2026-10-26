@@ -72,7 +72,7 @@ export const envSchema = z.object({
   /** Tried in order; each model has its own free-tier quota. Unset = the built-in chain. */
   GEMINI_MODELS: z
     .string()
-    .regex(/^[a-z0-9.-]+(s*,s*[a-z0-9.-]+)*$/, 'GEMINI_MODELS: comma-separated model ids')
+    .regex(/^[a-z0-9.-]+(\s*,\s*[a-z0-9.-]+)*$/, 'GEMINI_MODELS: comma-separated model ids')
     .optional(),
   /** Fallback speech-to-text (Groq Whisper) when Gemini is out of quota. */
   GROQ_API_KEY: z.string().min(20, 'GROQ_API_KEY looks too short').optional(),
@@ -80,7 +80,7 @@ export const envSchema = z.object({
   /** Optional paid text extractor. */
   ANTHROPIC_API_KEY: z.string().min(20, 'ANTHROPIC_API_KEY looks too short').optional(),
   ANTHROPIC_MODEL: z.string().regex(/^[a-z0-9.-]+$/, 'ANTHROPIC_MODEL: a model id').default('claude-opus-5'),
-  /** Monthly report read aloud: Azure Speech free tier (F0) first. */
+  /** Monthly report read aloud: Azure Speech free tier (F0), after the free Gemini models. */
   AZURE_SPEECH_KEY: z.string().trim().min(20, 'AZURE_SPEECH_KEY looks too short').optional(),
   // The portal shows "West Europe" in one place and "westeurope" in another: both are taken.
   AZURE_SPEECH_REGION: z
@@ -90,8 +90,11 @@ export const envSchema = z.object({
     .optional(),
   /** The F0 allowance; it is left a little before it runs out. */
   AZURE_TTS_FREE_CHARS: z.coerce.number().int().positive().default(500_000),
-  /** Speech model used with GEMINI_API_KEY when Azure is spent. */
-  GEMINI_TTS_MODEL: z.string().regex(/^[a-z0-9.-]+$/, 'GEMINI_TTS_MODEL: a model id').optional(),
+  /** Speech models tried in order with GEMINI_API_KEY, before Azure. Unset = the built-in pair. */
+  GEMINI_TTS_MODELS: z
+    .string()
+    .regex(/^[a-z0-9.-]+(\s*,\s*[a-z0-9.-]+)*$/, 'GEMINI_TTS_MODELS: comma-separated model ids')
+    .optional(),
   /** The paid fallback once the free ones are spent; off unless set. */
   TTS_PAID_PROVIDER: z.enum(['azure', 'gemini', 'off']).default('off'),
   TTS_PAID_KEY: z.string().min(20, 'TTS_PAID_KEY looks too short').optional(),

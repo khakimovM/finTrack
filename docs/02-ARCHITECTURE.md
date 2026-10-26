@@ -33,9 +33,12 @@ Yon xizmatlar:
 - `NotificationService` — byudjet/qarz hodisalari
 - BullMQ workerlar — takrorlanuvchi tranzaksiyalar, muddati o'tgan qarz tekshiruvi, kunlik xulosa va
   eslatmalar, oylik hisobot (oyning oxirgi kuni 21:00, cron `0 21 L * *`)
-- `TtsService` (`infra/tts/`) — oylik hisobotning ovozi: Azure F0 (bepul) → Gemini (bepul kalit) →
-  pulli (standart o'chiq). Har provayderning oylik belgisi Redis'da sanaladi (bepul limitning 95% i),
-  rad etgani bir muddat chetga qo'yiladi. Gemini WAV/PCM qaytaradi — `opusenc` (Docker image'dagi `opus-tools`, ~1 MB)
+- `TtsService` (`infra/tts/`) — oylik hisobotning ovozi, egasi tanlagan tartibda (2026-10-26):
+  Gemini `gemini-3.8-flash-tts` → `gemini-3.8-flash-lite-tts` (ikkalasi bepul kalit, Kore ovozi, "Toshkentlik
+  o'zbekdek, chet el aksentisiz o'qi" ko'rsatmasi bilan; har modelning o'z kunlik limiti) → Azure F0
+  (`uz-UZ-SardorNeural`, oyiga 500 000 belgi) → pulli (standart o'chiq). Har provayderning oylik belgisi
+  Redis'da sanaladi (bepul limitning 95% i), rad etgani bir muddat chetga qo'yiladi (Gemini'ning kuni
+  tugagani — 24 soat). Gemini WAV/PCM qaytaradi — `opusenc` (Docker image'dagi `opus-tools`, ~1 MB)
   OGG/Opus'ga o'tkazadi. Hech biri ishlamasa hisobot faqat matn bo'lib ketadi.
 
 ## Backend papka strukturasi

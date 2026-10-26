@@ -61,6 +61,12 @@ describe('env.validation edge cases', () => {
     expect(() => validateEnv({ ...base, AZURE_SPEECH_REGION: 'west-europe' })).toThrow(/AZURE_SPEECH_REGION/);
   });
 
+  it('takes model lists with or without spaces after the commas', () => {
+    const lists = { GEMINI_MODELS: 'gemini-a, gemini-b', GEMINI_TTS_MODELS: 'gemini-3.8-flash-tts,gemini-3.8-flash-lite-tts' };
+    expect(validateEnv({ ...base, ...lists })).toMatchObject(lists);
+    expect(() => validateEnv({ ...base, GEMINI_TTS_MODELS: 'gemini-a;gemini-b' })).toThrow(/GEMINI_TTS_MODELS/);
+  });
+
   it('rejects an unknown APP_TIMEZONE', () => {
     expect(() => validateEnv({ ...base, APP_TIMEZONE: 'Mars/Olympus' })).toThrow(/APP_TIMEZONE/);
   });

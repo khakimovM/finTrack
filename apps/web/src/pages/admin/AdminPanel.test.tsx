@@ -156,6 +156,7 @@ describe('Admin panel pages', () => {
     expect(screen.getByText('Forbidden: bot was blocked')).toBeTruthy();
     expect(screen.getByText('O‘qib bo‘lmadi')).toBeTruthy();
     expect(screen.getByText('12 400 / 500 000 belgi')).toBeTruthy();
+    expect(screen.getByText('Gemini (bepul) · gemini-3.8-flash-tts')).toBeTruthy();
     expect(screen.getByText('Dam olmoqda')).toBeTruthy();
   });
 

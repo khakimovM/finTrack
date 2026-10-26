@@ -1,5 +1,7 @@
+import { ConfigService } from '@nestjs/config';
 import { AzureSpeechClient, uzbekForSpeech } from '../azure-speech.client';
-import { GeminiSpeechClient, rawAudioOf } from '../gemini-speech.client';
+import { GeminiSpeechClient, plainApostrophes, rawAudioOf, speechPrompt } from '../gemini-speech.client';
+import { speechProvidersFrom } from '../tts.module';
 import { SpeechProviderError } from '../tts.types';
 
 function fakeFetch(response: Response) {
@@ -32,7 +34,7 @@ describe('AzureSpeechClient', () => {
     });
     expect(init?.body).toBe(
       '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="uz-UZ">' +
-        '<voice name="uz-UZ-MadinaNeural">Boʻsh &lt;emas&gt; &amp; toʻgʻri</voice></speak>',
+        '<voice name="uz-UZ-SardorNeural">Boʻsh &lt;emas&gt; &amp; toʻgʻri</voice></speak>',
     );
     expect(client.minIntervalMs).toBe(3_100);
   });
@@ -68,6 +70,20 @@ describe('GeminiSpeechClient', () => {
     expect(encode).toHaveBeenCalledWith(Buffer.from('pcm'), { format: 'pcm', sampleRate: 24_000 });
   });
 
+  it('asks for a native Tashkent accent, with o‘ and g‘ written as the chosen sample had them', async () => {
+    const fetch = fakeFetch(audioAnswer('audio/wav'));
+    const client = new GeminiSpeechClient(options, fetch as unknown as typeof globalThis.fetch, jest.fn(async () => Buffer.from('OggS')));
+
+    await client.synthesize('To‘g‘ri, oʻn ming so‘m.', 'uz');
+    const sent = JSON.parse(String(fetch.mock.calls[0][1]?.body)) as { contents: Array<{ parts: Array<{ text: string }> }> };
+    const [delivery, text] = sent.contents[0].parts[0].text.split('\n\n');
+    expect(delivery).toMatch(/^Read the following Uzbek text aloud as a native Uzbek speaker from Tashkent/);
+    expect(delivery).toContain('no foreign accent');
+    expect(text).toBe("To'g'ri, o'n ming so'm.");
+    expect(speechPrompt('Привет', 'ru')).toMatch(/^Read the following Russian text[\s\S]*\n\nПривет$/);
+    expect(plainApostrophes('gʻ g’ g‘ g` gʼ')).toBe("g' g' g' g' g'");
+  });
+
   it('tells a rate limit (with Google’s retry delay), a refused key and an answer without audio apart', async () => {
     const answer = (response: Response) =>
       new GeminiSpeechClient(options, fakeFetch(response) as unknown as typeof fetch, jest.fn());
@@ -76,7 +92,23 @@ describe('GeminiSpeechClient', () => {
       { status: 429 },
     );
 
+    const spentDay = new Response(
+      JSON.stringify({
+        error: {
+          details: [
+            {
+              '@type': 'type.googleapis.com/google.rpc.QuotaFailure',
+              violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }],
+            },
+            { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '21s' },
+          ],
+        },
+      }),
+      { status: 429 },
+    );
+
     expect(await failure(answer(limited).synthesize('a', 'uz'))).toMatchObject({ reason: 'rate', retryAfterSeconds: 21 });
+    expect(await failure(answer(spentDay).synthesize('a', 'uz'))).toMatchObject({ reason: 'quota' });
     expect(await failure(answer(new Response('{}', { status: 404 })).synthesize('a', 'uz'))).toMatchObject({ reason: 'auth' });
     expect(await failure(answer(new Response('{"candidates":[]}')).synthesize('a', 'uz'))).toMatchObject({ reason: 'failed' });
   });
@@ -85,5 +117,26 @@ describe('GeminiSpeechClient', () => {
     expect(rawAudioOf('audio/L16;codec=pcm;rate=16000')).toEqual({ format: 'pcm', sampleRate: 16_000 });
     expect(rawAudioOf('audio/pcm')).toEqual({ format: 'pcm', sampleRate: 24_000 });
     expect(rawAudioOf('audio/wav')).toEqual({ format: 'wav' });
+  });
+});
+
+describe('speechProvidersFrom', () => {
+  const config = (env: Record<string, string | number>) => ({ get: (key: string) => env[key] }) as unknown as ConfigService;
+  const keys = { GEMINI_API_KEY: 'g'.repeat(39), AZURE_SPEECH_KEY: 'a'.repeat(84), AZURE_SPEECH_REGION: 'eastus' };
+
+  it('tries the voices the owner chose in their order: Gemini Flash, Gemini Flash Lite, then Azure', () => {
+    expect(speechProvidersFrom(config(keys)).map((p) => [p.id, p.free])).toEqual([
+      ['gemini-free:gemini-3.8-flash-tts', true],
+      ['gemini-free:gemini-3.8-flash-lite-tts', true],
+      ['azure-free', true],
+    ]);
+  });
+
+  it('takes the Gemini models from the settings, and the paid fallback on the cheapest one', () => {
+    const providers = speechProvidersFrom(
+      config({ ...keys, GEMINI_TTS_MODELS: ' gemini-x-tts , ', TTS_PAID_PROVIDER: 'gemini', TTS_PAID_KEY: 'p'.repeat(39) }),
+    );
+    expect(providers.map((p) => p.id)).toEqual(['gemini-free:gemini-x-tts', 'azure-free', 'gemini-paid']);
+    expect(speechProvidersFrom(config({ AZURE_SPEECH_KEY: keys.AZURE_SPEECH_KEY })).length).toBe(0);
   });
 });
