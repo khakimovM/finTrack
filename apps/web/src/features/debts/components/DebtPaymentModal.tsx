@@ -12,6 +12,7 @@ import { apiErrorCode, apiErrorToMessage } from '../../../lib/apiError';
 import { useInitOnOpen } from '../../../lib/useInitOnOpen';
 import { useAccounts } from '../../accounts/hooks/useAccounts';
 import { useCreateDebtPayment, useSettleDebt } from '../hooks/useDebts';
+import { t } from '../../../lib/i18n';
 
 export interface DebtPaymentModalProps {
   debt: DebtResponse | null;
@@ -21,8 +22,7 @@ export interface DebtPaymentModalProps {
   onClose: () => void;
 }
 
-const OVERPAID = 'To‘lov summasi qoldiq qarzdan oshib ketdi';
-const STRICT = 'Hisobda yetarli mablag‘ yo‘q (Qatʼiy rejim)';
+
 
 export function DebtPaymentModal({ debt, mode = 'pay', isOpen, onClose }: DebtPaymentModalProps) {
   const settle = mode === 'settle';
@@ -42,7 +42,7 @@ export function DebtPaymentModal({ debt, mode = 'pay', isOpen, onClose }: DebtPa
     setAccountId((accounts.find((a) => a.isDefault) ?? accounts[0])?.id ?? '');
     setAmount('');
     setDate(today);
-    setNote(settle ? 'Qarz to‘liq yopildi' : '');
+    setNote(settle ? t('debts.payment.settledNote') : '');
     setAmountError(null);
     setError(null);
   });
@@ -55,7 +55,7 @@ export function DebtPaymentModal({ debt, mode = 'pay', isOpen, onClose }: DebtPa
     event.preventDefault();
     if (!debt) return;
     setError(null);
-    if (!settle && !(/^\d+$/.test(amount) && BigInt(amount) > 0n)) return setAmountError('Summa 0 dan katta bo‘lishi kerak');
+    if (!settle && !(/^\d+$/.test(amount) && BigInt(amount) > 0n)) return setAmountError(t('transactions.form.amountError'));
     if (over) return;
     try {
       const body = { accountId, paidAt: date, note: note.trim() || undefined };
@@ -64,8 +64,8 @@ export function DebtPaymentModal({ debt, mode = 'pay', isOpen, onClose }: DebtPa
       onClose();
     } catch (err) {
       const code = apiErrorCode(err);
-      if (code === 'DEBT_OVERPAYMENT') setAmountError(OVERPAID);
-      else setError(code === 'INSUFFICIENT_BALANCE' ? STRICT : apiErrorToMessage(err));
+      if (code === 'DEBT_OVERPAYMENT') setAmountError(t('debts.payment.overpaid'));
+      else setError(code === 'INSUFFICIENT_BALANCE' ? t('transactions.form.strict') : apiErrorToMessage(err));
     }
   };
 
@@ -73,15 +73,15 @@ export function DebtPaymentModal({ debt, mode = 'pay', isOpen, onClose }: DebtPa
     <Modal
       isOpen={isOpen && debt !== null}
       onClose={onClose}
-      title={settle ? 'To‘liq yopish' : 'To‘lov kiritish'}
-      description={settle ? `Qolgan ${formatAmount(remaining)} bitta to‘lov bilan yopiladi.` : undefined}
+      title={settle ? t('debts.payment.settleTitle') : t('debts.payment.title')}
+      description={settle ? t('debts.payment.settleText', { amount: formatAmount(remaining) }) : undefined}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
-            Bekor qilish
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="debt-payment-form" loading={busy} disabled={over}>
-            {settle ? 'Yopishni tasdiqlash' : 'Saqlash'}
+            {settle ? t('debts.payment.confirmSettle') : t('common.save')}
           </Button>
         </>
       }
@@ -91,11 +91,11 @@ export function DebtPaymentModal({ debt, mode = 'pay', isOpen, onClose }: DebtPa
           <div className="flex items-center gap-2.5 rounded-md border border-border bg-surface px-3.5 py-3 text-[14px] font-semibold">
             <Handshake className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
             <span className="text-pretty">
-              {debt.personName} · Joriy qoldiq: {formatAmount(remaining)}
+              {t('debts.payment.current', { name: debt.personName, amount: formatAmount(remaining) })}
             </span>
           </div>
           <ChoiceGrid
-            label={debt.direction === 'I_LENT' ? 'Qaysi hisobga tushadi' : 'Qaysi hisobdan to‘lanadi'}
+            label={debt.direction === 'I_LENT' ? t('debts.payment.intoAccount') : t('debts.payment.fromAccount')}
             columns={2}
             phoneColumns={1}
             value={accountId}
@@ -110,7 +110,7 @@ export function DebtPaymentModal({ debt, mode = 'pay', isOpen, onClose }: DebtPa
           />
           {!settle && (
             <MoneyInput
-              label="To‘lov summasi"
+              label={t('debts.payment.amount')}
               size="md"
               autoFocus
               value={amount}
@@ -118,14 +118,14 @@ export function DebtPaymentModal({ debt, mode = 'pay', isOpen, onClose }: DebtPa
                 setAmount(value);
                 setAmountError(null);
               }}
-              error={over ? OVERPAID : amountError ?? undefined}
-              chips={[{ label: `Hammasi · ${formatAmountNumber(remaining)}`, value: remaining.toString() }]}
+              error={over ? t('debts.payment.overpaid') : amountError ?? undefined}
+              chips={[{ label: t('debts.payment.all', { amount: formatAmountNumber(remaining) }), value: remaining.toString() }]}
             />
           )}
-          <DatePicker label="Sana" value={date} onChange={setDate} chips={['today', 'yesterday']} max={today} today={today} />
+          <DatePicker label={t('transactions.form.date')} value={date} onChange={setDate} chips={['today', 'yesterday']} max={today} today={today} />
           <Textarea
-            label="Izoh"
-            placeholder={settle ? undefined : 'Masalan: Qisman qaytardi'}
+            label={t('debts.form.note')}
+            placeholder={settle ? undefined : t('debts.payment.notePlaceholder')}
             maxLength={500}
             value={note}
             onChange={(e) => setNote(e.target.value)}

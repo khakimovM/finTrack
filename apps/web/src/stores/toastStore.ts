@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { EXIT_MS, prefersReducedMotion } from '../lib/motion';
+import { t } from '../lib/i18n';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -66,7 +67,7 @@ export const toast = {
         type: 'success',
         message,
         action: {
-          label: 'Qaytarish',
+          label: t('common.undo'),
           onClick: () => {
             useToastStore.getState().removeToast(id);
             onUndo();

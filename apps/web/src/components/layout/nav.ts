@@ -11,10 +11,11 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
+import type { TextKey } from '../../lib/i18n';
 
 export interface NavItem {
   to: string;
-  label: string;
+  label: TextKey;
   icon: LucideIcon;
   /** Only an exact match is active (the home route is a prefix of everything). */
   end?: boolean;
@@ -23,7 +24,7 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  label?: string;
+  label?: TextKey;
   items: NavItem[];
 }
 
@@ -31,48 +32,48 @@ export interface NavGroup {
 export const NAV_GROUPS: NavGroup[] = [
   {
     items: [
-      { to: '/app', label: 'Bosh sahifa', icon: House, end: true },
-      { to: '/app/transactions', label: 'Tranzaksiyalar', icon: ArrowUpDown },
+      { to: '/app', label: 'nav.home', icon: House, end: true },
+      { to: '/app/transactions', label: 'nav.transactions', icon: ArrowUpDown },
     ],
   },
   {
-    label: 'Pul',
+    label: 'nav.groupMoney',
     items: [
-      { to: '/app/accounts', label: 'Hisoblar', icon: Wallet },
-      { to: '/app/debts', label: 'Qarzlar', icon: Users },
-      { to: '/app/recurring', label: 'Takroriy to‘lovlar', icon: Repeat },
+      { to: '/app/accounts', label: 'nav.accounts', icon: Wallet },
+      { to: '/app/debts', label: 'nav.debts', icon: Users },
+      { to: '/app/recurring', label: 'nav.recurring', icon: Repeat },
     ],
   },
   {
-    label: 'Reja va tahlil',
+    label: 'nav.groupPlan',
     items: [
-      { to: '/app/budgets', label: 'Byudjetlar', icon: ChartPie },
-      { to: '/app/reports', label: 'Hisobotlar', icon: ChartColumn },
+      { to: '/app/budgets', label: 'nav.budgets', icon: ChartPie },
+      { to: '/app/reports', label: 'nav.reports', icon: ChartColumn },
     ],
   },
   {
-    label: 'Sozlash',
+    label: 'nav.groupSetup',
     items: [
-      { to: '/app/categories', label: 'Kategoriyalar va teglar', icon: Tag },
-      { to: '/app/notifications', label: 'Bildirishnomalar', icon: Bell, badge: 'notifications' },
-      { to: '/app/settings', label: 'Sozlamalar', icon: SlidersHorizontal },
+      { to: '/app/categories', label: 'nav.categories', icon: Tag },
+      { to: '/app/notifications', label: 'nav.notifications', icon: Bell, badge: 'notifications' },
+      { to: '/app/settings', label: 'nav.settings', icon: SlidersHorizontal },
     ],
   },
 ];
 
 /** Phone bottom bar: two tabs, the "+" button, then Qarzlar and "Ko‘proq". */
 export const TAB_ITEMS: NavItem[] = [
-  { to: '/app', label: 'Bosh sahifa', icon: House, end: true },
-  { to: '/app/transactions', label: 'Tranzaksiyalar', icon: ArrowUpDown },
-  { to: '/app/debts', label: 'Qarzlar', icon: Users },
+  { to: '/app', label: 'nav.home', icon: House, end: true },
+  { to: '/app/transactions', label: 'nav.transactions', icon: ArrowUpDown },
+  { to: '/app/debts', label: 'nav.debts', icon: Users },
 ];
 
 /** The "Ko‘proq" sheet: everything the tab bar has no room for. */
 export const MORE_ITEMS: NavItem[] = [
-  { to: '/app/accounts', label: 'Hisoblar', icon: Wallet },
-  { to: '/app/budgets', label: 'Byudjetlar', icon: ChartPie },
-  { to: '/app/recurring', label: 'Takroriy to‘lovlar', icon: Repeat },
-  { to: '/app/reports', label: 'Hisobotlar', icon: ChartColumn },
-  { to: '/app/categories', label: 'Kategoriyalar va teglar', icon: Tag },
-  { to: '/app/settings', label: 'Sozlamalar', icon: SlidersHorizontal },
+  { to: '/app/accounts', label: 'nav.accounts', icon: Wallet },
+  { to: '/app/budgets', label: 'nav.budgets', icon: ChartPie },
+  { to: '/app/recurring', label: 'nav.recurring', icon: Repeat },
+  { to: '/app/reports', label: 'nav.reports', icon: ChartColumn },
+  { to: '/app/categories', label: 'nav.categories', icon: Tag },
+  { to: '/app/settings', label: 'nav.settings', icon: SlidersHorizontal },
 ];

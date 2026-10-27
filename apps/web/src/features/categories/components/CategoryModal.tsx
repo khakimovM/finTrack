@@ -15,12 +15,11 @@ import { useInitOnOpen } from '../../../lib/useInitOnOpen';
 import { cn } from '../../../lib/utils';
 import { toast } from '../../../stores/toastStore';
 import { useCategories, useCreateCategory, useUpdateCategory } from '../hooks/useCategories';
+import { t } from '../../../lib/i18n';
 
 export const CATEGORY_EMOJIS = ['🍔', '🛒', '☕', '🍱', '🚗', '🚕', '⛽', '🚇', '🏠', '🔑', '💡', '🎬', '🍿', '📺', '🏥', '💊', '🏋️', '👕', '📱', '🌐', '📞', '📚', '💼', '💻', '🎁', '💰', '✈️', '🐾', '🧾', '🎮'] as const;
 
-const NAME_REQUIRED = 'Kategoriya nomini kiriting';
-const NAME_TAKEN = 'Bunday nomli kategoriya allaqachon mavjud';
-const TOO_DEEP = 'Kategoriyalar faqat ikki darajali bo‘lishi mumkin';
+const nameTaken = (): string => t('categories.form.nameTaken');
 
 export interface CategoryModalProps {
   isOpen: boolean;
@@ -97,13 +96,17 @@ export function CategoryModal({ isOpen, onClose, initialCategory = null, default
       onClose();
     } catch (err) {
       const code = apiErrorCode(err);
-      if (code === 'CATEGORY_EXISTS') setError('name', { message: NAME_TAKEN });
+      if (code === 'CATEGORY_EXISTS') setError('name', { message: nameTaken() });
       else if (code === 'INVALID_CATEGORY_DEPTH') setDepthError(true);
       else toast.error(apiErrorToMessage(err));
     }
   };
 
-  const title = editing ? 'Kategoriyani tahrirlash' : defaultParentId ? 'Yangi subkategoriya' : 'Yangi kategoriya';
+  const title = editing
+    ? t('categories.form.titleEdit')
+    : defaultParentId
+      ? t('categories.form.titleNewChild')
+      : t('categories.form.titleNew');
 
   return (
     <Modal
@@ -113,21 +116,21 @@ export function CategoryModal({ isOpen, onClose, initialCategory = null, default
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={formState.isSubmitting}>
-            Bekor qilish
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="category-form" loading={formState.isSubmitting}>
-            Saqlash
+            {t('common.save')}
           </Button>
         </>
       }
     >
       <form id="category-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-[18px]" noValidate>
         <Segmented
-          aria-label="Kategoriya turi"
+          aria-label={t('categories.form.type')}
           size="lg"
           fullWidth
           locked={editing}
-          lockedHint="Tahrirlashda turini o‘zgartirib bo‘lmaydi"
+          lockedHint={t('categories.form.typeLocked')}
           value={type}
           onChange={(next) => {
             setValue('type', next);
@@ -135,8 +138,8 @@ export function CategoryModal({ isOpen, onClose, initialCategory = null, default
             setValue('icon', next === 'INCOME' ? '💰' : '🛒');
           }}
           options={[
-            { value: 'EXPENSE', label: 'Chiqim kategoriyasi', tone: 'expense' },
-            { value: 'INCOME', label: 'Kirim kategoriyasi', tone: 'income' },
+            { value: 'EXPENSE', label: t('categories.form.expense'), tone: 'expense' },
+            { value: 'INCOME', label: t('categories.form.income'), tone: 'income' },
           ]}
         />
 
@@ -146,19 +149,19 @@ export function CategoryModal({ isOpen, onClose, initialCategory = null, default
           render={({ field, fieldState }) => (
             <Input
               {...field}
-              label="Kategoriya nomi"
-              placeholder="Masalan: Bozorlik"
+              label={t('categories.form.name')}
+              placeholder={t('categories.form.namePlaceholder')}
               maxLength={50}
               showCounter
               autoFocus={!editing}
-              error={fieldState.error ? (fieldState.error.message === NAME_TAKEN ? NAME_TAKEN : NAME_REQUIRED) : undefined}
+              error={fieldState.error ? (fieldState.error.message === nameTaken() ? nameTaken() : t('categories.form.nameRequired')) : undefined}
             />
           )}
         />
 
         <div className="flex flex-col gap-1.5">
           <span id="category-parent-label" className="text-[13px] font-medium text-text-secondary">
-            Ota kategoriya (ixtiyoriy)
+            {t('categories.form.parent')}
           </span>
           <div
             role="radiogroup"
@@ -168,7 +171,7 @@ export function CategoryModal({ isOpen, onClose, initialCategory = null, default
               hasChildren && 'opacity-60',
             )}
           >
-            {[{ id: null, name: '— Asosiy —', icon: '' }, ...parents].map((option) => {
+            {[{ id: null, name: t('categories.form.noParent'), icon: '' }, ...parents].map((option) => {
               const on = (parentId ?? null) === option.id;
               const blocked = hasChildren && option.id !== null;
               return (
@@ -203,10 +206,10 @@ export function CategoryModal({ isOpen, onClose, initialCategory = null, default
           {hasChildren && (
             <span className="flex items-center gap-1.5 text-[12.5px] leading-[17px] text-text-muted">
               <Info className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              Subkategoriyasi bor kategoriyani boshqasiga ko‘chirib bo‘lmaydi
+              {t('categories.form.hasChildren')}
             </span>
           )}
-          {depthError && <FieldError>{TOO_DEEP}</FieldError>}
+          {depthError && <FieldError>{t('categories.form.tooDeep')}</FieldError>}
         </div>
 
         <Controller

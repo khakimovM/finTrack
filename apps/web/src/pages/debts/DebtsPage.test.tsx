@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import type { DebtResponse } from '@fintrack/shared';
 import { DebtsPage } from './DebtsPage';
 import { renderWithProviders } from '../../test/render';
+import { inRussian, latinLeftovers } from '../../test/russian';
 import { ok, server } from '../../test/server';
 import { account, debt } from '../../test/fixtures';
 
@@ -78,5 +79,18 @@ describe('DebtsPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'To‘lovni o‘chirish' }));
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'O‘chirish' }));
     await waitFor(() => expect(deleted).toEqual(['p1']));
+  });
+});
+
+describe('DebtsPage in Russian', () => {
+  it('leaves no Uzbek on the summary, the filters and the cards', async () => {
+    inRussian();
+    serve([ali, jasur, bank]);
+    renderWithProviders(<DebtsPage />);
+
+    expect(await screen.findByText('Сальдо')).toBeTruthy();
+    expect(screen.getByRole('article', { name: 'Bank krediti' })).toBeTruthy();
+    // Avatars show the initials of the names.
+    expect(latinLeftovers(['Jasur Karimov', 'Bank krediti', 'Ali', 'JK', 'BK', 'A'])).toEqual([]);
   });
 });

@@ -113,6 +113,9 @@ butunlay o'chiriladi. Oxirgi faol hisobni o'chirib/arxivlab bo'lmaydi.
   Faqat o'sha oyda kamida bitta INCOME/EXPENSE yozuvi borlarga; ularga o'sha kechagi kunlik xulosa
   bormaydi (hisobot uning o'rnida). Oy bo'yi yozuvi yo'qlarga xulosa odatdagidek boradi.
 - `timezone` — "bugun" shu zonada hisoblanadi (qarz muddati, takroriy to'lov, `FUTURE_DATE`).
+- `locale` (`uz` | `ru`, standart `uz`) — ilova tili; sozlamalarda tanlanadi. Ro'yxatdan o'tishda
+  Telegram tili (`ru`) yoziladi. Rus tili qo'shilganda 0012 migratsiyasi hammani `uz` ga qaytardi:
+  shu paytgacha faqat o'zbekcha ko'rganlar kutilmaganda ruschaga o'tib qolmasin.
 
 ## Telegram orqali kirish — `TelegramLoginRequest`
 

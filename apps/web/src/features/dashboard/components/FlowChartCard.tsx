@@ -8,16 +8,17 @@ import { useTransactions } from '../../transactions/hooks/useTransactions';
 import { useStatsTimeseries } from '../hooks/useDashboard';
 import { flowPoints, hourlyPoints, isFlat } from '../periods';
 import { WidgetCard, WidgetState } from './WidgetCard';
+import { t } from '../../../lib/i18n';
 
-const SERIES: TrendSeries[] = [
-  { key: 'income', label: 'Kirim', color: 'var(--income)' },
-  { key: 'expense', label: 'Chiqim', color: 'var(--expense)' },
+const flowSeries = (): TrendSeries[] => [
+  { key: 'income', label: t('common.income'), color: 'var(--income)' },
+  { key: 'expense', label: t('common.expense'), color: 'var(--expense)' },
 ];
 
 function Legend() {
   return (
     <div className="flex items-center gap-4 text-[13px] text-text-secondary">
-      {SERIES.map((s) => (
+      {flowSeries().map((s) => (
         <span key={s.key} className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: s.color }} aria-hidden />
           {s.label}
@@ -42,7 +43,7 @@ export function FlowChartCard() {
     : flowPoints(series.data?.data ?? [], groupBy, { from, to, preset }, today);
 
   return (
-    <WidgetCard title="Kirim va chiqim dinamikasi" extra={<Legend />} className="xl:col-span-7">
+    <WidgetCard title={t('dashboard.flow.title')} extra={<Legend />} className="xl:col-span-7">
       <WidgetState
         isLoading={query.isLoading}
         isError={query.isError}
@@ -52,16 +53,16 @@ export function FlowChartCard() {
         {isFlat(points, ['income', 'expense']) ? (
           <EmptyState
             variant="widget"
-            title="Ushbu davrda maʼlumot yo‘q"
-            description="Boshqa davrni tanlang yoki tranzaksiya qo‘shing."
+            title={t('dashboard.noData')}
+            description={t('dashboard.noDataText')}
             className="min-h-[220px]"
           />
         ) : (
           <div className="h-[180px] sm:h-[220px]">
             <AreaTrend
-              ariaLabel="Kirim va chiqim dinamikasi grafigi"
+              ariaLabel={t('dashboard.flow.chart')}
               data={points}
-              series={SERIES}
+              series={flowSeries()}
               height="100%"
               formatValue={(value, s) => formatAmount(BigInt(Math.round(value)) * 100n, { sign: s.key === 'income' ? '+' : '-' })}
             />

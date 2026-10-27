@@ -2,6 +2,7 @@ import * as React from 'react';
 import { ArrowDown, ArrowUp, Star, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { formatPercent } from '../../lib/format';
+import { t } from '../../lib/i18n';
 
 export type ChipTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'debt';
 
@@ -54,14 +55,14 @@ export function ChangeChip({ value, upIsGood, className }: ChangeChipProps) {
   if (value === null) {
     return (
       <Chip tone="info" size="sm" className={cn('font-semibold', className)}>
-        yangi
+        {t('ui.delta.new')}
       </Chip>
     );
   }
   if (Math.abs(value) < 0.05) {
     return (
       <Chip tone="neutral" size="sm" className={cn('font-semibold', className)}>
-        o‘zgarmadi
+        {t('ui.delta.unchanged')}
       </Chip>
     );
   }
@@ -73,7 +74,7 @@ export function ChangeChip({ value, upIsGood, className }: ChangeChipProps) {
       tone={good ? 'success' : 'danger'}
       size="sm"
       className={cn('font-semibold', className)}
-      aria-label={`${up ? 'O‘sish' : 'Kamayish'} ${formatPercent(Math.abs(value))}`}
+      aria-label={t(up ? 'ui.delta.up' : 'ui.delta.down', { value: formatPercent(Math.abs(value)) })}
     >
       <Arrow className="h-3 w-3" strokeWidth={2.6} aria-hidden />
       {formatPercent(Math.abs(value))}
@@ -104,7 +105,7 @@ export function FilterChip({ label, value, onRemove }: { label: string; value: s
       <button
         type="button"
         onClick={onRemove}
-        aria-label={`${label} filtrini olib tashlash`}
+        aria-label={t('ui.removeFilter', { label })}
         className="flex h-6 w-6 items-center justify-center rounded-full text-text-secondary hover:bg-secondary-hover focus-ring"
       >
         <X className="h-3.5 w-3.5" aria-hidden />
@@ -118,7 +119,7 @@ export function DefaultChip({ className }: { className?: string }) {
   return (
     <Chip tone="warning" size="sm" className={cn('font-semibold', className)}>
       <Star className="h-[11px] w-[11px] fill-current" aria-hidden />
-      Asosiy
+      {t('common.primary')}
     </Chip>
   );
 }
@@ -132,7 +133,7 @@ export function SystemChip({ className }: { className?: string }) {
         className,
       )}
     >
-      Standart
+      {t('common.standard')}
     </span>
   );
 }

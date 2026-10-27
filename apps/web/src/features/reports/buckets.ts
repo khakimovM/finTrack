@@ -1,5 +1,6 @@
 import { diffInDays, endOfMonth, parseIsoDate, type StatsTimeseriesItem, type TimeseriesGroupBy } from '@fintrack/shared';
 import { daysOfMonth, formatShortDate, monthNames, monthShortStandaloneNames, monthStandaloneNames } from '../../lib/format';
+import { t } from '../../lib/i18n';
 import type { Comparison, ReportPreset } from './periods';
 
 export interface Bucket {
@@ -84,7 +85,7 @@ export function bucketPlan(preset: ReportPreset, comparison: Comparison): Bucket
     groupBy: length <= 400 ? 'day' : 'month',
     buckets: edges.map(([a, b]) => ({
       label: a === b ? formatShortDate(dayOf(a)) : `${Number(dayOf(a).slice(8, 10))}–${formatShortDate(dayOf(b))}`,
-      title: a === b ? `${a + 1}-kun` : `${a + 1}–${b + 1}-kunlar`,
+      title: a === b ? t('reports.compare.day', { n: a + 1 }) : t('reports.compare.days', { from: a + 1, to: b + 1 }),
     })),
     // A previous period a few days longer (whole months: 31 days before 30) ends in the last stretch.
     indexOf: (bucket, from) => {

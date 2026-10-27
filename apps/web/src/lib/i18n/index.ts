@@ -1,15 +1,8 @@
 import { useCallback } from 'react';
-import type { AppLocale } from '@fintrack/shared';
+import { plural, type AppLocale, type PluralForms } from '@fintrack/shared';
 import { useLocaleStore } from '../../stores/localeStore';
 import { ru } from './ru';
 import { uz, type Dict } from './uz';
-
-/**
- * Russian is offered once every page is written in it; until then only the dev server shows the
- * switch, and the account's language is not applied.
- */
-export const RUSSIAN_READY = false;
-export const LANGUAGE_SWITCH_VISIBLE = RUSSIAN_READY || import.meta.env.DEV;
 
 /** Each language under its own name. */
 export const LANGUAGE_NAMES: Record<AppLocale, string> = { uz: 'O‘zbekcha', ru: 'Русский' };
@@ -17,10 +10,24 @@ export const LANGUAGE_NAMES: Record<AppLocale, string> = { uz: 'O‘zbekcha', ru
 const DICTS: Record<AppLocale, Dict> = { uz, ru };
 
 type Leaves<T, P extends string = ''> = {
-  [K in keyof T & string]: T[K] extends string ? `${P}${K}` : Leaves<T[K], `${P}${K}.`>;
+  [K in keyof T & string]: T[K] extends string
+    ? `${P}${K}`
+    : T[K] extends PluralForms
+      ? never
+      : Leaves<T[K], `${P}${K}.`>;
+}[keyof T & string];
+
+type Counted<T, P extends string = ''> = {
+  [K in keyof T & string]: T[K] extends string
+    ? never
+    : T[K] extends PluralForms
+      ? `${P}${K}`
+      : Counted<T[K], `${P}${K}.`>;
 }[keyof T & string];
 
 export type TextKey = Leaves<Dict>;
+/** A text that changes with a number ("1 запись", "5 записей"); it gets {count}. */
+export type CountKey = Counted<Dict>;
 export type TextParams = Record<string, string | number>;
 
 // The admin panel stays Uzbek whatever the user's language.
@@ -38,21 +45,39 @@ export function useLocale(): AppLocale {
   return onAdminPage() ? 'uz' : locale;
 }
 
-function lookup(dict: Dict, key: TextKey): string {
+function lookup(dict: Dict, key: string): unknown {
   let node: unknown = dict;
   for (const part of key.split('.')) node = (node as Record<string, unknown> | undefined)?.[part];
-  return typeof node === 'string' ? node : key;
+  return node;
+}
+
+function fill(text: string, params?: TextParams): string {
+  if (!params) return text;
+  return text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match));
 }
 
 /** "{name}" in the text takes params.name. */
 export function translate(locale: AppLocale, key: TextKey, params?: TextParams): string {
   const text = lookup(DICTS[locale], key);
-  if (!params) return text;
-  return text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match));
+  return typeof text === 'string' ? fill(text, params) : key;
 }
 
+export function translateCount(locale: AppLocale, key: CountKey, count: number, params?: TextParams): string {
+  const forms = lookup(DICTS[locale], key) as PluralForms | undefined;
+  if (!forms) return key;
+  return fill(plural(locale, count, forms), { count, ...params });
+}
+
+/**
+ * The router remounts when the language changes, so pages can call these while rendering;
+ * components outside it use `useT()`.
+ */
 export function t(key: TextKey, params?: TextParams): string {
   return translate(currentLocale(), key, params);
+}
+
+export function tn(key: CountKey, count: number, params?: TextParams): string {
+  return translateCount(currentLocale(), key, count, params);
 }
 
 /** `t` bound to the current language; the component re-renders when it changes. */

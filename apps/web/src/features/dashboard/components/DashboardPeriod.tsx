@@ -11,6 +11,7 @@ import { RangePicker } from '../../../components/ui/RangePicker';
 import { Sheet } from '../../../components/ui/Sheet';
 import { useDismiss } from '../../../components/ui/Popover';
 import { PERIOD_OPTIONS } from '../periods';
+import { t } from '../../../lib/i18n';
 
 /** Period segments ("Oraliq" opens a calendar) and the active range in words. */
 export function DashboardPeriod() {
@@ -44,12 +45,14 @@ export function DashboardPeriod() {
     <div ref={rootRef} className="relative flex flex-wrap items-center gap-x-4 gap-y-2.5">
       <div className="-mx-4 w-[calc(100%+32px)] overflow-x-auto px-4 scrollbar-none sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0">
         <Segmented
-          aria-label="Davr"
+          aria-label={t('dashboard.period.label')}
           value={preset}
           onChange={onChange}
-          options={PERIOD_OPTIONS.map((o) =>
-            o.value === 'custom' ? { ...o, icon: <Calendar className="h-3.5 w-3.5" aria-hidden /> } : o,
-          )}
+          options={PERIOD_OPTIONS.map((o) => ({
+            value: o.value,
+            label: t(o.label),
+            ...(o.value === 'custom' ? { icon: <Calendar className="h-3.5 w-3.5" aria-hidden /> } : {}),
+          }))}
         />
       </div>
       <span className="flex items-center gap-1.5 text-[14px] text-text-secondary">
@@ -59,7 +62,7 @@ export function DashboardPeriod() {
       {popover.mounted && (
         <div
           role="dialog"
-          aria-label="Oraliqni tanlang"
+          aria-label={t('dashboard.period.pickRange')}
           aria-hidden={popover.closing || undefined}
           className={cn(
             'absolute left-0 top-full z-40 mt-2 w-[316px] origin-top-left rounded-xl border border-border bg-popover p-3 shadow-md',
@@ -70,7 +73,7 @@ export function DashboardPeriod() {
         </div>
       )}
       {isMobile && (
-        <Sheet isOpen={pickerOpen} onClose={close} title="Oraliqni tanlang">
+        <Sheet isOpen={pickerOpen} onClose={close} title={t('dashboard.period.pickRange')}>
           <div className="pt-2">{picker}</div>
         </Sheet>
       )}

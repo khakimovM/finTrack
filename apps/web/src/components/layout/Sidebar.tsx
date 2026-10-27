@@ -8,6 +8,7 @@ import { CountBadge } from '../ui/Chip';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { NAV_GROUPS } from './nav';
 import { ModeChip, useInMiniApp, useLogout, userHandle } from './ShellParts';
+import { t } from '../../lib/i18n';
 
 interface SidebarProps {
   mode: 'full' | 'rail';
@@ -33,7 +34,7 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
         'shrink-0 py-3 pl-3 transition-[width] duration-slow ease-standard motion-reduce:transition-none',
         rail ? 'w-[84px]' : 'w-[268px]',
       )}
-      aria-label="Asosiy menyu"
+      aria-label={t('nav.mainMenu')}
     >
       <div
         className={cn(
@@ -47,7 +48,7 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
           <button
             type="button"
             onClick={onToggle}
-            aria-label={rail ? 'Menyuni yoyish' : 'Menyuni yig‘ish'}
+            aria-label={rail ? t('nav.expandMenu') : t('nav.collapseMenu')}
             className={cn(
               'flex items-center justify-center text-text-muted transition-colors duration-fast hover:bg-secondary hover:text-text focus-ring',
               rail ? 'h-9 w-11 rounded-[10px]' : 'h-8 w-8 rounded-[9px]',
@@ -62,7 +63,7 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
           {NAV_GROUPS.map((group, index) => (
             <div key={group.label ?? index} className="flex flex-col gap-0.5">
               {group.label && !rail && (
-                <span className={cn('px-3 pb-1 text-[12px] font-medium leading-4 text-text-muted', label)}>{group.label}</span>
+                <span className={cn('px-3 pb-1 text-[12px] font-medium leading-4 text-text-muted', label)}>{t(group.label)}</span>
               )}
               {group.items.map((item) => {
                 const badge = item.badge === 'notifications' ? unread : 0;
@@ -71,8 +72,8 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
                     key={item.to}
                     to={item.to}
                     end={item.end}
-                    title={rail ? item.label : undefined}
-                    aria-label={rail ? item.label : undefined}
+                    title={rail ? t(item.label) : undefined}
+                    aria-label={rail ? t(item.label) : undefined}
                     className={({ isActive }) =>
                       cn(
                         'relative flex items-center rounded-md text-[14px] transition-colors duration-fast focus-ring',
@@ -84,7 +85,7 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
                     }
                   >
                     <item.icon className={rail ? 'h-5 w-5' : 'h-[18px] w-[18px]'} aria-hidden />
-                    {!rail && <span className={cn('flex-1 truncate', label)}>{item.label}</span>}
+                    {!rail && <span className={cn('flex-1 truncate', label)}>{t(item.label)}</span>}
                     {badge > 0 &&
                       (rail ? (
                         <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-danger shadow-[0_0_0_2px_var(--card)]" aria-hidden />
@@ -108,14 +109,14 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
                     'absolute -bottom-[3px] -right-[3px] h-[18px] w-[18px] rounded-full shadow-[0_0_0_2px_var(--card)]',
                     user.strictMode ? 'bg-warning' : 'bg-input',
                   )}
-                  aria-label={user.strictMode ? 'Qatʼiy rejim' : 'Oddiy rejim'}
+                  aria-label={user.strictMode ? t('common.strictMode') : t('common.normalMode')}
                 />
               </span>
               {!inMiniApp && (
                 <button
                   type="button"
                   onClick={() => void logout()}
-                  aria-label="Chiqish"
+                  aria-label={t('nav.logout')}
                   className="flex h-9 w-11 items-center justify-center rounded-[10px] text-text-secondary hover:bg-danger-soft hover:text-danger focus-ring"
                 >
                   <LogOut className="h-[18px] w-[18px]" aria-hidden />
@@ -134,8 +135,8 @@ export function Sidebar({ mode, onToggle }: SidebarProps) {
                   <button
                     type="button"
                     onClick={() => void logout()}
-                    aria-label="Chiqish"
-                    title="Chiqish"
+                    aria-label={t('nav.logout')}
+                    title={t('nav.logout')}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-danger-soft hover:text-danger focus-ring"
                   >
                     <LogOut className="h-4 w-4" aria-hidden />

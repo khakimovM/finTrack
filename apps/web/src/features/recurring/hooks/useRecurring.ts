@@ -4,6 +4,7 @@ import { apiErrorToMessage } from '../../../lib/apiError';
 import { recurringApi } from '../recurring.api';
 import { CreateRecurringRuleInput, UpdateRecurringRuleInput } from '@fintrack/shared';
 import { invalidateAfter } from '../../../lib/invalidation';
+import { t } from '../../../lib/i18n';
 
 export const recurringKeys = {
   all: ['recurring'] as const,
@@ -25,7 +26,7 @@ export function useCreateRecurringRule() {
   return useMutation({
     mutationFn: (data: CreateRecurringRuleInput) => recurringApi.create(data),
     onSuccess: () => {
-      toast.success('Qoida yaratildi');
+      toast.success(t('recurring.toast.created'));
       // A rule due today is booked at once.
       void invalidateAfter(queryClient, 'recurringRun');
     },
@@ -37,7 +38,7 @@ export function useUpdateRecurringRule() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateRecurringRuleInput }) => recurringApi.update(id, data),
     onSuccess: () => {
-      toast.success('Qoida saqlandi');
+      toast.success(t('recurring.toast.saved'));
       void invalidateAfter(queryClient, 'recurring');
     },
   });
@@ -48,7 +49,7 @@ export function usePauseRecurringRule() {
   return useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => recurringApi.update(id, { isActive }),
     onSuccess: (_, { isActive }) => {
-      toast.success(isActive ? 'Qoida davom ettirildi' : 'Qoida to‘xtatildi');
+      toast.success(isActive ? t('recurring.toast.resumed') : t('recurring.toast.paused'));
       // Resuming may book today's payment.
       void invalidateAfter(queryClient, isActive ? 'recurringRun' : 'recurring');
     },
@@ -61,7 +62,7 @@ export function useDeleteRecurringRule() {
   return useMutation({
     mutationFn: (id: string) => recurringApi.delete(id),
     onSuccess: () => {
-      toast.success('Qoida o‘chirildi');
+      toast.success(t('recurring.toast.deleted'));
       void invalidateAfter(queryClient, 'recurring');
     },
     onError: (err: unknown) => toast.error(apiErrorToMessage(err)),
@@ -73,7 +74,7 @@ export function useRunNowRecurringRule() {
   return useMutation({
     mutationFn: (id: string) => recurringApi.runNow(id),
     onSuccess: () => {
-      toast.success('To‘lov yozildi');
+      toast.success(t('recurring.toast.booked'));
       void invalidateAfter(queryClient, 'recurringRun');
     },
     onError: (err: unknown) => toast.error(apiErrorToMessage(err)),

@@ -2,9 +2,10 @@ import { CircleCheck, Info, TriangleAlert } from 'lucide-react';
 import type { StatsSummaryResponse } from '@fintrack/shared';
 import { cn } from '../../../lib/utils';
 import { formatPercent } from '../../../lib/format';
-import { formatAmountNumber, NBSP } from '../../../lib/money';
+import { currencyWord, formatAmountNumber, NBSP } from '../../../lib/money';
 import { Progress } from '../../../components/ui/Progress';
 import { Skeleton } from '../../../components/ui/Skeleton';
+import { t } from '../../../lib/i18n';
 
 /** Expense as a share of income, in one decimal (basis points keep it off floats). */
 export function expenseRatio(income: bigint, expense: bigint): number | null {
@@ -37,17 +38,17 @@ export function ExpenseRatioCard({ summary, isLoading }: { summary?: StatsSummar
   const Icon = zone ? zone.icon : Info;
   const message =
     ratio === null
-      ? 'Bu davrda kirim yozilmagan.'
+      ? t('dashboard.ratio.noIncome')
       : ratio <= 70
-        ? 'Ajoyib! Xarajatlaringiz meʼyorida.'
+        ? t('dashboard.ratio.good')
         : ratio <= 100
-          ? 'Xarajatlaringiz daromadingizning 70% idan oshdi.'
-          : `Bu davrda daromadingizdan ${formatPercent(ratio - 100)} ko‘p sarfladingiz!`;
+          ? t('dashboard.ratio.warn')
+          : t('dashboard.ratio.over', { percent: formatPercent(ratio - 100) });
 
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:px-6 sm:py-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[16px] font-semibold leading-6">Kirimga nisbatan xarajat</h2>
+        <h2 className="text-[16px] font-semibold leading-6">{t('dashboard.ratio.title')}</h2>
         <span className={cn('text-[24px] font-semibold leading-[30px]', zone ? zone.colour : 'text-text-muted')}>
           {ratio === null ? '—' : formatPercent(ratio)}
         </span>
@@ -58,7 +59,7 @@ export function ExpenseRatioCard({ summary, isLoading }: { summary?: StatsSummar
           tone={zone ? zone.tone : 'neutral'}
           size="lg"
           marker={70}
-          aria-label="Kirimga nisbatan xarajat"
+          aria-label={t('dashboard.ratio.title')}
         />
         <span className="relative block h-0" aria-hidden>
           <span className="absolute top-1 -translate-x-1/2 text-[11px] text-text-muted" style={{ left: '70%' }}>
@@ -73,7 +74,8 @@ export function ExpenseRatioCard({ summary, isLoading }: { summary?: StatsSummar
         </p>
         <span className="text-[13px] text-text-muted">
           {formatAmountNumber(expense)} / {formatAmountNumber(income)}
-          {NBSP}so‘m
+          {NBSP}
+          {currencyWord()}
         </span>
       </div>
     </section>

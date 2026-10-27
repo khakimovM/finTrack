@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { EXIT_MS, usePresence } from '../../lib/motion';
 import { Button } from './Button';
 import { Portal, useOverlay } from './overlay';
+import { t } from '../../lib/i18n';
 
 export interface ConfirmOptions {
   title: string;
@@ -83,7 +84,7 @@ function ConfirmPanel({ pending, answer, closing }: ConfirmPanelProps) {
           <div className={cn('mt-3.5 grid gap-2.5 sm:flex sm:justify-end', hasCancel ? 'grid-cols-2' : 'grid-cols-1')}>
             {hasCancel && (
               <Button variant="secondary" onClick={() => answer(false)} className="h-12 sm:h-10">
-                {pending.cancelLabel ?? 'Bekor qilish'}
+                {pending.cancelLabel ?? t('common.cancel')}
               </Button>
             )}
             <Button
@@ -92,7 +93,7 @@ function ConfirmPanel({ pending, answer, closing }: ConfirmPanelProps) {
               className="h-12 sm:h-10"
               autoFocus
             >
-              {pending.confirmLabel ?? 'Tasdiqlash'}
+              {pending.confirmLabel ?? t('common.confirm')}
             </Button>
           </div>
         </div>

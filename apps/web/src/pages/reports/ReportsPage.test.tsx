@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { StatsCompareResponse, todayLocalIso } from '@fintrack/shared';
 import { ReportsPage } from './ReportsPage';
 import { renderWithProviders } from '../../test/render';
+import { inRussian, latinLeftovers } from '../../test/russian';
 import { ok, server } from '../../test/server';
 
 function compare(over: Partial<StatsCompareResponse> = {}): StatsCompareResponse {
@@ -112,5 +113,17 @@ describe('ReportsPage', () => {
     fireEvent.change(screen.getByLabelText('Tugash'), { target: { value: '2026-09-25' } });
     await userEvent.click(screen.getByRole('button', { name: 'Qo‘llash' }));
     await waitFor(() => expect(queries.some((q) => q.get('currentFrom') === '2026-09-20' && q.get('currentTo') === '2026-09-25')).toBe(true));
+  });
+});
+
+describe('ReportsPage in Russian', () => {
+  it('leaves no Uzbek in the comparison and the categories', async () => {
+    inRussian();
+    serve(compare());
+    renderWithProviders(<ReportsPage />);
+
+    const spending = await screen.findByRole('region', { name: 'Расходы по категориям' });
+    expect(within(spending).getByText('Transport')).toBeTruthy();
+    expect(latinLeftovers(['Transport'])).toEqual([]);
   });
 });

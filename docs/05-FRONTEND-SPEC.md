@@ -162,6 +162,7 @@ ga yig'iladi (`features/reports/buckets.ts`). Kategoriyalar — to'rtta `stats/b
 ## Sozlamalar
 
 Profil (ism, vaqt zonasi), qat'iy rejim / Telegram bildirishnomalari / kunlik eslatmalar (7:00 / 22:00) / kunlik xulosa (21:00) / oylik hisobot (oxirgi kun 21:00, matn + ovoz),
+til (O‘zbekcha · Русский; akkauntga saqlanadi, boshqa qurilmalar ham shu tilda ochiladi),
 mavzu (Yorug' · Qorong'i · Tizim; Mini App'da yashirin — Telegram mavzusiga ergashadi),
 Telegram ulanishi, faol sessiyalar (IP qisman yashiriladi), "Barcha qurilmalardan chiqish",
 akkauntni o'chirish ("O'CHIRISH" deb yozib, keyin tasdiq dialogi).

@@ -1,9 +1,8 @@
 import { Repeat } from 'lucide-react';
 import type { RecurrenceFrequency } from '@fintrack/shared';
 import { ChoiceGrid } from '../../../components/ui/ChoiceGrid';
-import { formatDate } from '../../../lib/format';
-
-const WEEKDAY_NAMES = ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba'];
+import { capitalise, formatDate, weekdayNames } from '../../../lib/format';
+import { t } from '../../../lib/i18n';
 
 /** Weekday (1 = Monday … 7) for weekly rules, day of the month for monthly ones, nothing otherwise. */
 export function DayOfCycleField({
@@ -18,26 +17,26 @@ export function DayOfCycleField({
   if (frequency === 'WEEKLY') {
     return (
       <ChoiceGrid
-        label="Hafta kuni"
+        label={t('recurring.form.weekday')}
         size="sm"
         columns={4}
         phoneColumns={4}
         value={String(value)}
         onChange={(day) => onChange(Number(day))}
-        options={WEEKDAY_NAMES.map((name, index) => ({ value: String(index + 1), label: name }))}
+        options={weekdayNames().map((name, index) => ({ value: String(index + 1), label: capitalise(name) }))}
       />
     );
   }
   if (frequency === 'MONTHLY') {
     return (
       <ChoiceGrid
-        label="Oy kuni"
+        label={t('recurring.form.monthDay')}
         size="sm"
         columns={7}
         phoneColumns={7}
         value={String(value)}
         onChange={(day) => onChange(Number(day))}
-        hint={value > 28 ? 'Qisqa oylarda oyning oxirgi kuni yoziladi' : undefined}
+        hint={value > 28 ? t('recurring.form.lateDayHint') : undefined}
         options={Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
       />
     );
@@ -52,8 +51,8 @@ export function NextRunPreview({ next, today }: { next: string | null; today: st
       <Repeat className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
       <span className="text-pretty">
         {next
-          ? `Keyingi to‘lov: ${formatDate(next)}${next === today ? ' (bugun yoziladi)' : ''}`
-          : 'Tugash sanasidan keyin to‘lov yozilmaydi'}
+          ? t(next === today ? 'recurring.form.nextRunToday' : 'recurring.form.nextRun', { date: formatDate(next) })
+          : t('recurring.form.noNextRun')}
       </span>
     </div>
   );

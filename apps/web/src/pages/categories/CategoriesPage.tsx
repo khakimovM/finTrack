@@ -15,6 +15,7 @@ import { useCategories, useDeleteCategory, useReorderCategories } from '../../fe
 import { TagsPanel } from '../../features/tags/components/TagsPanel';
 import { useDeleteTag, useTags } from '../../features/tags/hooks/useTags';
 import { AccountsSkeleton } from '../accounts/AccountsPageParts';
+import { t } from '../../lib/i18n';
 
 type Tab = 'expense' | 'income' | 'tags';
 const TABS: Tab[] = ['expense', 'income', 'tags'];
@@ -54,9 +55,9 @@ export function CategoriesPage() {
   const removeCategory = async (category: CategoryResponse) => {
     const hasChildren = (tree.find((c) => c.id === category.id)?.children ?? []).length > 0;
     const ok = await confirm({
-      title: `“${category.name}” kategoriyasi o‘chirilsinmi?`,
-      description: `${hasChildren ? 'Uning subkategoriyalari ham o‘chiriladi. ' : ''}Tranzaksiyalar saqlanadi, lekin kategoriyasiz qoladi. Unga qo‘yilgan byudjetlar o‘chiriladi.`,
-      confirmLabel: 'O‘chirish',
+      title: t('categories.confirm.delete', { name: category.name }),
+      description: `${hasChildren ? t('categories.confirm.deleteChildren') : ''}${t('categories.confirm.deleteText')}`,
+      confirmLabel: t('common.delete'),
       destructive: true,
     });
     if (ok) await deleteCategory.mutateAsync(category.id).catch(() => undefined);
@@ -64,15 +65,15 @@ export function CategoriesPage() {
 
   const removeTag = async (tag: TagResponse) => {
     const ok = await confirm({
-      title: `“${tag.name}” tegi o‘chirilsinmi?`,
-      description: 'Teg tranzaksiyalardan olib tashlanadi, tranzaksiyalarning o‘zi qoladi.',
-      confirmLabel: 'O‘chirish',
+      title: t('tags.confirmDelete', { name: tag.name }),
+      description: t('tags.confirmDeleteText'),
+      confirmLabel: t('common.delete'),
       destructive: true,
     });
     if (ok) await deleteTag.mutateAsync(tag.id).catch(() => undefined);
   };
 
-  const newLabel = isTags ? 'Yangi teg' : 'Yangi kategoriya';
+  const newLabel = isTags ? t('tags.new') : t('categories.page.new');
   const newButton = (
     <Button onClick={openNew} className={isMobile ? 'h-11 basis-full' : undefined}>
       <Plus className="h-[18px] w-[18px]" aria-hidden />
@@ -85,7 +86,7 @@ export function CategoriesPage() {
   else if (query.isError)
     body = (
       <ErrorState
-        title={isTags ? 'Teglarni yuklab bo‘lmadi' : 'Kategoriyalarni yuklab bo‘lmadi'}
+        title={isTags ? t('tags.loadFailed') : t('categories.page.loadFailed')}
         onRetry={() => void query.refetch()}
         className={CARD}
       />
@@ -95,9 +96,9 @@ export function CategoriesPage() {
       tagList.length === 0 && newTagSignal === 0 ? (
         <EmptyState
           icon={<TagIcon className="h-6 w-6" aria-hidden />}
-          title="Teglar yo‘q"
-          description="Tranzaksiyalarni guruhlash uchun teg yarating"
-          action={<Button onClick={openNew}>Yangi teg</Button>}
+          title={t('tags.emptyTitle')}
+          description={t('tags.emptyText')}
+          action={<Button onClick={openNew}>{t('tags.new')}</Button>}
           className={CARD}
         />
       ) : (
@@ -113,9 +114,9 @@ export function CategoriesPage() {
     body = (
       <EmptyState
         icon={<FolderOpen className="h-6 w-6" aria-hidden />}
-        title="Kategoriyalar mavjud emas"
-        description="Chiqim va kirimlarni tartiblash uchun birinchi kategoriyani qo‘shing."
-        action={<Button onClick={openNew}>Yangi kategoriya</Button>}
+        title={t('categories.page.emptyTitle')}
+        description={t('categories.page.emptyText')}
+        action={<Button onClick={openNew}>{t('categories.page.new')}</Button>}
         className={CARD}
       />
     );
@@ -133,11 +134,11 @@ export function CategoriesPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-4">
-      <PageHeader title="Kategoriyalar va teglar" subtitle="Chiqim va kirim kategoriyalari, teglar" actions={newButton} />
+      <PageHeader title={t('nav.categories')} subtitle={t('categories.page.subtitle')} actions={newButton} />
 
       <div className="flex flex-wrap items-center gap-2">
         <Tabs
-          aria-label="Bo‘limlar"
+          aria-label={t('categories.page.sections')}
           value={tab}
           fullWidth={isMobile}
           className={isMobile ? 'basis-full' : undefined}
@@ -146,9 +147,9 @@ export function CategoriesPage() {
             setParams(next === 'expense' ? {} : { tab: next }, { replace: true });
           }}
           items={[
-            { value: 'expense', label: 'Chiqimlar', count: expense.length },
-            { value: 'income', label: 'Kirimlar', count: income.length },
-            { value: 'tags', label: 'Teglar', count: tagList.length },
+            { value: 'expense', label: t('categories.page.expense'), count: expense.length },
+            { value: 'income', label: t('categories.page.income'), count: income.length },
+            { value: 'tags', label: t('categories.page.tags'), count: tagList.length },
           ]}
         />
         {!isMobile && <span className="flex-1" />}
@@ -156,7 +157,7 @@ export function CategoriesPage() {
         {!isMobile && !isTags && shown.length > 1 && (
           <span className="flex items-center gap-1.5 text-[13px] text-text-muted">
             <GripVertical className="h-4 w-4" aria-hidden />
-            Tartibni sudrab o‘zgartiring
+            {t('categories.page.dragHint')}
           </span>
         )}
       </div>

@@ -23,6 +23,7 @@ import { useAccounts } from '../../accounts/hooks/useAccounts';
 import { useCategories } from '../../categories/hooks/useCategories';
 import { useCreateTransaction, useUpdateTransaction } from '../hooks/useTransactions';
 import { TagPicker } from './TagPicker';
+import { t } from '../../../lib/i18n';
 
 type EntryType = 'INCOME' | 'EXPENSE';
 
@@ -34,7 +35,7 @@ export interface TransactionModalProps {
   transaction?: TransactionResponse | null;
 }
 
-const STRICT_MESSAGE = 'Hisobda yetarli mablag‘ yo‘q (Qatʼiy rejim)';
+const strictMessage = (): string => t('transactions.form.strict');
 
 /** Create or edit an income or expense. Transfers and debt rows are never edited here. */
 export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', transaction = null }: TransactionModalProps) {
@@ -96,7 +97,7 @@ export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', tra
   if (transaction?.type === 'EXPENSE' && transaction.account.id === accountId) available += BigInt(transaction.amount);
   const overdraft =
     Boolean(user?.strictMode) && type === 'EXPENSE' && account !== undefined && /^\d+$/.test(amount) && BigInt(amount) > available;
-  const strictError = overdraft ? STRICT_MESSAGE : serverError === STRICT_MESSAGE ? STRICT_MESSAGE : null;
+  const strictError = overdraft || serverError === strictMessage() ? strictMessage() : null;
 
   const changeType = (next: EntryType) => {
     setValue('type', next);
@@ -124,7 +125,7 @@ export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', tra
       }
       onClose();
     } catch (err) {
-      setServerError(apiErrorCode(err) === 'INSUFFICIENT_BALANCE' ? STRICT_MESSAGE : apiErrorToMessage(err));
+      setServerError(apiErrorCode(err) === 'INSUFFICIENT_BALANCE' ? strictMessage() : apiErrorToMessage(err));
     }
   };
 
@@ -134,28 +135,28 @@ export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', tra
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editing ? 'Tranzaksiyani tahrirlash' : 'Yangi tranzaksiya'}
+      title={editing ? t('transactions.form.titleEdit') : t('transactions.form.titleNew')}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={formState.isSubmitting}>
-            Bekor qilish
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="transaction-form" loading={formState.isSubmitting} disabled={Boolean(strictError)}>
-            Saqlash
+            {t('common.save')}
           </Button>
         </>
       }
     >
       <form id="transaction-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-[18px]" noValidate>
         <Segmented
-          aria-label="Tur"
+          aria-label={t('transactions.form.type')}
           size="lg"
           fullWidth
           value={type}
           onChange={changeType}
           options={[
-            { value: 'EXPENSE', label: 'Chiqim', tone: 'expense', icon: <ArrowUpRight className="h-4 w-4" aria-hidden /> },
-            { value: 'INCOME', label: 'Kirim', tone: 'income', icon: <ArrowDownLeft className="h-4 w-4" aria-hidden /> },
+            { value: 'EXPENSE', label: t('common.expense'), tone: 'expense', icon: <ArrowUpRight className="h-4 w-4" aria-hidden /> },
+            { value: 'INCOME', label: t('common.income'), tone: 'income', icon: <ArrowDownLeft className="h-4 w-4" aria-hidden /> },
           ]}
         />
         <Controller
@@ -163,12 +164,12 @@ export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', tra
           control={control}
           render={({ field, fieldState }) => (
             <MoneyInput
-              label="Summa"
+              label={t('transactions.form.amount')}
               size="lg"
               autoFocus={!editing}
               value={field.value}
               onChange={field.onChange}
-              error={fieldState.error ? 'Summa 0 dan katta bo‘lishi kerak' : undefined}
+              error={fieldState.error ? t('transactions.form.amountError') : undefined}
             />
           )}
         />
@@ -177,7 +178,7 @@ export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', tra
           control={control}
           render={({ field }) => (
             <div className="flex flex-col gap-2">
-              <AccountPicker label="Hisob" accounts={accounts} value={field.value} onChange={field.onChange} invalid={Boolean(strictError)} />
+              <AccountPicker label={t('transactions.form.account')} accounts={accounts} value={field.value} onChange={field.onChange} invalid={Boolean(strictError)} />
               {strictError && (
                 <p role="alert" className="flex items-center gap-2 rounded-md bg-danger-soft px-3 py-2.5 text-[13px] font-medium text-danger">
                   <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden />
@@ -192,11 +193,11 @@ export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', tra
           control={control}
           render={({ field, fieldState }) => (
             <CategoryPicker
-              label="Kategoriya"
+              label={t('transactions.form.category')}
               categories={categoryTree}
               value={field.value}
               onChange={field.onChange}
-              error={fieldState.error ? 'Kategoriyani tanlang' : undefined}
+              error={fieldState.error ? t('ui.pickers.category') : undefined}
             />
           )}
         />
@@ -204,7 +205,7 @@ export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', tra
           name="date"
           control={control}
           render={({ field }) => (
-            <DatePicker label="Sana" value={field.value} onChange={field.onChange} chips={['today', 'yesterday']} max={today} today={today} />
+            <DatePicker label={t('transactions.form.date')} value={field.value} onChange={field.onChange} chips={['today', 'yesterday']} max={today} today={today} />
           )}
         />
         <Controller
@@ -212,8 +213,8 @@ export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', tra
           control={control}
           render={({ field }) => (
             <Textarea
-              label="Izoh (ixtiyoriy)"
-              placeholder="Masalan: Bozorlik, oylik..."
+              label={t('transactions.form.note')}
+              placeholder={t('transactions.form.notePlaceholder')}
               maxLength={500}
               value={field.value ?? ''}
               onChange={field.onChange}
@@ -225,7 +226,7 @@ export function TransactionModal({ isOpen, onClose, defaultType = 'EXPENSE', tra
           control={control}
           render={({ field }) => <TagPicker value={field.value ?? []} onChange={field.onChange} />}
         />
-        {serverError && serverError !== STRICT_MESSAGE && (
+        {serverError && serverError !== strictMessage() && (
           <p role="alert" className="rounded-md bg-danger-soft px-3 py-2.5 text-[13px] font-medium text-danger">
             {serverError}
           </p>

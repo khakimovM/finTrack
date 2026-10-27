@@ -5,6 +5,7 @@ import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { invalidateAfter } from '../../../lib/invalidation';
+import { t } from '../../../lib/i18n';
 
 /** Active accounts: what every picker offers. */
 export function useAccounts() {
@@ -30,7 +31,7 @@ export function useCreateAccount() {
     mutationFn: accountsApi.create,
     onSuccess: () => {
       void invalidateAfter(queryClient, 'account');
-      toast.success('Hisob qo‘shildi');
+      toast.success(t('accounts.toast.added'));
     },
   });
 }
@@ -43,7 +44,7 @@ export function useUpdateAccount({ silent = false }: { silent?: boolean } = {}) 
       accountsApi.update(id, data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'account');
-      if (!silent) toast.success('O‘zgarishlar saqlandi');
+      if (!silent) toast.success(t('transactions.toast.changesSaved'));
     },
   });
 }
@@ -56,7 +57,7 @@ export function useToggleArchiveAccount() {
     mutationFn: accountsApi.toggleArchive,
     onSuccess: (account) => {
       void invalidateAfter(queryClient, 'account');
-      toast.success(account.archivedAt ? 'Hisob arxivlandi' : 'Hisob arxivdan chiqarildi');
+      toast.success(account.archivedAt ? t('accounts.toast.archived') : t('accounts.toast.unarchived'));
     },
   });
 }
@@ -69,7 +70,7 @@ export function useDeleteAccount() {
     mutationFn: accountsApi.delete,
     onSuccess: () => {
       void invalidateAfter(queryClient, 'account');
-      toast.success('Hisob o‘chirildi');
+      toast.success(t('accounts.toast.deleted'));
     },
   });
 }
@@ -81,7 +82,7 @@ export function useReorderAccounts() {
     mutationFn: (data: ReorderAccountsInput) => accountsApi.reorder(data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'account');
-      toast.success('Tartib saqlandi');
+      toast.success(t('accounts.toast.orderSaved'));
     },
     onError: (err) => {
       toast.error(apiErrorToMessage(err));

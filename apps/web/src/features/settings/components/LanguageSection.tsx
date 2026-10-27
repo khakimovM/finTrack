@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import { APP_LOCALES, type AppLocale } from '@fintrack/shared';
 import { cn } from '../../../lib/utils';
-import { LANGUAGE_NAMES, RUSSIAN_READY, useLocale, useT } from '../../../lib/i18n';
+import { LANGUAGE_NAMES, useLocale, useT } from '../../../lib/i18n';
 import { useLocaleStore } from '../../../stores/localeStore';
 import { useUpdateProfile } from '../hooks/useSettings';
 import { SettingsCard } from './ProfileSection';
@@ -16,7 +16,7 @@ export function LanguageSection() {
   const choose = (next: AppLocale) => {
     if (next === locale) return;
     setLocale(next);
-    if (RUSSIAN_READY) update.mutate({ locale: next });
+    update.mutate({ locale: next });
   };
 
   return (

@@ -3,44 +3,45 @@ import { MiniAppStatus } from '../../stores/miniAppStore';
 import { telegramApp } from '../../lib/telegram';
 import { isAdminPath } from '../../lib/adminMiniApp';
 import { cn } from '../../lib/utils';
+import { t, type TextKey } from '../../lib/i18n';
 
 type GateStatus = Exclude<MiniAppStatus, 'off' | 'ready'>;
 
-const COPY: Record<GateStatus, { title: string; body: string; icon: LucideIcon; tile: string }> = {
+const COPY: Record<GateStatus, { title: TextKey; body: TextKey; icon: LucideIcon; tile: string }> = {
   unregistered: {
-    title: 'Avval botda ro‘yxatdan o‘ting',
-    body: 'Botga qaytib /start bosing va telefon raqamingizni ulashing. Shundan so‘ng ilovani qayta oching.',
+    title: 'miniApp.gate.unregistered.title',
+    body: 'miniApp.gate.unregistered.body',
     icon: UserPlus,
     tile: 'bg-info-soft text-info',
   },
   banned: {
-    title: 'Hisobingiz bloklangan',
-    body: 'FinTrack hisobingiz bloklangan, shuning uchun ilova, sayt va bot orqali kirib bo‘lmaydi.',
+    title: 'miniApp.gate.banned.title',
+    body: 'miniApp.gate.banned.body',
     icon: Ban,
     tile: 'bg-danger-soft text-danger',
   },
   expired: {
-    title: 'Ilova sessiyasi tugadi',
-    body: 'Xavfsizlik uchun ilova sessiyasi 24 soat amal qiladi. Ilovani botdagi “Ilova” tugmasi orqali qayta oching.',
+    title: 'miniApp.gate.expired.title',
+    body: 'miniApp.gate.expired.body',
     icon: Clock,
     tile: 'bg-warning-soft text-warning',
   },
   'no-init-data': {
-    title: 'Ilovani menyu tugmasi orqali oching',
-    body: 'Botdagi “Ilova” tugmasi (xabar yozish maydoni yonida) yoki “🌐 FinTrack ilovasini ochish” tugmasidan foydalaning.',
+    title: 'miniApp.gate.noInitData.title',
+    body: 'miniApp.gate.noInitData.body',
     icon: PanelBottom,
     tile: 'bg-secondary text-text',
   },
   error: {
-    title: 'Ulanib bo‘lmadi',
-    body: 'Server bilan bog‘lanishda xatolik yuz berdi. Birozdan so‘ng qayta urinib ko‘ring.',
+    title: 'miniApp.gate.error.title',
+    body: 'miniApp.gate.error.body',
     icon: CloudOff,
     tile: 'bg-danger-soft text-danger',
   },
 };
 
-/** The admin panel (the bot's /admin button) is reopened from its own command, not "Ilova". */
-const ADMIN_COPY: Partial<Record<GateStatus, Pick<(typeof COPY)[GateStatus], 'title' | 'body'>>> = {
+/** The admin panel (the bot's /admin button) is reopened from its own command, not "Ilova"; it is Uzbek only. */
+const ADMIN_COPY: Partial<Record<GateStatus, { title: string; body: string }>> = {
   expired: {
     title: 'Admin panelni qayta oching',
     body: 'Xavfsizlik uchun har bir ochilish bir marta kirish beradi. Botga /admin yozing va panelni qayta oching.',
@@ -53,7 +54,9 @@ const ADMIN_COPY: Partial<Record<GateStatus, Pick<(typeof COPY)[GateStatus], 'ti
 
 /** Shown inside Telegram instead of the login page, which cannot work there. */
 export function MiniAppGate({ status }: { status: GateStatus }) {
-  const copy = { ...COPY[status], ...(isAdminPath(window.location.pathname) ? ADMIN_COPY[status] : undefined) };
+  const base = COPY[status];
+  const admin = isAdminPath(window.location.pathname) ? ADMIN_COPY[status] : undefined;
+  const copy = { ...base, title: admin?.title ?? t(base.title), body: admin?.body ?? t(base.body) };
   const app = telegramApp();
   const retry = status === 'error';
 
@@ -73,7 +76,7 @@ export function MiniAppGate({ status }: { status: GateStatus }) {
             onClick={() => (retry ? window.location.reload() : app?.close())}
             className="h-[52px] w-full rounded-full bg-primary text-[16px] font-medium text-primary-foreground hover:bg-primary-hover focus-ring"
           >
-            {retry ? 'Qayta urinish' : 'Botga qaytish'}
+            {retry ? t('common.retry') : t('miniApp.backToBot')}
           </button>
         </div>
       )}

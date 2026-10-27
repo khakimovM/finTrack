@@ -6,6 +6,7 @@ import { EmojiTile } from '../../../components/ui/EmojiTile';
 import { Menu, type MenuItem } from '../../../components/ui/Menu';
 import { cn } from '../../../lib/utils';
 import { ACCOUNT_TYPES } from '../accountTypes';
+import { t } from '../../../lib/i18n';
 
 export interface AccountActions {
   onOpen: (account: AccountResponse) => void;
@@ -29,22 +30,22 @@ export interface AccountCardProps {
 
 function menuItems(account: AccountResponse, actions: AccountActions): MenuItem[] {
   return [
-    { label: 'Tahrirlash', icon: Pencil, onSelect: () => actions.onEdit(account) },
-    { label: 'Asosiy qilish', icon: Star, disabled: account.isDefault, onSelect: () => actions.onMakeDefault(account) },
-    { label: 'Arxivlash', icon: Archive, onSelect: () => actions.onArchive(account) },
-    { label: 'O‘chirish', icon: Trash2, danger: true, separatorBefore: true, onSelect: () => actions.onDelete(account) },
+    { label: t('common.edit'), icon: Pencil, onSelect: () => actions.onEdit(account) },
+    { label: t('accounts.card.makePrimary'), icon: Star, disabled: account.isDefault, onSelect: () => actions.onMakeDefault(account) },
+    { label: t('accounts.card.archiveAction'), icon: Archive, onSelect: () => actions.onArchive(account) },
+    { label: t('common.delete'), icon: Trash2, danger: true, separatorBefore: true, onSelect: () => actions.onDelete(account) },
   ];
 }
 
 export function AccountCard({ account, actions, compact, handle, dragging, sortProps }: AccountCardProps) {
   const archived = account.archivedAt !== null;
   const reorder = handle !== undefined;
-  const type = ACCOUNT_TYPES[account.type].short;
-  const count = `Tranzaksiyalar: ${account.transactionCount} ta`;
+  const type = t(ACCOUNT_TYPES[account.type].short);
+  const count = t('accounts.card.count', { count: account.transactionCount });
   const subtitle = compact
-    ? [type, account.isDefault && !archived ? '★ Asosiy' : null, archived ? 'Arxivda' : null].filter(Boolean).join(' · ')
+    ? [type, account.isDefault && !archived ? `★ ${t('common.primary')}` : null, archived ? t('accounts.card.archived') : null].filter(Boolean).join(' · ')
     : archived
-      ? `${type} · Arxivda`
+      ? `${type} · ${t('accounts.card.archived')}`
       : type;
   const open = () => {
     if (!reorder && !archived) actions.onOpen(account);
@@ -52,7 +53,7 @@ export function AccountCard({ account, actions, compact, handle, dragging, sortP
 
   const balance = (
     <div className={cn('flex flex-col gap-0.5', compact ? 'items-end' : 'items-start')}>
-      {!compact && <span className="text-[13px] text-text-muted">Joriy balans</span>}
+      {!compact && <span className="text-[13px] text-text-muted">{t('accounts.card.balance')}</span>}
       <Amount
         value={account.balance}
         showSign={false}
@@ -72,14 +73,14 @@ export function AccountCard({ account, actions, compact, handle, dragging, sortP
     // The card opens on click; the menu (and its phone sheet, portalled) must not reach it.
     <div onClick={(event) => event.stopPropagation()} className="flex shrink-0">
       <Menu
-        label="Amallar"
+        label={t('transactions.list.actions')}
         width={220}
         items={menuItems(account, actions)}
         trigger={(props) => (
           <button
             {...props}
             type="button"
-            aria-label="Amallar"
+            aria-label={t('transactions.list.actions')}
             className="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors duration-fast hover:bg-secondary focus-ring aria-expanded:bg-secondary"
           >
             <EllipsisVertical className="h-[18px] w-[18px]" aria-hidden />
@@ -117,7 +118,7 @@ export function AccountCard({ account, actions, compact, handle, dragging, sortP
             {!compact && account.isDefault && !archived && (
               <span className="inline-flex h-[22px] shrink-0 items-center gap-1 rounded-full bg-warning-soft px-2 text-[12px] font-semibold text-warning">
                 <Star className="h-3 w-3 fill-current" aria-hidden />
-                Asosiy
+                {t('common.primary')}
               </span>
             )}
           </span>
@@ -134,7 +135,7 @@ export function AccountCard({ account, actions, compact, handle, dragging, sortP
           <span>{count}</span>
           {!reorder && (
             <span className="flex items-center gap-0.5 font-medium text-text">
-              Tranzaksiyalar
+              {t('accounts.card.transactions')}
               <ChevronRight className="h-4 w-4" aria-hidden />
             </span>
           )}
@@ -149,14 +150,14 @@ export function AccountCard({ account, actions, compact, handle, dragging, sortP
             className="flex h-9 items-center gap-1.5 rounded-full border border-input bg-card px-3.5 text-[13px] font-medium text-text hover:bg-secondary focus-ring"
           >
             <ArchiveRestore className="h-4 w-4" aria-hidden />
-            Arxivdan chiqarish
+            {t('accounts.card.unarchive')}
           </button>
           <button
             type="button"
             onClick={() => actions.onDelete(account)}
             className="h-9 rounded-full px-3.5 text-[13px] font-medium text-danger hover:bg-danger-soft focus-ring"
           >
-            O‘chirish
+            {t('common.delete')}
           </button>
         </div>
       )}

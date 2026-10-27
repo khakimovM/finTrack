@@ -1,7 +1,8 @@
 import { ArrowLeftRight, Handshake, Lock } from 'lucide-react';
 import type { CategoryResponse, TransactionResponse } from '@fintrack/shared';
 import { EmojiTile } from '../../components/ui/EmojiTile';
-import { TYPE_LABELS } from './typeLabels';
+import { typeLabel } from './typeLabels';
+import { t } from '../../lib/i18n';
 
 /** income/expense are edited here; transfers and debt rows are owned by their own pages. */
 export type RowKind = 'entry' | 'transfer' | 'debt' | 'adjustment';
@@ -24,7 +25,7 @@ export function rowKind(tx: TransactionResponse): RowKind {
 /** "Humo karta → Jamg‘arma", always from the sender to the receiver. */
 export function transferRoute(tx: TransactionResponse): string {
   const peer = tx.transferPeer?.name;
-  if (!peer) return TYPE_LABELS[tx.type];
+  if (!peer) return typeLabel(tx.type);
   return tx.type === 'TRANSFER_OUT' ? `${tx.account.name} → ${peer}` : `${peer} → ${tx.account.name}`;
 }
 
@@ -39,13 +40,13 @@ export function parentNames(tree: CategoryResponse[]): Map<string, string> {
 export function rowTitle(tx: TransactionResponse): string {
   switch (rowKind(tx)) {
     case 'entry':
-      return tx.note || tx.category?.name || TYPE_LABELS[tx.type];
+      return tx.note || tx.category?.name || typeLabel(tx.type);
     case 'transfer':
       return transferRoute(tx);
     case 'debt':
-      return tx.debt ? `${TYPE_LABELS[tx.type]} — ${tx.debt.personName}` : TYPE_LABELS[tx.type];
+      return tx.debt ? `${typeLabel(tx.type)} — ${tx.debt.personName}` : typeLabel(tx.type);
     default:
-      return 'Tuzatish';
+      return typeLabel('ADJUSTMENT');
   }
 }
 
@@ -55,11 +56,11 @@ export function rowSubtitle(tx: TransactionResponse, when: string): string {
     case 'entry':
       return [tx.category?.name, tx.account.name, when].filter(Boolean).join(' · ');
     case 'transfer':
-      return `${TYPE_LABELS[tx.type]} · ${when}`;
+      return `${typeLabel(tx.type)} · ${when}`;
     case 'debt':
       return `${tx.account.name} · ${when}`;
     default:
-      return `Tizim yozuvi · ${tx.account.name} · ${when}`;
+      return `${t('transactions.list.system')} · ${tx.account.name} · ${when}`;
   }
 }
 

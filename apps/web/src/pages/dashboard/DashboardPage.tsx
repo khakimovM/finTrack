@@ -15,6 +15,7 @@ import { CategoryBarsCard, ExpenseShareCard } from '../../features/dashboard/com
 import { BalanceTrendCard } from '../../features/dashboard/components/BalanceTrendCard';
 import { BudgetsWidget, DebtsWidget, RecentTransactionsCard } from '../../features/dashboard/components/BottomWidgets';
 import { FirstSteps } from '../../features/dashboard/components/FirstSteps';
+import { t } from '../../lib/i18n';
 
 /**
  * Home: period, four KPIs, the expense ratio, charts and widgets. Each widget loads and fails on
@@ -35,15 +36,15 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Bosh sahifa" subtitle={`Xush kelibsiz, ${user?.name ?? ''}!`} quickAdd />
+      <PageHeader title={t('nav.home')} subtitle={t('dashboard.welcome', { name: user?.name ?? '' })} quickAdd />
       <DashboardPeriod />
       {empty && <FirstSteps hasAccount={hasAccount} />}
 
       {summary.isError ? (
         <ErrorState
           variant="widget"
-          title="Statistikani yuklab bo‘lmadi"
-          message="Boshqa bo‘limlar ishlayapti. Faqat shu qismni qayta yuklang."
+          title={t('dashboard.statsFailed')}
+          message={t('dashboard.othersWork')}
           onRetry={() => void summary.refetch()}
           className="rounded-xl border border-border bg-card"
         />

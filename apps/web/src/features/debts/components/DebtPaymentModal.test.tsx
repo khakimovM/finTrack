@@ -6,6 +6,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { DebtPaymentModal } from './DebtPaymentModal';
 import { renderWithProviders } from '../../../test/render';
+import { inRussian, latinLeftovers } from '../../../test/russian';
 import { fail, ok, server } from '../../../test/server';
 import { account, cash, debt as debtFixture } from '../../../test/fixtures';
 
@@ -77,5 +78,16 @@ describe('DebtPaymentModal', () => {
     await userEvent.type(screen.getByLabelText(/To‘lov summasi/), '1000');
     await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }));
     expect((await screen.findByRole('alert')).textContent).toContain('Qatʼiy rejim');
+  });
+});
+
+describe('DebtPaymentModal in Russian', () => {
+  it('leaves no Uzbek in the form', async () => {
+    inRussian();
+    serve('payments');
+    renderWithProviders(<DebtPaymentModal debt={debt} isOpen onClose={() => undefined} />);
+
+    await screen.findAllByText(/Naqd pul/);
+    expect(latinLeftovers(['Ali Valiyev', 'Naqd pul', 'AV'])).toEqual([]);
   });
 });

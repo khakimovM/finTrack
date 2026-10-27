@@ -16,6 +16,7 @@ import { useInitOnOpen } from '../../../lib/useInitOnOpen';
 import { toast } from '../../../stores/toastStore';
 import { useCreateAccount, useUpdateAccount } from '../hooks/useAccounts';
 import { ACCOUNT_EMOJIS, ACCOUNT_TYPES } from '../accountTypes';
+import { t } from '../../../lib/i18n';
 
 export interface AccountModalProps {
   isOpen: boolean;
@@ -23,8 +24,7 @@ export interface AccountModalProps {
   initialAccount?: AccountResponse | null;
 }
 
-const NAME_REQUIRED = 'Hisob nomini kiriting';
-const NAME_TAKEN = 'Bunday nomli hisob allaqachon mavjud';
+const nameTaken = (): string => t('accounts.form.nameTaken');
 
 const BLANK: CreateAccountInput = {
   name: '',
@@ -81,7 +81,7 @@ export function AccountModal({ isOpen, onClose, initialAccount = null }: Account
       }
       onClose();
     } catch (err) {
-      if (apiErrorCode(err) === 'ACCOUNT_EXISTS') setError('name', { message: NAME_TAKEN });
+      if (apiErrorCode(err) === 'ACCOUNT_EXISTS') setError('name', { message: nameTaken() });
       else toast.error(apiErrorToMessage(err));
     }
   };
@@ -90,14 +90,14 @@ export function AccountModal({ isOpen, onClose, initialAccount = null }: Account
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editing ? 'Hisobni tahrirlash' : 'Yangi hisob'}
+      title={editing ? t('accounts.form.titleEdit') : t('accounts.form.titleNew')}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={formState.isSubmitting}>
-            Bekor qilish
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="account-form" loading={formState.isSubmitting}>
-            Saqlash
+            {t('common.save')}
           </Button>
         </>
       }
@@ -106,12 +106,12 @@ export function AccountModal({ isOpen, onClose, initialAccount = null }: Account
         <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3">
           <EmojiTile emoji={icon} color={color} size={48} />
           <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate font-semibold">{name.trim() || 'Hisob nomi'}</span>
-            <span className="text-[13px] text-text-muted">{ACCOUNT_TYPES[type].short}</span>
+            <span className="truncate font-semibold">{name.trim() || t('accounts.form.name')}</span>
+            <span className="text-[13px] text-text-muted">{t(ACCOUNT_TYPES[type].short)}</span>
           </div>
           {isDefault && (
             <span className="inline-flex h-[22px] items-center rounded-full bg-warning-soft px-2 text-[12px] font-semibold text-warning">
-              ★ Asosiy
+              ★ {t('common.primary')}
             </span>
           )}
         </div>
@@ -122,12 +122,12 @@ export function AccountModal({ isOpen, onClose, initialAccount = null }: Account
           render={({ field, fieldState }) => (
             <Input
               {...field}
-              label="Hisob nomi"
-              placeholder="Masalan: Asosiy karta"
+              label={t('accounts.form.name')}
+              placeholder={t('accounts.form.namePlaceholder')}
               maxLength={50}
               showCounter
               autoFocus={!editing}
-              error={fieldState.error ? (fieldState.error.message === NAME_TAKEN ? NAME_TAKEN : NAME_REQUIRED) : undefined}
+              error={fieldState.error ? (fieldState.error.message === nameTaken() ? nameTaken() : t('accounts.form.nameRequired')) : undefined}
             />
           )}
         />
@@ -137,7 +137,7 @@ export function AccountModal({ isOpen, onClose, initialAccount = null }: Account
           control={control}
           render={({ field }) => (
             <ChoiceGrid
-              label="Hisob turi"
+              label={t('accounts.form.type')}
               columns={2}
               phoneColumns={2}
               value={field.value}
@@ -149,7 +149,7 @@ export function AccountModal({ isOpen, onClose, initialAccount = null }: Account
                     <span className="text-[18px]" aria-hidden>
                       {ACCOUNT_TYPES[key].emoji}
                     </span>
-                    {ACCOUNT_TYPES[key].long}
+                    {t(ACCOUNT_TYPES[key].long)}
                   </span>
                 ),
               }))}
@@ -161,9 +161,9 @@ export function AccountModal({ isOpen, onClose, initialAccount = null }: Account
           <div className="flex items-center gap-2.5 rounded-md border border-border bg-surface px-3.5 py-3 text-[14px]">
             <Info className="h-[18px] w-[18px] shrink-0 text-text-secondary" aria-hidden />
             <span className="flex-1">
-              <b className="font-semibold">Valyuta: UZS</b>
+              <b className="font-semibold">{t('accounts.form.currency')}</b>
               <br />
-              <span className="text-[12.5px] text-text-muted">Balans tranzaksiyalar orqali o‘zgaradi</span>
+              <span className="text-[12.5px] text-text-muted">{t('accounts.form.balanceMoves')}</span>
             </span>
           </div>
         ) : (
@@ -172,11 +172,11 @@ export function AccountModal({ isOpen, onClose, initialAccount = null }: Account
             control={control}
             render={({ field }) => (
               <MoneyInput
-                label="Boshlang‘ich balans"
+                label={t('accounts.form.openingBalance')}
                 size="md"
                 value={field.value === '0' ? '' : field.value}
                 onChange={field.onChange}
-                hint="Valyuta: UZS (O‘zbek so‘mi)"
+                hint={t('accounts.form.currencyHint')}
               />
             )}
           />
@@ -200,8 +200,8 @@ export function AccountModal({ isOpen, onClose, initialAccount = null }: Account
               checked={Boolean(field.value)}
               onChange={field.onChange}
               disabled={editing && initialAccount?.isDefault}
-              label="Asosiy hisob sifatida belgilash"
-              description="Yangi tranzaksiyalarda oldindan tanlanadi"
+              label={t('accounts.form.primary')}
+              description={t('accounts.form.primaryHint')}
               className="border-t border-border pt-3"
             />
           )}

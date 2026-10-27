@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import type { TransactionResponse } from '@fintrack/shared';
 import { TransactionsPage } from './TransactionsPage';
 import { renderWithProviders } from '../../test/render';
+import { inRussian, latinLeftovers } from '../../test/russian';
 import { ok, server } from '../../test/server';
 import { account, transaction } from '../../test/fixtures';
 import { setViewportWidth } from '../../test/viewport';
@@ -78,5 +79,17 @@ describe('TransactionsPage', () => {
     expect(await screen.findByText('Ikkinchi')).toBeTruthy();
     expect(screen.getByText('Birinchi')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Yana yuklash' })).toBeNull();
+  });
+});
+
+describe('TransactionsPage in Russian', () => {
+  it('leaves no Uzbek in the list, the sums and the filters', async () => {
+    inRussian();
+    serve([[transaction({ note: 'Taksi' })]]);
+    renderWithProviders(<TransactionsPage />, { route: '/app/transactions' });
+
+    expect(await screen.findByText('Taksi')).toBeTruthy();
+    expect(screen.getAllByText('Операции').length).toBeGreaterThan(0);
+    expect(latinLeftovers(['Taksi', 'Transport', 'Naqd pul'])).toEqual([]);
   });
 });

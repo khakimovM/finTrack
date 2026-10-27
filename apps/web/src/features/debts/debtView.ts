@@ -1,20 +1,21 @@
 import type { DebtResponse, DebtStatus } from '@fintrack/shared';
 import { formatDate } from '../../lib/format';
+import { t, tn, type TextKey } from '../../lib/i18n';
 
 export type DebtFilter = 'all' | DebtStatus | 'overdue';
 
-export const DEBT_FILTERS: { value: DebtFilter; label: string }[] = [
-  { value: 'all', label: 'Barchasi' },
-  { value: 'ACTIVE', label: 'Faol' },
-  { value: 'PARTIALLY_PAID', label: 'Qisman to‘langan' },
-  { value: 'PAID', label: 'To‘langan' },
-  { value: 'overdue', label: 'Muddati o‘tgan' },
+export const DEBT_FILTERS: { value: DebtFilter; label: TextKey }[] = [
+  { value: 'all', label: 'debts.filters.all' },
+  { value: 'ACTIVE', label: 'debts.filters.ACTIVE' },
+  { value: 'PARTIALLY_PAID', label: 'debts.filters.PARTIALLY_PAID' },
+  { value: 'PAID', label: 'debts.filters.PAID' },
+  { value: 'overdue', label: 'debts.filters.overdue' },
 ];
 
-export const DEBT_STATUS: Record<DebtStatus, { label: string; tone: 'info' | 'warning' | 'success' }> = {
-  ACTIVE: { label: 'Faol', tone: 'info' },
-  PARTIALLY_PAID: { label: 'Qisman to‘langan', tone: 'warning' },
-  PAID: { label: 'To‘langan', tone: 'success' },
+export const DEBT_STATUS: Record<DebtStatus, { label: TextKey; tone: 'info' | 'warning' | 'success' }> = {
+  ACTIVE: { label: 'debts.status.ACTIVE', tone: 'info' },
+  PARTIALLY_PAID: { label: 'debts.status.PARTIALLY_PAID', tone: 'warning' },
+  PAID: { label: 'debts.status.PAID', tone: 'success' },
 };
 
 export function matchesFilter(debt: DebtResponse, filter: DebtFilter): boolean {
@@ -42,12 +43,12 @@ export function paidPercent(debt: DebtResponse): number {
 }
 
 export function dueText(debt: DebtResponse): string {
-  return debt.dueDate ? `Muddat: ${formatDate(debt.dueDate)}` : 'Muddatsiz';
+  return debt.dueDate ? t('debts.due.on', { date: formatDate(debt.dueDate) }) : t('debts.due.none');
 }
 
 /** "Muddati o‘tgan!", or a warning for the last three days; nothing otherwise. */
 export function dueChip(debt: DebtResponse): { label: string; tone: 'danger' | 'warning' } | null {
-  if (debt.isOverdue) return { label: 'Muddati o‘tgan!', tone: 'danger' };
+  if (debt.isOverdue) return { label: t('debts.due.overdue'), tone: 'danger' };
   if (debt.status === 'PAID' || debt.daysLeft === null || debt.daysLeft > 3) return null;
-  return { label: debt.daysLeft === 0 ? 'Bugun' : `${debt.daysLeft} kun qoldi`, tone: 'warning' };
+  return { label: debt.daysLeft === 0 ? t('debts.due.today') : tn('debts.due.daysLeft', debt.daysLeft), tone: 'warning' };
 }

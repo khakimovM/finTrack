@@ -25,6 +25,7 @@ import { useCategories } from '../../categories/hooks/useCategories';
 import { useCreateRecurringRule, useUpdateRecurringRule } from '../hooks/useRecurring';
 import { FREQUENCY_OPTIONS, ruleTitle } from '../recurringLabels';
 import { DayOfCycleField, NextRunPreview } from './RecurringFields';
+import { t } from '../../../lib/i18n';
 
 export interface RecurringModalProps {
   isOpen: boolean;
@@ -44,9 +45,6 @@ interface Draft {
   endsAt: string;
   note: string;
 }
-
-const STRICT = 'Hisobda yetarli mablag‘ yo‘q (Qatʼiy rejim)';
-const END_BEFORE_START = 'Tugash sanasi boshlanishdan oldin bo‘lishi mumkin emas';
 
 export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalProps) {
   const editing = rule !== null;
@@ -95,7 +93,7 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
   const hasDay = draft.frequency === 'WEEKLY' || draft.frequency === 'MONTHLY';
   // A new weekly rule starts on the weekday it is first booked; keep the grid in step with the start.
   const dayOfCycle = hasDay ? draft.day : null;
-  const endError = draft.endsAt && draft.endsAt < draft.startsAt ? END_BEFORE_START : null;
+  const endError = draft.endsAt && draft.endsAt < draft.startsAt ? t('recurring.form.endBeforeStart') : null;
   const dayChanged = rule !== null && hasDay && draft.day !== rule.dayOfCycle;
   const next = endError
     ? null
@@ -110,7 +108,7 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
-    if (!(/^\d+$/.test(draft.amount) && BigInt(draft.amount) > 0n)) return setAmountError('Summa 0 dan katta bo‘lishi kerak');
+    if (!(/^\d+$/.test(draft.amount) && BigInt(draft.amount) > 0n)) return setAmountError(t('transactions.form.amountError'));
     if (endError) return;
     try {
       if (rule) {
@@ -135,25 +133,26 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
       }
       onClose();
     } catch (err) {
-      setError(apiErrorCode(err) === 'INSUFFICIENT_BALANCE' ? STRICT : apiErrorToMessage(err));
+      setError(apiErrorCode(err) === 'INSUFFICIENT_BALANCE' ? t('transactions.form.strict') : apiErrorToMessage(err));
     }
   };
 
-  const frequencyLabel = FREQUENCY_OPTIONS.find((f) => f.value === draft.frequency)?.label ?? '';
+  const frequencyKey = FREQUENCY_OPTIONS.find((f) => f.value === draft.frequency)?.label;
+  const frequencyLabel = frequencyKey ? t(frequencyKey) : '';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editing ? 'Takroriy to‘lovni tahrirlash' : 'Yangi takroriy to‘lov'}
+      title={editing ? t('recurring.form.titleEdit') : t('recurring.form.titleNew')}
       description={rule ? ruleTitle(rule) : undefined}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
-            Bekor qilish
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="recurring-form" loading={busy}>
-            Saqlash
+            {t('common.save')}
           </Button>
         </>
       }
@@ -161,14 +160,14 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
       <form id="recurring-form" onSubmit={(e) => void submit(e)} className="flex flex-col gap-[18px]" noValidate>
         {rule ? (
           <div className="flex flex-col gap-2">
-            <span className="text-[13px] font-medium text-text-secondary">O‘zgarmaydigan maydonlar</span>
+            <span className="text-[13px] font-medium text-text-secondary">{t('recurring.form.fixed')}</span>
             <dl className="flex flex-col rounded-md border border-border bg-surface px-3.5 py-1">
               {[
-                ['Turi', rule.type === 'INCOME' ? 'Kirim' : 'Chiqim'],
-                ['Hisob', rule.account.name],
-                ['Kategoriya', rule.category?.name ?? 'Kategoriyasiz'],
-                ['Takrorlanish', frequencyLabel],
-                ['Boshlanish', formatDate(rule.startsAt)],
+                [t('recurring.form.type'), rule.type === 'INCOME' ? t('common.income') : t('common.expense')],
+                [t('transactions.form.account'), rule.account.name],
+                [t('transactions.form.category'), rule.category?.name ?? t('recurring.form.noCategory')],
+                [t('recurring.form.frequency'), frequencyLabel],
+                [t('recurring.form.starts'), formatDate(rule.startsAt)],
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-4 border-b border-border py-2.5 text-[14px] last:border-b-0">
                   <dt className="text-text-muted">{label}</dt>
@@ -177,25 +176,25 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
               ))}
             </dl>
             <p className="text-[12.5px] leading-[17px] text-text-muted">
-              Turi, hisob, kategoriya va takrorlanishni o‘zgartirish uchun yangi qoida yarating.
+              {t('recurring.form.fixedHint')}
             </p>
           </div>
         ) : (
           <Segmented
-            aria-label="Tur"
+            aria-label={t('transactions.form.type')}
             size="lg"
             fullWidth
             value={draft.type}
             onChange={(type) => update({ type, categoryId: '' })}
             options={[
-              { value: 'EXPENSE', label: 'Chiqim', tone: 'expense' },
-              { value: 'INCOME', label: 'Kirim', tone: 'income' },
+              { value: 'EXPENSE', label: t('common.expense'), tone: 'expense' },
+              { value: 'INCOME', label: t('common.income'), tone: 'income' },
             ]}
           />
         )}
 
         <MoneyInput
-          label="Summa"
+          label={t('transactions.form.amount')}
           size="md"
           autoFocus={!editing}
           value={draft.amount}
@@ -209,7 +208,7 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
         {!rule && (
           <>
             <ChoiceGrid
-              label="Hisob"
+              label={t('transactions.form.account')}
               columns={2}
               phoneColumns={1}
               value={draft.accountId}
@@ -217,20 +216,20 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
               options={accounts.map((a) => ({ value: a.id, label: a.name, emoji: a.icon, color: a.color, sub: formatAmount(a.balance, { sign: 'negative' }) }))}
             />
             <ChoiceGrid
-              label="Kategoriya (ixtiyoriy)"
+              label={t('recurring.form.category')}
               columns={3}
               phoneColumns={2}
               value={draft.categoryId || 'none'}
               onChange={(id) => update({ categoryId: id === 'none' ? '' : id })}
               options={[
-                { value: 'none', label: 'Kategoriyasiz', emoji: '—' },
+                { value: 'none', label: t('recurring.form.noCategory'), emoji: '—' },
                 ...parents.map((c) => ({ value: c.id, label: c.name, emoji: c.icon, color: c.color })),
               ]}
             />
             <div className="flex flex-col gap-2">
-              <span className="text-[13px] font-medium text-text-secondary">Takrorlanish</span>
+              <span className="text-[13px] font-medium text-text-secondary">{t('recurring.form.frequency')}</span>
               <Segmented
-                aria-label="Takrorlanish"
+                aria-label={t('recurring.form.frequency')}
                 size="lg"
                 fullWidth
                 value={draft.frequency}
@@ -242,7 +241,7 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
                 }
                 options={(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map((value) => ({
                   value,
-                  label: FREQUENCY_OPTIONS.find((f) => f.value === value)?.label ?? value,
+                  label: t(FREQUENCY_OPTIONS.find((f) => f.value === value)?.label ?? `recurring.frequency.${value}`),
                 }))}
               />
             </div>
@@ -255,14 +254,14 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
           <p className="flex gap-2.5 rounded-md bg-info-soft px-3.5 py-3 text-info">
             <Info className="mt-px h-[18px] w-[18px] shrink-0" aria-hidden />
             <span className="text-[13.5px] font-medium leading-[19px] text-text">
-              Har yili {formatDayMonth(draft.startsAt)} — boshlanish sanasidagi kun va oy olinadi.
+              {t('recurring.form.yearlyHint', { date: formatDayMonth(draft.startsAt) })}
             </span>
           </p>
         )}
 
         {!rule && (
           <DatePicker
-            label="Boshlanish"
+            label={t('recurring.form.starts')}
             value={draft.startsAt}
             onChange={(startsAt) => startsAt && update({ startsAt })}
             chips={['today']}
@@ -271,18 +270,18 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
           />
         )}
         <DatePicker
-          label="Tugash (ixtiyoriy)"
+          label={t('recurring.form.ends')}
           value={draft.endsAt}
           onChange={(endsAt) => update({ endsAt })}
           chips={['none']}
-          placeholder="Muddatsiz"
+          placeholder={t('debts.due.none')}
           min={draft.startsAt}
           today={today}
           error={endError ?? undefined}
         />
         <Textarea
-          label="Izoh"
-          placeholder="Masalan: Uy ijarasi"
+          label={t('recurring.form.note')}
+          placeholder={t('recurring.form.notePlaceholder')}
           maxLength={500}
           value={draft.note}
           onChange={(e) => update({ note: e.target.value })}
@@ -291,7 +290,7 @@ export function RecurringModal({ isOpen, onClose, rule = null }: RecurringModalP
           <p className="flex gap-2.5 rounded-md bg-info-soft px-3.5 py-3 text-info">
             <Info className="mt-px h-[18px] w-[18px] shrink-0" aria-hidden />
             <span className="text-pretty text-[13.5px] font-medium leading-[19px] text-text">
-              O‘tgan sanalar uchun to‘lov yozilmaydi. Birinchi to‘lov kuni bugun bo‘lsa, u darhol yoziladi.
+              {t('recurring.form.pastHint')}
             </span>
           </p>
         )}

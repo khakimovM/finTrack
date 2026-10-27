@@ -5,6 +5,7 @@ import { Segmented } from '../../../components/ui/Segmented';
 import { DatePicker } from '../../../components/ui/DatePicker';
 import { Button } from '../../../components/ui/Button';
 import { DateRange, REPORT_PRESETS, ReportPreset } from '../periods';
+import { t } from '../../../lib/i18n';
 
 export interface ReportPeriodPickerProps {
   preset: ReportPreset;
@@ -30,20 +31,20 @@ export function ReportPeriodPicker({ preset, custom, onPresetChange, onCustomCha
     <div className="flex flex-col gap-2.5">
       <div className="-mx-4 max-w-[100vw] overflow-x-auto px-4 scrollbar-none sm:mx-0 sm:px-0">
         <Segmented
-          aria-label="Davr"
+          aria-label={t('dashboard.period.label')}
           value={preset}
           onChange={(next) => {
             setError(null);
             setDraft(custom);
             onPresetChange(next);
           }}
-          options={REPORT_PRESETS.map((p) => ({ value: p.value, label: p.label }))}
+          options={REPORT_PRESETS.map((p) => ({ value: p.value, label: t(p.label) }))}
         />
       </div>
       {preset === 'custom' && (
         <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-card p-3">
           <DatePicker
-            label="Boshlanish"
+            label={t('reports.picker.start')}
             value={draft.from}
             onChange={(from) => {
               setDraft((prev) => ({ ...prev, from }));
@@ -54,7 +55,7 @@ export function ReportPeriodPicker({ preset, custom, onPresetChange, onCustomCha
             className="flex-[1_1_160px]"
           />
           <DatePicker
-            label="Tugash"
+            label={t('reports.picker.end')}
             value={draft.to}
             onChange={(to) => {
               setDraft((prev) => ({ ...prev, to }));
@@ -65,12 +66,12 @@ export function ReportPeriodPicker({ preset, custom, onPresetChange, onCustomCha
             className="flex-[1_1_160px]"
           />
           <Button onClick={apply} className="h-11">
-            Qo‘llash
+            {t('common.apply')}
           </Button>
           {error && (
             <p role="alert" className="flex basis-full items-center gap-1.5 text-[13px] font-medium text-danger">
               <CircleAlert className="h-[15px] w-[15px]" aria-hidden />
-              {error === 'both' ? 'Ikkala sanani ham tanlang' : 'Tugash sanasi boshlanishdan oldin bo‘lishi mumkin emas'}
+              {error === 'both' ? t('reports.picker.both') : t('reports.picker.endBeforeStart')}
             </p>
           )}
         </div>

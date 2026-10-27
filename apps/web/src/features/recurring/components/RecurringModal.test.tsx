@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { RecurringModal } from './RecurringModal';
 import { renderWithProviders } from '../../../test/render';
+import { inRussian, latinLeftovers } from '../../../test/russian';
 import { ok, server } from '../../../test/server';
 import { account, cash, rule } from '../../../test/fixtures';
 
@@ -70,5 +71,17 @@ describe('RecurringModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }));
 
     await waitFor(() => expect(calls.patched).toEqual([{ dayOfCycle: 10 }]));
+  });
+});
+
+describe('RecurringModal in Russian', () => {
+  it('leaves no Uzbek in the form and the preview', async () => {
+    inRussian();
+    serve();
+    renderWithProviders(<RecurringModal isOpen onClose={() => undefined} />);
+
+    expect(await screen.findByText('Следующий платёж: 3 октября 2026 (запишется сегодня)')).toBeTruthy();
+    await screen.findAllByText(/Naqd pul/);
+    expect(latinLeftovers(['Naqd pul'])).toEqual([]);
   });
 });

@@ -6,6 +6,7 @@ import { dismissKeyboard, isTouchScreen, reveal, revealAboveKeyboard } from '../
 import { EmojiTile } from './EmojiTile';
 import { Field, useFieldId } from './Field';
 import { useDismiss } from './Popover';
+import { t } from '../../lib/i18n';
 
 export interface PickerAccount {
   id: string;
@@ -32,7 +33,7 @@ function Balance({ tiyin, className }: { tiyin: string; className?: string }) {
   const negative = BigInt(tiyin) < 0n;
   return (
     <span className={cn('inline-flex items-center gap-1 whitespace-nowrap text-[13px]', negative ? 'text-danger' : 'text-text-muted', className)}>
-      {negative && <TriangleAlert className="h-3.5 w-3.5" aria-label="Manfiy balans" />}
+      {negative && <TriangleAlert className="h-3.5 w-3.5" aria-label={t('common.negativeBalance')} />}
       {formatAmount(tiyin, { sign: 'negative' })}
     </span>
   );
@@ -81,7 +82,7 @@ export function AccountPicker({
   value,
   onChange,
   disabledId,
-  disabledHint = 'Jo‘natuvchi hisob',
+  disabledHint = t('ui.pickers.fromAccount'),
   error,
   invalid,
   className,
@@ -118,7 +119,7 @@ export function AccountPicker({
               </span>
             </>
           ) : (
-            <span className="flex-1 pl-2 text-[15px] text-text-muted">Hisobni tanlang</span>
+            <span className="flex-1 pl-2 text-[15px] text-text-muted">{t('ui.pickers.account')}</span>
           )}
           {open ? <ChevronUp className="h-4 w-4 text-text-muted" aria-hidden /> : <ChevronDown className="h-4 w-4 text-text-muted" aria-hidden />}
         </button>
@@ -226,7 +227,7 @@ export function CategoryPicker({ label, categories, value, onChange, error, clas
           ) : (
             <>
               <EmojiTile emoji="📁" variant="neutral" size={40} className="rounded-[10px]" />
-              <span className="flex-1 text-[15px] text-text-muted">Kategoriyani tanlang</span>
+              <span className="flex-1 text-[15px] text-text-muted">{t('ui.pickers.category')}</span>
             </>
           )}
           {open ? <ChevronUp className="h-4 w-4 text-text-muted" aria-hidden /> : <ChevronDown className="h-4 w-4 text-text-muted" aria-hidden />}
@@ -246,13 +247,13 @@ export function CategoryPicker({ label, categories, value, onChange, error, clas
                     choose(rows[0].category.id);
                   }
                 }}
-                placeholder="Kategoriyani qidirish…"
-                aria-label="Kategoriyani qidirish"
+                placeholder={t('ui.pickers.categorySearch')}
+                aria-label={t('ui.pickers.categorySearchLabel')}
                 className="h-full w-full min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-text-muted"
               />
             </div>
             <ul role="listbox" aria-labelledby={fieldId} className="max-h-[248px] overflow-y-auto p-1.5">
-              {rows.length === 0 && <li className="px-3 py-3 text-[14px] text-text-muted">Hech narsa topilmadi</li>}
+              {rows.length === 0 && <li className="px-3 py-3 text-[14px] text-text-muted">{t('common.nothingFound')}</li>}
               {rows.map(({ category, parent }) => {
                 const on = category.id === value;
                 return (

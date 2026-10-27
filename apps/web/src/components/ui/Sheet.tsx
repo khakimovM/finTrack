@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { EXIT_MS, useOpenSnapshot, usePresence } from '../../lib/motion';
 import { useKeyboardFrame } from '../../lib/keyboard';
 import { Portal, useOverlay } from './overlay';
+import { t } from '../../lib/i18n';
 
 export interface SheetProps {
   isOpen: boolean;
@@ -84,7 +85,7 @@ export function Sheet({
                 <button
                   type="button"
                   onClick={onClose}
-                  aria-label="Yopish"
+                  aria-label={t('common.close')}
                   className="ml-auto flex h-11 w-11 items-center justify-center rounded-full text-text-secondary hover:bg-secondary focus-ring"
                 >
                   <X className="h-5 w-5" aria-hidden />

@@ -7,7 +7,8 @@ import { useAccounts } from '../accounts/hooks/useAccounts';
 import { useCategories } from '../categories/hooks/useCategories';
 import { useTags } from '../tags/hooks/useTags';
 import { PERIOD_OPTIONS, type TxFilters } from './filters';
-import { TYPE_LABELS } from './typeLabels';
+import { typeLabel } from './typeLabels';
+import { t } from '../../lib/i18n';
 
 export type SelectKey = 'type' | 'accountId' | 'categoryId' | 'tagId' | 'period';
 
@@ -40,42 +41,47 @@ export function useFilterOptions(filters: TxFilters) {
     // Expense categories first; an income parent says so, since names can repeat across types.
     const parents = [...tree].sort((a, b) => Number(a.type === 'INCOME') - Number(b.type === 'INCOME'));
     const categoryOptions: DropdownOption[] = parents.flatMap((parent) => [
-      { value: parent.id, label: parent.type === 'INCOME' ? `${parent.name} (kirim)` : parent.name, icon: parent.icon },
+      { value: parent.id, label: parent.type === 'INCOME' ? t('transactions.filters.incomeCategory', { name: parent.name }) : parent.name, icon: parent.icon },
       ...(parent.children ?? []).map((child) => ({ value: child.id, label: child.name, icon: child.icon, depth: 1 as const })),
     ]);
-    const periodOptions: DropdownOption[] = PERIOD_OPTIONS.map((p) => ({ value: p.value, label: p.label }));
+    const periodOptions: DropdownOption[] = PERIOD_OPTIONS.map((p) => ({ value: p.value, label: t(p.label) }));
     if (filters.period === 'custom') {
       periodOptions.push({ value: 'custom', label: customRangeLabel(filters) });
     }
     return [
       {
         key: 'type',
-        label: 'Tur',
-        all: 'Barcha turlar',
+        label: t('transactions.filters.type'),
+        all: t('transactions.filters.allTypes'),
         options: [
-          { value: '', label: 'Barcha turlar' },
-          ...TransactionTypeSchema.options.map((type) => ({ value: type, label: TYPE_LABELS[type] })),
+          { value: '', label: t('transactions.filters.allTypes') },
+          ...TransactionTypeSchema.options.map((type) => ({ value: type, label: typeLabel(type) })),
         ],
       },
       {
         key: 'accountId',
-        label: 'Hisob',
-        all: 'Barcha hisoblar',
-        options: [{ value: '', label: 'Barcha hisoblar' }, ...(accounts ?? []).map((a) => ({ value: a.id, label: a.name, icon: a.icon }))],
+        label: t('transactions.columns.account'),
+        all: t('transactions.filters.allAccounts'),
+        options: [{ value: '', label: t('transactions.filters.allAccounts') }, ...(accounts ?? []).map((a) => ({ value: a.id, label: a.name, icon: a.icon }))],
       },
-      { key: 'categoryId', label: 'Kategoriya', all: 'Barcha kategoriyalar', options: [{ value: '', label: 'Barcha kategoriyalar' }, ...categoryOptions] },
+      {
+        key: 'categoryId',
+        label: t('transactions.form.category'),
+        all: t('transactions.filters.allCategories'),
+        options: [{ value: '', label: t('transactions.filters.allCategories') }, ...categoryOptions],
+      },
       {
         key: 'tagId',
-        label: 'Teg',
-        all: 'Barcha teglar',
-        options: [{ value: '', label: 'Barcha teglar' }, ...tags.map((t) => ({ value: t.id, label: `#${t.name}`, icon: '#' }))],
+        label: t('transactions.filters.tag'),
+        all: t('transactions.filters.allTags'),
+        options: [{ value: '', label: t('transactions.filters.allTags') }, ...tags.map((t) => ({ value: t.id, label: `#${t.name}`, icon: '#' }))],
       },
-      { key: 'period', label: 'Sana', all: 'Barcha sanalar', options: periodOptions },
+      { key: 'period', label: t('transactions.columns.date'), all: t('transactions.filters.allDates'), options: periodOptions },
     ];
   }, [tree, accounts, tags, filters]);
 
   const chips: ActiveChip[] = [];
-  if (filters.search.trim()) chips.push({ key: 'search', label: 'Qidiruv', value: `“${filters.search.trim()}”`, clear: { search: '' } });
+  if (filters.search.trim()) chips.push({ key: 'search', label: t('common.search'), value: `“${filters.search.trim()}”`, clear: { search: '' } });
   for (const select of selects) {
     const value = filters[select.key];
     if (!value) continue;
@@ -89,9 +95,9 @@ export function useFilterOptions(filters: TxFilters) {
       filters.min && filters.max
         ? `${groupSom(filters.min)} — ${groupSom(filters.max)}`
         : filters.min
-          ? `${groupSom(filters.min)} dan`
-          : `${groupSom(filters.max)} gacha`;
-    chips.push({ key: 'amount', label: 'Summa', value, clear: { min: '', max: '' } });
+          ? t('transactions.filters.fromValue', { value: groupSom(filters.min) })
+          : t('transactions.filters.toValue', { value: groupSom(filters.max) });
+    chips.push({ key: 'amount', label: t('transactions.filters.amount'), value, clear: { min: '', max: '' } });
   }
 
   return { selects, chips };
@@ -99,6 +105,6 @@ export function useFilterOptions(filters: TxFilters) {
 
 function customRangeLabel(filters: TxFilters): string {
   if (filters.from && filters.to) return formatRange(filters.from, filters.to);
-  if (filters.from) return `${formatRange(filters.from, filters.from)} dan`;
-  return `${formatRange(filters.to, filters.to)} gacha`;
+  if (filters.from) return t('transactions.filters.fromValue', { value: formatRange(filters.from, filters.from) });
+  return t('transactions.filters.toValue', { value: formatRange(filters.to, filters.to) });
 }

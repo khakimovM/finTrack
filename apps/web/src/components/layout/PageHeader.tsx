@@ -8,6 +8,7 @@ import { Popover } from '../ui/Popover';
 import { NotificationBell } from '../../features/notifications/components/NotificationBell';
 import { QuickAddGrid } from './QuickAdd';
 import { ThemeToggle, useInMiniApp } from './ShellParts';
+import { t } from '../../lib/i18n';
 
 export interface PageHeaderProps {
   /** The page's one h1. */
@@ -57,7 +58,7 @@ export function PageHeader({
             <button
               type="button"
               onClick={() => navigate(backTo)}
-              aria-label="Orqaga"
+              aria-label={t('common.back')}
               className="-ml-2.5 flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary focus-ring"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden />
@@ -99,12 +100,12 @@ export function PageHeader({
             open={quickOpen}
             onClose={() => setQuickOpen(false)}
             align="end"
-            label="Qo‘shish"
+            label={t('common.add')}
             panelClassName="w-[380px] p-2.5"
             trigger={
               <Button onClick={() => setQuickOpen((v) => !v)} aria-expanded={quickOpen} className="pl-3.5">
                 <Plus className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden />
-                Qo‘shish
+                {t('common.add')}
               </Button>
             }
           >

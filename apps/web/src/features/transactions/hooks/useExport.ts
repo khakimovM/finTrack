@@ -4,6 +4,7 @@ import { todayLocalIso } from '@fintrack/shared';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { transactionsApi, triggerDownload } from '../api/transactions.api';
+import { t } from '../../../lib/i18n';
 
 export type ExportFormat = 'csv' | 'xlsx';
 
@@ -13,13 +14,13 @@ async function exportErrorMessage(err: unknown): Promise<string> {
     try {
       err.response.data = JSON.parse(await err.response.data.text()) as unknown;
     } catch {
-      return 'Faylni yuklab bo‘lmadi. Qayta urinib ko‘ring';
+      return t('transactions.export.failed');
     }
   }
   return apiErrorToMessage(err);
 }
 
-export function useExportTransactions(doneMessage = 'Fayl yuklab olindi') {
+export function useExportTransactions(doneMessage = t('transactions.export.done')) {
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
 
   const exportData = async (format: ExportFormat, query?: Record<string, string | undefined>) => {

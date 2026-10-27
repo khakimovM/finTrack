@@ -1,0 +1,48 @@
+export const budgets = {
+  state: {
+    success: 'Meʼyorida',
+    warning: '80% dan oshdi',
+    danger: 'Oshib ketdi',
+  },
+  page: {
+    subtitle: 'Kategoriyalar bo‘yicha oylik limitlar',
+    new: 'Byudjet belgilash',
+    loadFailed: 'Byudjetlarni yuklab bo‘lmadi',
+    emptyTitle: '{month} uchun byudjet yo‘q',
+    emptyText: 'Kategoriya uchun oylik limit belgilang — 80% va 100% da ogohlantiramiz.',
+    totals: 'Oy bo‘yicha jami',
+    totalLimit: 'Jami limit',
+    spent: 'Sarflangan',
+    left: 'Qoldiq',
+    spentPercent: 'Limitdan {percent}% sarflandi',
+  },
+  card: {
+    limit: 'Limit: {amount}',
+    spent: 'Sarflangan',
+    left: 'Qoldiq: {amount}',
+    over: 'Limitdan {amount} ko‘p sarflandi',
+    withChildren: 'Subkategoriyalar ham hisobga olinadi',
+    spentPercent: '{percent}% sarflandi',
+  },
+  confirm: {
+    delete: '“{name}” byudjeti o‘chirilsinmi?',
+    deleteText: '{month} uchun limit olib tashlanadi. Tranzaksiyalar o‘zgarmaydi.',
+  },
+  form: {
+    titleNew: 'Byudjet belgilash',
+    titleEdit: 'Byudjetni tahrirlash',
+    description: '{month} uchun oylik xarajat limiti',
+    category: 'Xarajat kategoriyasi',
+    month: 'Oy',
+    fixedHint: 'Kategoriyani o‘zgartirish uchun byudjetni o‘chirib, yangisini belgilang.',
+    hasBudget: 'Byudjet bor',
+    taken: 'Bu oy uchun ushbu kategoriyada byudjet allaqachon bor',
+    limit: 'Oylik limit',
+    limitError: 'Limit 0 dan katta bo‘lishi kerak',
+  },
+  toast: {
+    added: 'Byudjet belgilandi',
+    saved: 'Byudjet saqlandi',
+    deleted: 'Byudjet o‘chirildi',
+  },
+};

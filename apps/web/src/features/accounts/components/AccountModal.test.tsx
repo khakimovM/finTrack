@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw';
 import type { AccountResponse } from '@fintrack/shared';
 import { AccountModal } from './AccountModal';
 import { renderWithProviders } from '../../../test/render';
+import { inRussian, latinLeftovers } from '../../../test/russian';
 import { fail, ok, server } from '../../../test/server';
 import { account } from '../../../test/fixtures';
 
@@ -63,5 +64,15 @@ describe('AccountModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }));
 
     await waitFor(() => expect(patched).toEqual({ isDefault: true }));
+  });
+});
+
+describe('AccountModal in Russian', () => {
+  it('leaves no Uzbek in the form', () => {
+    inRussian();
+    renderWithProviders(<Harness />);
+
+    expect(screen.getByRole('heading', { name: 'Новый счёт' })).toBeTruthy();
+    expect(latinLeftovers()).toEqual([]);
   });
 });

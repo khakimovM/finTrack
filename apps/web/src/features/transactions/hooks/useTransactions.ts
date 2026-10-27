@@ -6,6 +6,7 @@ import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { invalidateAfter } from '../../../lib/invalidation';
 import { useRecentlyAdded } from '../recentlyAdded';
+import { t, tn } from '../../../lib/i18n';
 
 export function useTransactions(filters?: Partial<ListTransactionsQuery>, options: { enabled?: boolean } = {}) {
   return useQuery({
@@ -37,7 +38,7 @@ export function useCreateTransaction() {
     onSuccess: (created) => {
       useRecentlyAdded.getState().mark(created.id);
       void invalidateAfter(queryClient, 'transaction');
-      toast.success('Tranzaksiya saqlandi');
+      toast.success(t('transactions.toast.saved'));
     },
     // Strict-mode and validation errors are shown inside the form.
   });
@@ -50,7 +51,7 @@ export function useUpdateTransaction() {
     mutationFn: ({ id, data }: { id: string; data: UpdateTransactionInput }) => transactionsApi.update(id, data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'transaction');
-      toast.success('O‘zgarishlar saqlandi');
+      toast.success(t('transactions.toast.changesSaved'));
     },
   });
 }
@@ -71,7 +72,7 @@ export function useDeleteTransaction() {
     mutationFn: transactionsApi.delete,
     onSuccess: (_, id) => {
       void invalidateAfter(queryClient, 'transaction');
-      offerUndo(queryClient, [id], 'Tranzaksiya o‘chirildi');
+      offerUndo(queryClient, [id], t('transactions.toast.deleted'));
     },
     onError: (err) => {
       toast.error(apiErrorToMessage(err));
@@ -86,7 +87,7 @@ export function useBulkDeleteTransactions() {
     mutationFn: transactionsApi.bulkDelete,
     onSuccess: (_, ids) => {
       void invalidateAfter(queryClient, 'transaction');
-      offerUndo(queryClient, ids, `${ids.length} ta tranzaksiya o‘chirildi`);
+      offerUndo(queryClient, ids, tn('transactions.toast.deletedMany', ids.length));
     },
     onError: (err) => {
       toast.error(apiErrorToMessage(err));

@@ -5,6 +5,7 @@ import { EXIT_MS, popMotion, usePresence } from '../../lib/motion';
 import { dismissKeyboard, reveal } from '../../lib/keyboard';
 import { Field, useFieldId } from './Field';
 import { useDismiss } from './Popover';
+import { t } from '../../lib/i18n';
 
 export interface DropdownOption {
   value: string;
@@ -50,7 +51,7 @@ export function Dropdown({
   options,
   variant = 'field',
   label,
-  placeholder = 'Tanlang',
+  placeholder = t('common.choose'),
   emptyValue,
   icon,
   plain = false,

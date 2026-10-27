@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { t } from '../../lib/i18n';
 
 export interface PaginationProps {
   page: number;
@@ -34,15 +35,15 @@ export function Pagination({ page, totalPages, total, limit, onPageChange, class
   if (totalPages <= 1) {
     return (
       <p className={cn('text-[13px] text-text-muted', className)}>
-        Jami {total} tadan {first}–{last} ko‘rsatilmoqda
+        {t('ui.pagination.shown', { total, first, last })}
       </p>
     );
   }
 
   return (
-    <nav className={cn('flex flex-wrap items-center justify-between gap-3', className)} aria-label="Sahifalash">
+    <nav className={cn('flex flex-wrap items-center justify-between gap-3', className)} aria-label={t('ui.pagination.label')}>
       <span className="text-[13px] text-text-muted">
-        Jami {total} tadan {first}–{last} ko‘rsatilmoqda
+        {t('ui.pagination.shown', { total, first, last })}
       </span>
       <div className="flex items-center gap-1">
         <button
@@ -50,7 +51,7 @@ export function Pagination({ page, totalPages, total, limit, onPageChange, class
           className={cn(cell, 'text-text-secondary hover:bg-secondary disabled:opacity-40')}
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          aria-label="Oldingi sahifa"
+          aria-label={t('ui.pagination.previous')}
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
         </button>
@@ -77,7 +78,7 @@ export function Pagination({ page, totalPages, total, limit, onPageChange, class
           className={cn(cell, 'text-text-secondary hover:bg-secondary disabled:opacity-40')}
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          aria-label="Keyingi sahifa"
+          aria-label={t('ui.pagination.next')}
         >
           <ChevronRight className="h-4 w-4" aria-hidden />
         </button>

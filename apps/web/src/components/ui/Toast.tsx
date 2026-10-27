@@ -1,6 +1,7 @@
 import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from 'lucide-react';
 import { useToastStore, type ToastItem } from '../../stores/toastStore';
 import { cn } from '../../lib/utils';
+import { useT } from '../../lib/i18n';
 
 const ICON = {
   success: CircleCheck,
@@ -31,6 +32,8 @@ export function ToastContainer() {
 function ToastCard({ toast, onClose }: { toast: ToastItem; onClose: () => void }) {
   const Icon = ICON[toast.type];
   const isError = toast.type === 'error';
+  // Toasts live outside the router, which is what redraws pages on a language change.
+  const t = useT();
   return (
     <div
       role={isError ? 'alert' : 'status'}
@@ -59,7 +62,7 @@ function ToastCard({ toast, onClose }: { toast: ToastItem; onClose: () => void }
         <button
           type="button"
           onClick={onClose}
-          aria-label="Xabarni yopish"
+          aria-label={t('ui.closeToast')}
           className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground"
         >
           <X className="h-4 w-4" aria-hidden />

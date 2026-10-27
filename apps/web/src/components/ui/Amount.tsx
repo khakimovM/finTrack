@@ -2,6 +2,7 @@ import { TriangleAlert } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useCountingTiyin } from '../../lib/motion';
 import { currencyWord, formatAmountNumber, MINUS, NBSP, signOf, TONE_CLASS, toneOf, type AmountTone } from '../../lib/money';
+import { t } from '../../lib/i18n';
 
 export interface AmountProps {
   /** Tiyin, as the API returns it. */
@@ -62,7 +63,7 @@ export function Amount({
 
   return (
     <span className={cn('inline-flex items-center gap-1 whitespace-nowrap font-semibold tabular-nums', colour, className)}>
-      {negativeBalance && <TriangleAlert className="h-[0.95em] w-[0.95em] shrink-0" aria-label="Manfiy balans" />}
+      {negativeBalance && <TriangleAlert className="h-[0.95em] w-[0.95em] shrink-0" aria-label={t('common.negativeBalance')} />}
       <span>
         {number}
         {unit === 'inline' && `${NBSP}${currencyWord()}`}

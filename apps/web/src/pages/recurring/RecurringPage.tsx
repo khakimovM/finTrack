@@ -18,6 +18,7 @@ import {
 import { RecurringRuleCard } from '../../features/recurring/components/RecurringRuleCard';
 import { RecurringModal } from '../../features/recurring/components/RecurringModal';
 import { ruleTitle } from '../../features/recurring/recurringLabels';
+import { t } from '../../lib/i18n';
 
 type Tab = 'active' | 'paused';
 const CARD = 'rounded-[20px] border border-border bg-card';
@@ -42,9 +43,9 @@ export function RecurringPage() {
     // Run-now books today's payment; a schedule already past today stays where it is.
     const keepsNext = rule.nextRunAt > todayLocalIso();
     const ok = await confirm({
-      title: 'Bugungi to‘lov hozir yozilsinmi?',
-      description: `${ruleTitle(rule)}: ${formatAmount(rule.amount, { sign })} — ${rule.account.name}.${keepsNext ? ' Keyingi sana o‘zgarmaydi.' : ''}`,
-      confirmLabel: 'Hozir yozish',
+      title: t('recurring.confirm.runNow'),
+      description: `${ruleTitle(rule)}: ${formatAmount(rule.amount, { sign })} — ${rule.account.name}.${keepsNext ? t('recurring.confirm.keepsNext') : ''}`,
+      confirmLabel: t('recurring.confirm.runNowAction'),
       icon: Repeat,
     });
     if (ok) await runNow.mutateAsync(rule.id).catch(() => undefined);
@@ -52,9 +53,9 @@ export function RecurringPage() {
 
   const handleDelete = async (rule: RecurringRuleResponse) => {
     const ok = await confirm({
-      title: 'Takroriy to‘lov o‘chirilsinmi?',
-      description: 'Oldin yozilgan to‘lovlar tarixda qoladi, yangilari yozilmaydi.',
-      confirmLabel: 'O‘chirish',
+      title: t('recurring.confirm.delete'),
+      description: t('recurring.confirm.deleteText'),
+      confirmLabel: t('common.delete'),
       destructive: true,
     });
     if (ok) await deleteRule.mutateAsync(rule.id).catch(() => undefined);
@@ -64,27 +65,27 @@ export function RecurringPage() {
   const newButton = (
     <Button onClick={openNew}>
       <Plus className="h-[18px] w-[18px]" aria-hidden />
-      Yangi qoida
+      {t('recurring.page.new')}
     </Button>
   );
 
   let body;
   if (isLoading)
     body = (
-      <div role="status" aria-label="Yuklanmoqda" className="flex flex-col gap-2.5">
+      <div role="status" aria-label={t('transactions.page.loading')} className="flex flex-col gap-2.5">
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-[104px] rounded-[20px]" />
         ))}
       </div>
     );
-  else if (isError) body = <ErrorState title="Takroriy to‘lovlarni yuklab bo‘lmadi" onRetry={() => void refetch()} className={CARD} />;
+  else if (isError) body = <ErrorState title={t('recurring.page.loadFailed')} onRetry={() => void refetch()} className={CARD} />;
   else if (shown.length === 0)
     body = (
       <EmptyState
         icon={<Repeat className="h-6 w-6" aria-hidden />}
-        title={tab === 'active' ? 'Faol takroriy to‘lovlar yo‘q' : 'To‘xtatilgan to‘lovlar yo‘q'}
-        description={tab === 'active' ? 'Oylik maosh, ijara yoki obunani bir marta kiriting — keyin u o‘zi yoziladi.' : undefined}
-        action={tab === 'active' ? <Button onClick={openNew}>Yangi qoida</Button> : undefined}
+        title={tab === 'active' ? t('recurring.page.emptyActive') : t('recurring.page.emptyPaused')}
+        description={tab === 'active' ? t('recurring.page.emptyText') : undefined}
+        action={tab === 'active' ? <Button onClick={openNew}>{t('recurring.page.new')}</Button> : undefined}
         className={CARD}
       />
     );
@@ -108,19 +109,19 @@ export function RecurringPage() {
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-4">
       <PageHeader
-        title="Takroriy to‘lovlar"
-        subtitle="Oylik, ijara va obunalar o‘z vaqtida avtomatik yoziladi"
+        title={t('nav.recurring')}
+        subtitle={t('recurring.page.subtitle')}
         actions={newButton}
         mobileActions={newButton}
       />
       <Tabs
-        aria-label="Qoidalar"
+        aria-label={t('recurring.page.rules')}
         value={tab}
         onChange={setTab}
         className="self-start"
         items={[
-          { value: 'active', label: 'Faol', count: active.length },
-          { value: 'paused', label: 'To‘xtatilgan', count: paused.length },
+          { value: 'active', label: t('recurring.page.active'), count: active.length },
+          { value: 'paused', label: t('recurring.page.paused'), count: paused.length },
         ]}
       />
       {body}

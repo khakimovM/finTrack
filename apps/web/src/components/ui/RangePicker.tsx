@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { formatDate, formatDayMonth, formatRange, monthStandaloneNames, weekdayIndex, weekdayShortNames } from '../../lib/format';
 import { Button } from './Button';
+import { t } from '../../lib/i18n';
 
 export interface DateRange {
   from: string;
@@ -65,7 +66,7 @@ export function RangePicker({ value, onApply, onCancel, max, size = 'md', classN
     ...Array.from({ length: total }, (_, i) => iso(view.y, view.m, i + 1)),
   ];
 
-  const draftText = from && to ? formatRange(from, to) : from ? `${formatDayMonth(from)} — tugash kunini tanlang` : 'Boshlanish kunini tanlang';
+  const draftText = from && to ? formatRange(from, to) : from ? t('ui.date.pickEnd', { from: formatDayMonth(from) }) : t('ui.date.pickStart');
   const big = size === 'lg';
 
   return (
@@ -74,7 +75,7 @@ export function RangePicker({ value, onApply, onCancel, max, size = 'md', classN
         <button
           type="button"
           onClick={() => step(-1)}
-          aria-label="Oldingi oy"
+          aria-label={t('ui.date.previousMonth')}
           className="flex h-8 w-8 items-center justify-center rounded-full text-text-secondary hover:bg-secondary focus-ring"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -85,14 +86,14 @@ export function RangePicker({ value, onApply, onCancel, max, size = 'md', classN
         <button
           type="button"
           onClick={() => step(1)}
-          aria-label="Keyingi oy"
+          aria-label={t('ui.date.nextMonth')}
           disabled={Boolean(max && nextMonthStart > max)}
           className="flex h-8 w-8 items-center justify-center rounded-full text-text-secondary hover:bg-secondary focus-ring disabled:opacity-40"
         >
           <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-y-0.5 text-center" role="group" aria-label="Kalendar">
+      <div className="grid grid-cols-7 gap-y-0.5 text-center" role="group" aria-label={t('ui.date.calendar')}>
         {weekdayShortNames().map((day) => (
           <span key={day} className="pb-1 text-[12px] font-medium text-text-muted">
             {day}
@@ -133,14 +134,14 @@ export function RangePicker({ value, onApply, onCancel, max, size = 'md', classN
         <span className="min-w-0 flex-1 text-[13px] text-text-secondary">{draftText}</span>
         <div className={cn('flex gap-2', big && 'grid grid-cols-2')}>
           <Button variant="secondary" size={big ? 'lg' : 'sm'} onClick={onCancel}>
-            {big ? 'Bekor qilish' : 'Bekor'}
+            {big ? t('common.cancel') : t('common.cancelShort')}
           </Button>
           <Button
             size={big ? 'lg' : 'sm'}
             disabled={!from || !to}
             onClick={() => from && to && onApply({ from, to })}
           >
-            Qo‘llash
+            {t('common.apply')}
           </Button>
         </div>
       </div>

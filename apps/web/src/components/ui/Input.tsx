@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Field, useFieldId } from './Field';
+import { t } from '../../lib/i18n';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -51,7 +52,7 @@ export interface SearchInputProps extends Omit<React.InputHTMLAttributes<HTMLInp
 
 /** The pill search field of lists: icon on the left, a clear button once there is text. */
 export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ value, onChange, className, placeholder = 'Qidiruv', ...props }, ref) => (
+  ({ value, onChange, className, placeholder = t('common.search'), ...props }, ref) => (
     <div
       className={cn(
         'flex h-11 min-w-0 items-center gap-2 rounded-full border border-input bg-card pl-3.5 pr-1.5 shadow-xs field-focus',
@@ -73,7 +74,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         <button
           type="button"
           onClick={() => onChange('')}
-          aria-label="Qidiruvni tozalash"
+          aria-label={t('common.clearSearch')}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-text-secondary hover:bg-secondary-hover focus-ring"
         >
           <X className="h-3.5 w-3.5" aria-hidden />

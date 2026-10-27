@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { useAuthStore } from '../../stores/authStore';
 import { useMiniAppStore } from '../../stores/miniAppStore';
 import { useUiStore } from '../../stores/uiStore';
+import { t } from '../../lib/i18n';
 
 /** Inside Telegram: no sign-out (the account is the Telegram account), theme follows Telegram. */
 export function useInMiniApp(): boolean {
@@ -31,7 +32,7 @@ export function ModeChip({ strict, className }: { strict: boolean; className?: s
       )}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden />
-      {strict ? 'Qatʼiy rejim' : 'Oddiy rejim'}
+      {strict ? t('common.strictMode') : t('common.normalMode')}
     </span>
   );
 }
@@ -44,7 +45,7 @@ export function ThemeToggle({ className }: { className?: string }) {
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label="Mavzuni almashtirish"
+      aria-label={t('nav.toggleTheme')}
       className={cn(
         'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-text transition-colors duration-fast hover:bg-secondary focus-ring',
         className,
@@ -58,5 +59,5 @@ export function ThemeToggle({ className }: { className?: string }) {
 /** "@aziz_k", or the masked phone when there is no username. */
 export function userHandle(user: { telegramUsername: string | null; phone: string | null }): string {
   if (user.telegramUsername) return `@${user.telegramUsername}`;
-  return user.phone ?? 'Telegram orqali';
+  return user.phone ?? t('nav.viaTelegram');
 }

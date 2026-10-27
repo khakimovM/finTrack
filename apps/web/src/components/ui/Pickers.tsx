@@ -1,6 +1,7 @@
 import { cn } from '../../lib/utils';
 import { CHART_COLOR_NAMES, CHART_COLORS, chartIndexOf, tintOf } from '../../lib/colors';
 import { Field } from './Field';
+import { t } from '../../lib/i18n';
 
 export interface EmojiGridProps {
   label?: string;
@@ -13,7 +14,7 @@ export interface EmojiGridProps {
 }
 
 /** 42px cells; the chosen one takes the item colour's tint and a 1.5px ring. */
-export function EmojiGrid({ label = 'Belgi', emojis, value, onChange, color, className }: EmojiGridProps) {
+export function EmojiGrid({ label = t('ui.pickers.icon'), emojis, value, onChange, color, className }: EmojiGridProps) {
   return (
     <Field label={label} className={className}>
       <div role="radiogroup" aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(42px,1fr))] gap-1">
@@ -57,7 +58,7 @@ export interface SwatchesProps {
 }
 
 /** 40px buttons with a 30px dot; the chosen one gets a ring and a white check. */
-export function Swatches({ label = 'Rang', count = 9, value, onChange, className }: SwatchesProps) {
+export function Swatches({ label = t('ui.pickers.color'), count = 9, value, onChange, className }: SwatchesProps) {
   const selected = chartIndexOf(value);
   return (
     <Field label={label} className={className}>
@@ -71,7 +72,7 @@ export function Swatches({ label = 'Rang', count = 9, value, onChange, className
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={CHART_COLOR_NAMES[i]}
+              aria-label={t(CHART_COLOR_NAMES[i])}
               onClick={() => onChange(hex)}
               className="flex h-10 w-10 items-center justify-center rounded-full focus-ring"
               style={on ? { boxShadow: `inset 0 0 0 2px var(--chart-${index})` } : undefined}

@@ -1,3 +1,4 @@
+import type { TextKey } from './i18n';
 /**
  * Accounts, categories and tags store a hex colour. The design draws them with the theme-aware
  * chart-1…9 tokens, so a stored colour is mapped to its token: the chart palette's own light
@@ -17,7 +18,17 @@ export const CHART_COLORS = [
   '#7d8796',
 ] as const;
 
-export const CHART_COLOR_NAMES = ['Yashil', 'Ko‘k', 'Sariq', 'Binafsha', 'Moviy', 'Marjon', 'Pushti', 'Zaytun', 'Kulrang'] as const;
+export const CHART_COLOR_NAMES: readonly TextKey[] = [
+  'colors.green',
+  'colors.blue',
+  'colors.yellow',
+  'colors.purple',
+  'colors.cyan',
+  'colors.coral',
+  'colors.pink',
+  'colors.olive',
+  'colors.gray',
+];
 
 const LEGACY_TO_CHART: Record<string, number> = {
   '#22c55e': 1,

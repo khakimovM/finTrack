@@ -2,10 +2,11 @@ import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Users, type LucideIcon } f
 import { cn } from '../../lib/utils';
 import { useFormStore, type GlobalForm } from '../../stores/formStore';
 import { Sheet } from '../ui/Sheet';
+import { t, type TextKey } from '../../lib/i18n';
 
 interface QuickAddItem {
-  label: string;
-  hint: string;
+  label: TextKey;
+  hint: TextKey;
   icon: LucideIcon;
   /** Label and icon colour, tile background. */
   tone: string;
@@ -14,10 +15,10 @@ interface QuickAddItem {
 }
 
 export const QUICK_ADD_ITEMS: QuickAddItem[] = [
-  { label: 'Chiqim', hint: 'Xarid, to‘lov, xizmat', icon: ArrowUpRight, tone: 'text-expense', tile: 'bg-danger-soft', form: { kind: 'transaction', type: 'EXPENSE' } },
-  { label: 'Kirim', hint: 'Oylik, sotuv, sovg‘a', icon: ArrowDownLeft, tone: 'text-income', tile: 'bg-success-soft', form: { kind: 'transaction', type: 'INCOME' } },
-  { label: 'O‘tkazma', hint: 'Hisoblaringiz orasida', icon: ArrowLeftRight, tone: 'text-text', tile: 'bg-secondary', form: { kind: 'transfer' } },
-  { label: 'Qarz', hint: 'Berish yoki olish', icon: Users, tone: 'text-debt', tile: 'bg-debt-soft', form: { kind: 'debt' } },
+  { label: 'common.expense', hint: 'quickAdd.expenseHint', icon: ArrowUpRight, tone: 'text-expense', tile: 'bg-danger-soft', form: { kind: 'transaction', type: 'EXPENSE' } },
+  { label: 'common.income', hint: 'quickAdd.incomeHint', icon: ArrowDownLeft, tone: 'text-income', tile: 'bg-success-soft', form: { kind: 'transaction', type: 'INCOME' } },
+  { label: 'common.transfer', hint: 'quickAdd.transferHint', icon: ArrowLeftRight, tone: 'text-text', tile: 'bg-secondary', form: { kind: 'transfer' } },
+  { label: 'common.debt', hint: 'quickAdd.debtHint', icon: Users, tone: 'text-debt', tile: 'bg-debt-soft', form: { kind: 'debt' } },
 ];
 
 /** The four choices; `large` is the phone sheet's bigger tile. */
@@ -42,8 +43,8 @@ export function QuickAddGrid({ onChosen, large = false }: { onChosen: () => void
             <item.icon className="h-5 w-5" aria-hidden />
           </span>
           <span className="flex flex-col">
-            <span className={cn('font-semibold', item.tone, large ? 'text-[16px] leading-[22px]' : 'text-[15px] leading-5')}>{item.label}</span>
-            <span className="text-[12px] leading-4 text-text-muted">{item.hint}</span>
+            <span className={cn('font-semibold', item.tone, large ? 'text-[16px] leading-[22px]' : 'text-[15px] leading-5')}>{t(item.label)}</span>
+            <span className="text-[12px] leading-4 text-text-muted">{t(item.hint)}</span>
           </span>
         </button>
       ))}
@@ -53,7 +54,7 @@ export function QuickAddGrid({ onChosen, large = false }: { onChosen: () => void
 
 export function QuickAddSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} title="Qo‘shish">
+    <Sheet isOpen={isOpen} onClose={onClose} title={t('common.add')}>
       <div className="pt-2">
         <QuickAddGrid onChosen={onClose} large />
       </div>
