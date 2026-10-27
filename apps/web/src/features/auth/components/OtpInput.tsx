@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { cn } from '../../../lib/utils';
+import { t } from '../../../lib/i18n';
 
 const LENGTH = 6;
 
@@ -59,7 +60,7 @@ export function OtpInput({ value, onChange, onComplete, disabled, invalid, autoF
         inputMode="numeric"
         autoComplete="one-time-code"
         maxLength={LENGTH}
-        aria-label="6 xonali kod"
+        aria-label={t('login.codeInput')}
         aria-invalid={invalid || undefined}
         className="absolute inset-0 h-full w-full cursor-text bg-transparent text-[16px] text-transparent caret-transparent outline-none selection:bg-transparent disabled:cursor-not-allowed"
       />

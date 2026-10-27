@@ -8,7 +8,8 @@ Dizayn manbasi — `design/` (Claude Design handoff): `fintrack-tokens.css`, `Ha
 
 | Yo'l | Sahifa | Auth |
 |---|---|---|
-| `/` | Landing (birinchi kirgan odamni kutib oladi) | ❌ |
+| `/` | Landing (birinchi kirgan odamni kutib oladi), o'zbekcha | ❌ |
+| `/ru` | Shu landing ruscha (`/ru/` → 301 `/ru`) | ❌ |
 | `/login` | Telegram orqali kirish (kod botga keladi) | ❌ |
 | `/register` | → `/login` (ro'yxatdan o'tish botda) | ❌ |
 | `/app` | Bosh sahifa (dashboard) | ✅ |
@@ -193,15 +194,24 @@ Har bir ma'lumotli ko'rinishda: **loading skeleton**, **error + qayta urinish**,
 
 ## SEO va birinchi yuklanish
 
-- `/` build paytida HTML'ga chiziladi (`entry-prerender.tsx`, `scripts/prerender.mjs`): qidiruv tizimlari va
-  havola ko'rinishlari matnni JS'siz o'qiydi. Ilova skripti kelgach sahifani o'sha holatda qayta chizadi; hero
+- `/` va `/ru` build paytida HTML'ga chiziladi (`entry-prerender.tsx`, `scripts/prerender.mjs` → `index.html`,
+  `ru.html`): qidiruv tizimlari va havola ko'rinishlari matnni JS'siz o'qiydi. Ilova skripti kelgach sahifani o'sha holatda qayta chizadi; hero
   kirish animatsiyasi HTML'da bir marta o'ynaydi (`<html data-prerendered>` → `useEntrance` "static").
   Landing komponentlari Node'da ham render bo'lishi kerak: `window`/`document` faqat effect ichida yoki
   `typeof` tekshiruvi bilan.
 - `public/theme-init.js` qorong'i mavzuni birinchi chizishdan oldin qo'yadi (CSP inline skriptga ruxsat bermaydi).
+- **Ikki til, ikki manzil.**
+  - `/` — o'zbekcha (`hreflang` uz va x-default), `/ru` — ruscha. Ikkalasining `<head>` i bir-birini `hreflang` bilan nomlaydi.
+  - Har sahifaning sarlavha, tavsif, `canonical`, `og:*`, `twitter:*` va JSON-LD tavsifi o'z tilida. Ular lug'atdagi `landing.meta` dan olinadi; `index.html` dagi o'zbekcha matn dev server uchun nusxa, test ular bir xilligini tekshiradi.
+  - `/ru` ochilganda sayt tili ruschaga o'tadi (`lib/i18n/address.ts`).
+  - Ruschani tanlagan odam `/` ni ochsa, `public/locale-init.js` uni chizishdan oldin `/ru` ga yuboradi. Qidiruv tizimida tanlov yo'q, u ikkala manzilni o'qiydi.
+  - Ilova ichida `LandingRoute` manzilni tanlangan tilga moslaydi.
+- **Til almashtirgich.**
+  - Landing'da u boshqa tildagi manzilga havola (`hreflang` bilan): sarlavhada 820px dan, telefon menyusida "Til" qatori, footer'da.
+  - Login sahifasida tilni joyida almashtiradi. Admin login'da yo'q.
 - `index.html` `<head>`: sarlavha va tavsif, `canonical` (`https://myfintrack.uz/`), Open Graph / Twitter
   (`og-image.png` 1200×630), JSON-LD (`WebSite` "FinTrack" + `alternateName` "MyFinTrack", `Organization`
-  logo bilan, `WebApplication` bepul). `robots.txt` `/app`, `/admin`, `/api/` ni yopadi; `sitemap.xml` — `/`.
+  logo bilan, `WebApplication` bepul). `robots.txt` `/app`, `/admin`, `/api/` ni yopadi; `sitemap.xml` — `/` va `/ru` (`xhtml:link` hreflang bilan).
 - Ikonkalar va OG rasm: `node scripts/generate-brand-assets.mjs` (Playwright Chromium), natija `public/` da commit.
 - Telegram bot profili (short/long description) saytni nomlaydi — `t.me` sahifasi ham unga havola beradi.
 

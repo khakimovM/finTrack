@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Route, Routes } from 'react-router-dom';
@@ -7,6 +7,9 @@ import { LoginPage } from './LoginPage';
 import { renderWithProviders } from '../../test/render';
 import { fail, ok, server } from '../../test/server';
 import { useAuthStore } from '../../stores/authStore';
+import { useLocaleStore } from '../../stores/localeStore';
+import { inRussian, latinLeftovers } from '../../test/russian';
+import { FinishedRow, WaitingSteps } from '../../features/auth/components/LoginStates';
 
 const requestId = '00000000-0000-4000-8000-0000000109e1';
 const user = { id: 'u1', name: 'Aziz', telegramUsername: 'aziz' };
@@ -99,5 +102,60 @@ describe('LoginPage (Telegram code)', () => {
         'Telegram orqali kirish vaqtincha ishlamayapti',
       ),
     );
+  });
+});
+
+describe('LoginPage in Russian', () => {
+  // The bot's handle from the mock and the switch back to Uzbek stay Latin.
+  const latin = ['fintrack_bot', 'O‘zbekcha'];
+
+  it('goes through the code flow without a word of Uzbek', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    mockLogin([]);
+    inRussian();
+    renderLogin();
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Вход в FinTrack');
+    expect(latinLeftovers(latin)).toEqual([]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Войти через Telegram' }));
+    await userEvent.type(await screen.findByLabelText('6-значный код'), '111111');
+    expect((await screen.findByRole('alert')).textContent).toBe('Неверный код. Осталось 4 попытки');
+    expect(screen.getByText('Код отправлен в Telegram')).toBeTruthy();
+    expect(latinLeftovers(latin)).toEqual([]);
+  });
+
+  it('writes the waiting steps and the finished request in Russian', () => {
+    inRussian();
+    const waiting = render(<WaitingSteps botUsername="fintrack_bot" deepLink="https://t.me/fintrack_bot" awaitingContact />);
+    expect(waiting.container.querySelector('li')?.textContent).toBe('1В Telegram откроется @fintrack_bot.');
+    expect(screen.getByText('Ждём, когда вы поделитесь номером…')).toBeTruthy();
+    expect(latinLeftovers(latin, waiting.container)).toEqual([]);
+    waiting.unmount();
+
+    const finished = render(<FinishedRow cancelled={false} onRestart={() => {}} restarting={false} />);
+    expect(screen.getByText('Время запроса истекло. Начните заново.')).toBeTruthy();
+    expect(latinLeftovers([], finished.container)).toEqual([]);
+  });
+
+  it('offers Uzbek in the header and switches in place', async () => {
+    // Like App: a new language draws the page again.
+    function Keyed() {
+      const locale = useLocaleStore((state) => state.locale);
+      return <LoginPage key={locale} />;
+    }
+    server.use(
+      http.get('*/api/v1/auth/me', () => HttpResponse.json(fail('UNAUTHORIZED'), { status: 401 })),
+      http.post('*/api/v1/auth/refresh', () => HttpResponse.json(fail('UNAUTHORIZED'), { status: 401 })),
+    );
+    inRussian();
+    renderWithProviders(<Keyed />, { route: '/login' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'O‘zbekcha' }));
+    expect(useLocaleStore.getState().locale).toBe('uz');
+    expect(document.documentElement.lang).toBe('uz');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('FinTrack’ga kirish');
+    expect(screen.getByRole('button', { name: 'Русский' })).toBeTruthy();
+    localStorage.clear();
   });
 });

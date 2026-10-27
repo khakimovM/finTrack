@@ -1,0 +1,35 @@
+import type { Dict } from '../uz';
+import { ruForms } from '../counted';
+
+export const login: Dict['login'] = {
+  title: 'Вход в FinTrack',
+  description: 'Пароль не нужен: код для входа придёт в наш бот в Telegram. При первом входе аккаунт создастся автоматически.',
+  warning: 'Никому не сообщайте код — сотрудники FinTrack никогда его не спрашивают.',
+  start: 'Войти через Telegram',
+  connecting: 'Подключение…',
+  retryLater: 'Попробуйте ещё раз чуть позже.',
+  stepOpen: 'В Telegram откроется {bot}.',
+  stepStart: 'Нажмите {start} (если вы здесь впервые — поделитесь номером).',
+  startButton: 'Запустить',
+  stepCode: 'Введите здесь 6-значный код, который пришлёт бот.',
+  openTelegram: 'Открыть Telegram',
+  awaitingContact: 'Ждём, когда вы поделитесь номером…',
+  awaitingTelegram: 'Ждём ответа из Telegram…',
+  codeSent: 'Код отправлен в Telegram',
+  codeExpired: 'Срок действия кода истёк',
+  codeLabel: 'Код подтверждения',
+  codeInput: '6-значный код',
+  wrongCode: ruForms(
+    'Неверный код. Осталась {count} попытка',
+    'Неверный код. Осталось {count} попытки',
+    'Неверный код. Осталось {count} попыток',
+  ),
+  confirm: 'Подтвердить',
+  verifying: 'Проверяем…',
+  validFor: 'Код действует ещё {time}',
+  resend: 'Отправить код ещё раз',
+  resendIn: 'Отправить ещё раз · {time}',
+  cancelled: 'Запрос отклонён в Telegram.',
+  expired: 'Время запроса истекло. Начните заново.',
+  restart: 'Начать заново',
+};

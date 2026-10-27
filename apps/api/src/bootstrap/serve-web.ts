@@ -17,9 +17,10 @@ const RAILWAY_HOST = /\.up\.railway\.app$/;
  * year; HTML is always revalidated so a deploy shows up on the next navigation. Text files go out
  * brotli- or gzip-compressed from the copies the web build writes next to them.
  *
- * "/" gets index.html with the landing page already drawn in (apps/web/scripts/prerender.mjs), so
- * search engines read it without running scripts. App pages get app.html, an empty shell marked
- * noindex; any other address gets the same shell with a real 404 status, never a soft 404.
+ * "/" gets index.html with the Uzbek landing page already drawn in, "/ru" ru.html with the Russian
+ * one (apps/web/scripts/prerender.mjs), so search engines read them without running scripts. App
+ * pages get app.html, an empty shell marked noindex; any other address gets the same shell with a
+ * real 404 status, never a soft 404.
  */
 export async function serveWebApp(app: NestFastifyApplication, dir: string, publicOrigin?: string): Promise<void> {
   const root = resolve(dir);
@@ -28,6 +29,8 @@ export async function serveWebApp(app: NestFastifyApplication, dir: string, publ
   }
   // A build without the prerender step has no separate shell; index.html serves both.
   const shell = existsSync(join(root, 'app.html')) ? 'app.html' : 'index.html';
+  // A build without the prerender step has no ru.html; the shell then draws the Russian page itself.
+  const russian = existsSync(join(root, 'ru.html')) ? 'ru.html' : 'index.html';
   // Only a real https address is canonical; locally CLIENT_URL is the Vite dev server.
   const canonical = publicOrigin?.startsWith('https://') ? new URL(publicOrigin) : null;
 
@@ -69,6 +72,9 @@ export async function serveWebApp(app: NestFastifyApplication, dir: string, publ
     reply.header('cache-control', REVALIDATE);
     // @fastify/static augments its own copy of fastify's types, not the one Nest exposes.
     if (path === '/') return (reply as unknown as SendFile).sendFile('index.html');
+    if (path === '/ru') return (reply as unknown as SendFile).sendFile(russian);
+    // One address per page: the canonical one has no trailing slash.
+    if (path === '/ru/') return reply.redirect(`/ru${request.url.slice(path.length)}`, 301);
     reply.header('x-robots-tag', 'noindex');
     if (!APP_PAGE.test(path)) reply.code(404);
     return (reply as unknown as SendFile).sendFile(shell);

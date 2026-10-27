@@ -7,12 +7,16 @@ import { Logo } from '../../components/brand/Logo';
 import { Collapse } from '../../components/ui/Collapse';
 import { Segmented } from '../../components/ui/Segmented';
 import { ThemeToggle } from '../../components/layout/ShellParts';
+import { LanguageChoice, LanguageSwitch } from '../../components/layout/LanguageSwitch';
+import { t, useLocale, type TextKey } from '../../lib/i18n';
+import { LANDING_PATH } from '../../lib/i18n/address';
 
-export const ANCHORS = [
-  { href: '#imkoniyatlar', label: 'Imkoniyatlar' },
-  { href: '#qanday-ishlaydi', label: 'Qanday ishlaydi' },
-  { href: '#savollar', label: 'Savollar' },
-] as const;
+// The section ids stay the same in every language, so a shared "#savollar" opens the same place.
+export const ANCHORS: ReadonlyArray<{ href: string; label: TextKey }> = [
+  { href: '#imkoniyatlar', label: 'landing.header.features' },
+  { href: '#qanday-ishlaydi', label: 'landing.header.howItWorks' },
+  { href: '#savollar', label: 'landing.header.faq' },
+];
 
 /** Sticky blurred bar: anchors and the theme toggle from 820px, a menu below. */
 const press = 'transition-[background-color,transform] duration-fast ease-standard active:scale-[0.97] motion-reduce:active:scale-100';
@@ -23,6 +27,7 @@ const swap = 'absolute inset-0 h-[22px] w-[22px] transition-[opacity,transform] 
 export function LandingHeader({ session }: { session: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { resolvedTheme, setTheme } = useUiStore();
+  const locale = useLocale();
   // A shadow once the page moves under the bar.
   const [scrolled, setScrolled] = useState(false);
 
@@ -41,7 +46,7 @@ export function LandingHeader({ session }: { session: boolean }) {
         press,
       )}
     >
-      Ilovaga o‘tish
+      {t('landing.header.openApp')}
       <ArrowRight
         className="hidden h-4 w-4 transition-transform duration-base ease-standard group-hover:translate-x-0.5 motion-reduce:transition-none min-[820px]:block"
         aria-hidden
@@ -55,7 +60,7 @@ export function LandingHeader({ session }: { session: boolean }) {
         press,
       )}
     >
-      Kirish
+      {t('landing.header.signIn')}
     </Link>
   );
 
@@ -67,27 +72,28 @@ export function LandingHeader({ session }: { session: boolean }) {
       )}
     >
       <div className="mx-auto flex h-16 max-w-[1232px] items-center gap-6 px-4">
-        <Link to="/" className="rounded-md focus-ring" aria-label="FinTrack — bosh sahifa">
+        <Link to={LANDING_PATH[locale]} className="rounded-md focus-ring" aria-label={t('nav.homeLink')}>
           <Logo size={32} wordmarkClassName="text-[19px]" />
         </Link>
-        <nav className="hidden flex-1 items-center justify-center gap-1 min-[820px]:flex" aria-label="Sahifa bo‘limlari">
+        <nav className="hidden flex-1 items-center justify-center gap-1 min-[820px]:flex" aria-label={t('landing.header.sections')}>
           {ANCHORS.map((a) => (
             <a
               key={a.href}
               href={a.href}
               className="flex h-9 items-center rounded-full px-3.5 text-[14px] font-medium text-text-secondary transition-colors duration-fast hover:bg-secondary hover:text-text focus-ring"
             >
-              {a.label}
+              {t(a.label)}
             </a>
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2 min-[820px]:ml-0">
+          <LanguageSwitch landing className="hidden min-[820px]:flex" />
           <ThemeToggle className="hidden min-[820px]:flex" />
           {cta}
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Menyu"
+            aria-label={t('landing.header.menu')}
             aria-expanded={menuOpen}
             className="-mr-1.5 flex h-11 w-11 items-center justify-center rounded-full hover:bg-secondary focus-ring min-[820px]:hidden"
           >
@@ -107,28 +113,32 @@ export function LandingHeader({ session }: { session: boolean }) {
               onClick={() => setMenuOpen(false)}
               className="flex h-[52px] items-center justify-between border-b border-border text-[17px] font-medium focus-ring"
             >
-              {a.label}
+              {t(a.label)}
               <ChevronRight className="h-[18px] w-[18px] text-text-muted" aria-hidden />
             </a>
           ))}
           <div className="flex h-[60px] items-center justify-between">
-            <span className="text-[15px] text-text-secondary">Mavzu</span>
+            <span className="text-[15px] text-text-secondary">{t('nav.theme')}</span>
             <Segmented
-              aria-label="Mavzu"
+              aria-label={t('nav.theme')}
               value={resolvedTheme}
               onChange={setTheme}
               options={[
-                { value: 'light', label: 'Yorug‘' },
-                { value: 'dark', label: 'Qorong‘i' },
+                { value: 'light', label: t('nav.themeLight') },
+                { value: 'dark', label: t('nav.themeDark') },
               ]}
             />
+          </div>
+          <div className="flex h-[60px] items-center justify-between border-t border-border">
+            <span className="text-[15px] text-text-secondary">{t('language.title')}</span>
+            <LanguageChoice />
           </div>
           <Link
             to="/login"
             className="mt-2 flex h-12 items-center justify-center gap-2 rounded-full bg-primary text-[15px] font-medium text-primary-foreground hover:bg-primary-hover focus-ring"
           >
             <Send className="h-[18px] w-[18px]" aria-hidden />
-            Telegram orqali boshlash
+            {t('landing.cta.start')}
           </Link>
         </div>
       </Collapse>

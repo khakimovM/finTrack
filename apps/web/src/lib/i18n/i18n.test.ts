@@ -6,6 +6,7 @@ import { fail, server } from '../../test/server';
 import { useLocaleStore } from '../../stores/localeStore';
 import { translate } from '.';
 import { followAccountLanguage } from './followAccount';
+import { followAddressLanguage } from './address';
 import { useAuthStore } from '../../stores/authStore';
 import { user } from '../../test/fixtures';
 
@@ -52,5 +53,23 @@ describe('the account language', () => {
 
     stop();
     useAuthStore.setState({ user: null });
+  });
+});
+
+describe('the landing address', () => {
+  it('makes /ru Russian before the first render, and leaves "/" to the language chosen before', () => {
+    try {
+      window.history.replaceState(null, '', '/ru/');
+      followAddressLanguage();
+      expect(useLocaleStore.getState().locale).toBe('ru');
+
+      useLocaleStore.getState().setLocale('uz');
+      window.history.replaceState(null, '', '/');
+      followAddressLanguage();
+      expect(useLocaleStore.getState().locale).toBe('uz');
+    } finally {
+      window.history.replaceState(null, '', '/');
+      localStorage.clear();
+    }
   });
 });

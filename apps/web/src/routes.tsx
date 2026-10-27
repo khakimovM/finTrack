@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
-import { LandingPage } from './pages/landing/LandingPage';
+import { LandingRoute } from './pages/landing/LandingPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorPage } from './pages/ErrorPage';
 
@@ -8,7 +8,8 @@ import { ErrorPage } from './pages/ErrorPage';
 // bundle; the app, its charts and the admin panel load when someone goes there.
 
 export const router = createBrowserRouter([
-  { path: '/', element: <LandingPage />, errorElement: <ErrorPage /> },
+  { path: '/', element: <LandingRoute lang="uz" />, errorElement: <ErrorPage /> },
+  { path: '/ru', element: <LandingRoute lang="ru" />, errorElement: <ErrorPage /> },
   {
     path: '/login',
     lazy: () => import('./pages/auth/LoginPage').then((m) => ({ Component: m.LoginPage })),

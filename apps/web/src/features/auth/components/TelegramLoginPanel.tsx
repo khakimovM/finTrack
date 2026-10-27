@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useMutation } from '@tanstack/react-query';
 import { TelegramLoginStartResponse } from '@fintrack/shared';
 import { apiErrorToMessage } from '../../../lib/apiError';
+import { tn } from '../../../lib/i18n';
 import { TelegramLoginApi, useTelegramLoginStatus } from '../hooks/useTelegramLogin';
 import { CodeForm, ErrorBanner, FinishedRow, StartButton, WaitingSteps } from './LoginStates';
 
@@ -68,7 +69,7 @@ export function TelegramLoginPanel<Result>({ api, onVerified, onStarted, startLa
         ? (err.response?.data as { error?: { details?: { attemptsLeft?: number } } } | undefined)?.error?.details
         : undefined;
       const left = details?.attemptsLeft;
-      setCodeError(left !== undefined ? `Kod noto‘g‘ri. Yana ${left} ta urinish qoldi` : apiErrorToMessage(err));
+      setCodeError(left !== undefined ? tn('login.wrongCode', left) : apiErrorToMessage(err));
       void status.refetch();
     }
   };

@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { Bell, CreditCard, ExternalLink, Mic, Send, Zap, type LucideIcon } from 'lucide-react';
-import { MINUS, NBSP } from '../../lib/money';
+import { currencyWord, MINUS, NBSP } from '../../lib/money';
+import { t, type TextKey } from '../../lib/i18n';
 import { cn } from '../../lib/utils';
 import { BOT_URL } from './links';
+import { withNodes } from '../../lib/i18n/rich';
 import { beat, Reveal, useReveal, type Beat } from './reveal';
 
 const nb = (text: string) => text.replace(/ /g, NBSP);
@@ -61,8 +63,8 @@ function Waveform({ fromMs }: { fromMs: number | null }) {
 
 interface BandCard {
   icon: LucideIcon;
-  title: string;
-  text: string;
+  title: TextKey;
+  text: TextKey;
   /** `startMs`: when the first message arrives, or null while the scene is not playing. */
   demo: (turn: Turn, startMs: number | null) => ReactNode;
   demoClassName?: string;
@@ -71,25 +73,25 @@ interface BandCard {
 const CARDS: BandCard[] = [
   {
     icon: Zap,
-    title: 'Tez yozish',
-    text: 'Odatdagidek yozing — bot summa, kategoriya va sanani o‘zi ajratib oladi.',
+    title: 'landing.bot.quick',
+    text: 'landing.bot.quickText',
     demo: (turn) => (
       <>
-        <UserBubble turn={turn(0)}>45k tushlik</UserBubble>
+        <UserBubble turn={turn(0)}>{t('landing.bot.quickMessage1')}</UserBubble>
         <BotBubble turn={turn(1)}>
-          <b className="font-semibold">{nb('Chiqim · 45 000 so‘m')}</b> · 🍔 Oziq-ovqat
+          <b className="font-semibold">{nb(t('landing.bot.quickReply1'))}</b> · {t('landing.bot.quickCategory1')}
         </BotBubble>
-        <UserBubble turn={turn(2)}>kecha 1,2 mln ijara</UserBubble>
+        <UserBubble turn={turn(2)}>{t('landing.bot.quickMessage2')}</UserBubble>
         <BotBubble turn={turn(3)}>
-          <b className="font-semibold">{nb('Chiqim · 1 200 000 so‘m')}</b> · 🏠 Uy-joy · Kecha
+          <b className="font-semibold">{nb(t('landing.bot.quickReply2'))}</b> · {t('landing.bot.quickCategory2')}
         </BotBubble>
       </>
     ),
   },
   {
     icon: Mic,
-    title: 'Ovozli xabarlar',
-    text: 'Gapiring — bot eshitib, qoralama tayyorlaydi. Siz faqat tasdiqlaysiz.',
+    title: 'landing.bot.voice',
+    text: 'landing.bot.voiceText',
     demo: (turn, startMs) => {
       const note = turn(
         0,
@@ -107,16 +109,16 @@ const CARDS: BandCard[] = [
             <Waveform fromMs={startMs === null ? null : startMs + 500} />
             <span className="text-[12px]">0:03</span>
           </div>
-          <BotBubble turn={turn(1)}>🎙 Eshitdim: «tushlikka qirq besh ming»</BotBubble>
+          <BotBubble turn={turn(1)}>{t('landing.bot.voiceHeard')}</BotBubble>
           <div className={draft.className} style={draft.style}>
             <BotBubble className="max-w-full">
-              <b className="font-semibold">{nb('Chiqim · 45 000 so‘m')}</b>
+              <b className="font-semibold">{nb(t('landing.bot.voiceAmount'))}</b>
               <br />
-              <span className="text-[13px] text-text-secondary">Kategoriya: Oziq-ovqat › Tushlik</span>
+              <span className="text-[13px] text-text-secondary">{t('landing.bot.voiceCategory')}</span>
             </BotBubble>
             <div className="grid grid-cols-2 gap-1 text-[13px]">
-              <span className="flex h-8 items-center justify-center rounded-[10px] border border-border bg-card font-semibold">✅ Saqlash</span>
-              <span className="flex h-8 items-center justify-center rounded-[10px] border border-border bg-card font-medium">❌ Bekor</span>
+              <span className="flex h-8 items-center justify-center rounded-[10px] border border-border bg-card font-semibold">{t('landing.bot.save')}</span>
+              <span className="flex h-8 items-center justify-center rounded-[10px] border border-border bg-card font-medium">{t('landing.bot.cancel')}</span>
             </div>
           </div>
         </>
@@ -125,30 +127,30 @@ const CARDS: BandCard[] = [
   },
   {
     icon: Bell,
-    title: 'Kunlik xulosa va eslatmalar',
-    text: 'Har kuni 21:00 da kun yakuni, byudjet limiti va qarz muddatlari haqida xabar.',
+    title: 'landing.bot.digest',
+    text: 'landing.bot.digestText',
     demo: (turn) => (
       <>
         <BotBubble className="flex min-w-[min(250px,100%)] flex-col gap-0.5 px-3 py-2.5" turn={turn(0)}>
-          <span className="font-semibold">🌙 Kun yakuni · 21:00</span>
+          <span className="font-semibold">{t('landing.bot.digestTitle')}</span>
           <span className="flex justify-between gap-4 text-text-secondary">
-            Chiqim <b className="font-semibold text-expense">{nb(`${MINUS}329 000 so‘m`)}</b>
+            {t('landing.bot.digestExpense')} <b className="font-semibold text-expense">{nb(`${MINUS}329 000 ${currencyWord()}`)}</b>
           </span>
           <span className="flex justify-between gap-4 text-text-secondary">
-            Kirim <b className="font-semibold text-text">{nb('0 so‘m')}</b>
+            {t('landing.bot.digestIncome')} <b className="font-semibold text-text">{nb(`0 ${currencyWord()}`)}</b>
           </span>
         </BotBubble>
         <BotBubble turn={turn(1)}>
-          ⚠️ Transport byudjeti <b className="font-semibold text-warning">86%</b> ishlatildi
+          {withNodes(t('landing.bot.digestBudget'), { pct: <b className="font-semibold text-warning">86%</b> })}
         </BotBubble>
-        <BotBubble turn={turn(2)}>⏰ Ertaga Dilnoza Rahimovaga {nb('900 000 so‘m')} qaytarish muddati</BotBubble>
+        <BotBubble turn={turn(2)}>{t('landing.bot.digestDebt', { amount: nb(`900 000 ${currencyWord()}`) })}</BotBubble>
       </>
     ),
   },
   {
     icon: CreditCard,
-    title: 'Mini App',
-    text: 'Botdagi “Ilova” tugmasi FinTrack’ni to‘liq ko‘rinishda Telegram ichida ochadi.',
+    title: 'landing.bot.miniApp',
+    text: 'landing.bot.miniAppText',
     demoClassName: 'gap-2.5 overflow-hidden px-4 pb-0 pt-4',
     demo: (turn) => {
       // The Mini App sheet comes up from behind the chat bar, as it does when "Ilova" is tapped.
@@ -161,22 +163,22 @@ const CARDS: BandCard[] = [
         <>
           <div className={sheet.className} style={sheet.style}>
             <span className="mx-auto h-1 w-8 rounded-full bg-input" />
-            <span className="text-[12px] text-text-muted">Jami balans</span>
+            <span className="text-[12px] text-text-muted">{t('landing.mock.balance')}</span>
             <span className="text-[22px] font-semibold leading-7 tracking-[-0.02em]">
               {nb('43 050 000')}
-              <span className="ml-1 text-[12px] font-medium tracking-normal text-text-muted">so‘m</span>
+              <span className="ml-1 text-[12px] font-medium tracking-normal text-text-muted">{currencyWord()}</span>
             </span>
             <span className="flex gap-1.5 text-[12px] font-medium">
-              <span className="flex h-8 flex-1 items-center justify-center rounded-full bg-primary text-primary-foreground">Chiqim</span>
-              <span className="flex h-8 flex-1 items-center justify-center rounded-full bg-secondary">Kirim</span>
-              <span className="flex h-8 flex-1 items-center justify-center rounded-full bg-secondary">O‘tkazma</span>
+              <span className="flex h-8 flex-1 items-center justify-center rounded-full bg-primary text-primary-foreground">{t('landing.mock.expense')}</span>
+              <span className="flex h-8 flex-1 items-center justify-center rounded-full bg-secondary">{t('landing.mock.income')}</span>
+              <span className="flex h-8 flex-1 items-center justify-center rounded-full bg-secondary">{t('common.transfer')}</span>
             </span>
           </div>
           <div className="-mx-4 flex items-center gap-1.5 border-t border-border bg-card p-2">
             <span className="flex h-8 items-center rounded-full bg-brand px-3 text-[12px] font-semibold text-brand-foreground shadow-[0_0_0_3px_var(--card),0_0_0_5px_var(--brand)]">
-              Ilova
+              {t('landing.mock.miniApp')}
             </span>
-            <span className="flex h-8 flex-1 items-center rounded-full bg-surface px-3 text-[12.5px] text-text-muted">Xabar</span>
+            <span className="flex h-8 flex-1 items-center rounded-full bg-surface px-3 text-[12.5px] text-text-muted">{t('landing.mock.composer')}</span>
           </div>
         </>
       );
@@ -198,8 +200,8 @@ function BandCardView({ card, index }: { card: BandCard; index: number }) {
           <card.icon className="h-[18px] w-[18px]" aria-hidden />
         </span>
         <div className="flex flex-col gap-1">
-          <h3 className="text-[17px] font-semibold leading-6">{card.title}</h3>
-          <p className="text-text-secondary">{card.text}</p>
+          <h3 className="text-[17px] font-semibold leading-6">{t(card.title)}</h3>
+          <p className="text-text-secondary">{t(card.text)}</p>
         </div>
       </div>
       <div
@@ -224,10 +226,10 @@ export function TelegramBand() {
                 <Send className="h-4 w-4" aria-hidden /> @fintrack_cwa_bot
               </span>
               <h2 className="text-[clamp(30px,3vw,44px)] font-semibold leading-[1.12] tracking-[-0.03em] [text-wrap:balance]">
-                Telegram ichida moliya
+                {t('landing.bot.title')}
               </h2>
               <p className="text-[17px] leading-[26px] text-text-secondary">
-                Ilovani ochmasdan yozing: bot xabaringizni tushunadi va saqlashdan oldin tasdiqlashingizni so‘raydi.
+                {t('landing.bot.text')}
               </p>
             </div>
             <a
@@ -236,7 +238,7 @@ export function TelegramBand() {
               rel="noopener noreferrer"
               className="group inline-flex h-11 items-center gap-2 rounded-full border border-input px-5 text-[15px] font-medium transition-[background-color,transform] duration-fast ease-standard hover:bg-secondary focus-ring active:scale-[0.97] motion-reduce:active:scale-100"
             >
-              Botni ochish{' '}
+              {t('landing.cta.openBot')}{' '}
               <ExternalLink
                 className="h-[15px] w-[15px] transition-transform duration-base ease-standard group-hover:-translate-y-px group-hover:translate-x-0.5 motion-reduce:transition-none"
                 aria-hidden
