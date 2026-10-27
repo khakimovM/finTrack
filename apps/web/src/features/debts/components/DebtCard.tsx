@@ -8,10 +8,11 @@ import { Collapse } from '../../../components/ui/Collapse';
 import { Menu } from '../../../components/ui/Menu';
 import { Progress } from '../../../components/ui/Progress';
 import { formatDate } from '../../../lib/format';
-import { formatAmount, formatAmountNumber } from '../../../lib/money';
+import { currencyWord, formatAmount, formatAmountNumber } from '../../../lib/money';
 import { cn } from '../../../lib/utils';
 import { useDebtPayments } from '../hooks/useDebts';
 import { DEBT_STATUS, dueChip, dueText, paidPercent } from '../debtView';
+import { t } from '../../../lib/i18n';
 
 export interface DebtCardActions {
   onPay: (debt: DebtResponse) => void;
@@ -41,19 +42,19 @@ function Stat({ label, value, end, className }: { label: string; value: string; 
 
 function History({ debt, onDelete }: { debt: DebtResponse; onDelete: (payment: DebtPaymentResponse) => void }) {
   const payments = useDebtPayments(debt.id);
-  if (payments.isLoading) return <span className="py-2.5 text-[13px] text-text-muted">Yuklanmoqda…</span>;
-  if (payments.isError) return <span className="py-2.5 text-[13px] text-danger">To‘lovlarni yuklab bo‘lmadi</span>;
+  if (payments.isLoading) return <span className="py-2.5 text-[13px] text-text-muted">{t('debts.card.loading')}</span>;
+  if (payments.isError) return <span className="py-2.5 text-[13px] text-danger">{t('debts.card.paymentsFailed')}</span>;
   const list = payments.data ?? [];
-  if (list.length === 0) return <span className="py-2.5 text-[13px] text-text-muted">Hali to‘lov yo‘q</span>;
+  if (list.length === 0) return <span className="py-2.5 text-[13px] text-text-muted">{t('debts.card.noPayments')}</span>;
   return (
-    <ul className="-mt-1.5 flex flex-col" aria-label="To‘lovlar tarixi">
+    <ul className="-mt-1.5 flex flex-col" aria-label={t('debts.card.history')}>
       {list.map((payment) => (
         <li key={payment.id} className="flex min-h-[52px] items-center gap-2.5 border-b border-border last:border-b-0">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-debt-soft text-debt" aria-hidden>
             <HandCoins className="h-4 w-4" />
           </span>
           <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-[13.5px] font-medium">{payment.note || 'To‘lov'}</span>
+            <span className="truncate text-[13.5px] font-medium">{payment.note || t('debts.card.payment')}</span>
             <span className="truncate text-[12px] text-text-muted">
               {formatDate(payment.paidAt)} · {payment.account.name}
             </span>
@@ -62,8 +63,8 @@ function History({ debt, onDelete }: { debt: DebtResponse; onDelete: (payment: D
           <button
             type="button"
             onClick={() => onDelete(payment)}
-            aria-label="To‘lovni o‘chirish"
-            title="To‘lovni o‘chirish"
+            aria-label={t('debts.card.deletePayment')}
+            title={t('debts.card.deletePayment')}
             className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-danger-soft hover:text-danger focus-ring"
           >
             <Trash2 className="h-4 w-4" aria-hidden />
@@ -104,7 +105,7 @@ export const DebtCard = forwardRef<HTMLElement, DebtCardProps>(function DebtCard
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate text-[16px] font-semibold leading-[22px]">{debt.personName}</span>
           <span className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-muted">
-            <span className={cn('whitespace-nowrap font-medium', lent ? 'text-debt' : 'text-text-secondary')}>{lent ? 'Menga qarzdor' : 'Men qarzdorman'}</span>
+            <span className={cn('whitespace-nowrap font-medium', lent ? 'text-debt' : 'text-text-secondary')}>{lent ? t('debts.owedToMe') : t('debts.iOwe')}</span>
             {debt.personPhone && (
               <>
                 <span aria-hidden>·</span>
@@ -116,21 +117,21 @@ export const DebtCard = forwardRef<HTMLElement, DebtCardProps>(function DebtCard
           </span>
         </div>
         <Chip tone={status.tone} dot>
-          {status.label}
+          {t(status.label)}
         </Chip>
         <Menu
-          label="Amallar"
+          label={t('transactions.list.actions')}
           width={200}
           className="-mr-2 -mt-[5px]"
           items={[
-            { label: 'Tahrirlash', icon: Pencil, onSelect: () => actions.onEdit(debt) },
-            { label: 'O‘chirish', icon: Trash2, danger: true, separatorBefore: true, onSelect: () => actions.onDelete(debt) },
+            { label: t('common.edit'), icon: Pencil, onSelect: () => actions.onEdit(debt) },
+            { label: t('common.delete'), icon: Trash2, danger: true, separatorBefore: true, onSelect: () => actions.onDelete(debt) },
           ]}
           trigger={(props) => (
             <button
               {...props}
               type="button"
-              aria-label="Amallar"
+              aria-label={t('transactions.list.actions')}
               className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-text-secondary hover:bg-secondary focus-ring aria-expanded:bg-secondary"
             >
               <EllipsisVertical className="h-[18px] w-[18px]" aria-hidden />
@@ -140,16 +141,16 @@ export const DebtCard = forwardRef<HTMLElement, DebtCardProps>(function DebtCard
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <Stat label="Asl summa" value={formatAmountNumber(debt.amount)} />
-        <Stat label={`To‘langan · ${percent}%`} value={formatAmountNumber(debt.paidAmount)} />
+        <Stat label={t('debts.card.original')} value={formatAmountNumber(debt.amount)} />
+        <Stat label={t('debts.card.paid', { percent })} value={formatAmountNumber(debt.paidAmount)} />
         <Stat
-          label="Qoldiq, so‘m"
+          label={t('debts.card.remaining', { currency: currencyWord() })}
           value={formatAmountNumber(debt.remainingAmount)}
           end
           className={remaining === 0n ? 'text-success' : debt.isOverdue ? 'text-danger' : undefined}
         />
       </div>
-      <Progress value={percent} tone={paid ? 'success' : 'debt'} aria-label={`${percent}% to‘langan`} />
+      <Progress value={percent} tone={paid ? 'success' : 'debt'} aria-label={t('debts.card.paidLabel', { percent })} />
 
       <div className="flex flex-wrap items-center gap-2 text-[13px] text-text-secondary">
         <CalendarDays className="h-4 w-4" aria-hidden />
@@ -167,10 +168,10 @@ export const DebtCard = forwardRef<HTMLElement, DebtCardProps>(function DebtCard
         {!paid && (
           <>
             <Button size="sm" onClick={() => actions.onPay(debt)}>
-              To‘lov kiritish
+              {t('debts.card.pay')}
             </Button>
             <Button size="sm" variant="outline" onClick={() => actions.onSettle(debt)}>
-              To‘liq yopish
+              {t('debts.card.settle')}
             </Button>
           </>
         )}
@@ -181,7 +182,8 @@ export const DebtCard = forwardRef<HTMLElement, DebtCardProps>(function DebtCard
           aria-expanded={historyOpen}
           className="flex h-9 items-center gap-1 whitespace-nowrap rounded-full pl-2.5 pr-1.5 text-[13px] font-medium text-text-secondary hover:bg-secondary hover:text-text focus-ring"
         >
-          To‘lovlar tarixi{payments.data ? ` (${payments.data.length})` : ''}
+          {t('debts.card.history')}
+          {payments.data ? ` (${payments.data.length})` : ''}
           <ChevronDown
             className={cn('h-4 w-4 transition-transform duration-base ease-standard', historyOpen && 'rotate-180')}
             aria-hidden

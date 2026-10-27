@@ -6,10 +6,11 @@ import { TagChip } from '../../../components/ui/Chip';
 import { formatDayHeader, formatShortDate, formatTime } from '../../../lib/format';
 import { formatAmount } from '../../../lib/money';
 import { cn } from '../../../lib/utils';
-import { TYPE_LABELS } from '../typeLabels';
+import { typeLabel } from '../typeLabels';
 import { useRecentlyAdded } from '../recentlyAdded';
 import { TxTile, rowKind, rowNote, rowSubtitle, rowTitle } from '../rowView';
 import { TransactionRowMenu, type RowActions } from './TransactionRowMenu';
+import { t } from '../../../lib/i18n';
 
 export interface TransactionListProps {
   transactions: TransactionResponse[];
@@ -75,8 +76,8 @@ function SystemLock({ compact }: { compact?: boolean }) {
   return (
     <span className="group relative flex">
       <span
-        aria-label="Tizim yozuvi"
-        title="Tizim yozuvi"
+        aria-label={t('transactions.list.system')}
+        title={t('transactions.list.system')}
         className={cn('flex h-8 w-8 items-center justify-center text-text-muted', compact && '-mr-1.5 mt-1')}
       >
         <Lock className="h-4 w-4" aria-hidden />
@@ -85,7 +86,7 @@ function SystemLock({ compact }: { compact?: boolean }) {
         role="tooltip"
         className="pointer-events-none absolute bottom-[38px] right-0 hidden whitespace-nowrap rounded-[8px] bg-primary px-2.5 py-1.5 text-[12px] font-medium text-primary-foreground shadow-md group-hover:block"
       >
-        Tizim yozuvi
+        {t('transactions.list.system')}
       </span>
     </span>
   );
@@ -113,7 +114,7 @@ export function TransactionList({ transactions, grouped, today, parents, actions
         >
           {selection ? (
             <Checkbox
-              aria-label="Barchasini tanlash"
+              aria-label={t('transactions.list.selectAll')}
               checked={selectable.length > 0 && selectedOnPage === selectable.length}
               indeterminate={selectedOnPage > 0 && selectedOnPage < selectable.length}
               disabled={selectable.length === 0}
@@ -122,11 +123,11 @@ export function TransactionList({ transactions, grouped, today, parents, actions
           ) : (
             <span />
           )}
-          <span>Sana</span>
-          <span>Hisob</span>
-          <span>Kategoriya / Tur</span>
-          <span>Izoh</span>
-          <span className="text-right">Summa</span>
+          <span>{t('transactions.columns.date')}</span>
+          <span>{t('transactions.columns.account')}</span>
+          <span>{t('transactions.columns.categoryType')}</span>
+          <span>{t('transactions.columns.note')}</span>
+          <span className="text-right">{t('transactions.columns.amount')}</span>
           <span />
         </div>
       )}
@@ -183,7 +184,7 @@ export function TransactionList({ transactions, grouped, today, parents, actions
                 )}
               >
                 {selection && kind === 'entry' ? (
-                  <Checkbox aria-label="Tanlash" checked={checked} onChange={() => selection.toggle(tx.id)} />
+                  <Checkbox aria-label={t('transactions.list.select')} checked={checked} onChange={() => selection.toggle(tx.id)} />
                 ) : (
                   <span />
                 )}
@@ -198,7 +199,7 @@ export function TransactionList({ transactions, grouped, today, parents, actions
                   <TxTile tx={tx} size={30} />
                   <span className="flex min-w-0 flex-col">
                     <span className={cn('truncate font-medium', kind === 'debt' ? 'text-debt' : 'text-text')}>
-                      {kind === 'entry' ? tx.category?.name ?? TYPE_LABELS[tx.type] : TYPE_LABELS[tx.type]}
+                      {kind === 'entry' ? tx.category?.name ?? typeLabel(tx.type) : typeLabel(tx.type)}
                     </span>
                     {kind === 'entry' && parent && <span className="truncate text-[12px] leading-4 text-text-muted">{parent}</span>}
                   </span>

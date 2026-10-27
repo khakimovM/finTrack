@@ -5,6 +5,7 @@ import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { invalidateAfter } from '../../../lib/invalidation';
+import { t } from '../../../lib/i18n';
 
 export function useBudgetsStatus(month?: string) {
   return useQuery({
@@ -21,7 +22,7 @@ export function useCreateBudget() {
     mutationFn: (data: CreateBudgetInput) => budgetsApi.create(data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'budget');
-      toast.success('Byudjet belgilandi');
+      toast.success(t('budgets.toast.added'));
     },
     // A budget the month already has is shown next to the category in the form.
   });
@@ -35,7 +36,7 @@ export function useUpdateBudget() {
       budgetsApi.update(id, data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'budget');
-      toast.success('Byudjet saqlandi');
+      toast.success(t('budgets.toast.saved'));
     },
   });
 }
@@ -47,7 +48,7 @@ export function useDeleteBudget() {
     mutationFn: (id: string) => budgetsApi.delete(id),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'budget');
-      toast.success('Byudjet o‘chirildi');
+      toast.success(t('budgets.toast.deleted'));
     },
     onError: (err) => {
       toast.error(apiErrorToMessage(err));

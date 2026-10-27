@@ -5,6 +5,7 @@ import type { StatsSummaryResponse } from '@fintrack/shared';
 import { DashboardPage } from './DashboardPage';
 import { usePeriodStore } from '../../stores/periodStore';
 import { renderWithProviders } from '../../test/render';
+import { inRussian, latinLeftovers } from '../../test/russian';
 import { ok, server } from '../../test/server';
 import { account, debt, transaction } from '../../test/fixtures';
 
@@ -121,5 +122,18 @@ describe('Dashboard figures', () => {
     expect(within(owed).getByText('1 kishi')).toBeTruthy();
     const owing = within(card).getByText('Men qarzdorman').parentElement as HTMLElement;
     expect(within(owing).getByText('1 kishi')).toBeTruthy();
+  });
+});
+
+describe('DashboardPage in Russian', () => {
+  it('leaves no Uzbek on any widget', async () => {
+    inRussian();
+    serve();
+    renderWithProviders(<DashboardPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Динамика баланса' })).toBeTruthy();
+    expect(await screen.findByText('Должны мне')).toBeTruthy();
+    await screen.findAllByText('Transport');
+    expect(latinLeftovers(['Naqd pul', 'Jasur Karimov', 'Dilnoza', 'Transport'])).toEqual([]);
   });
 });

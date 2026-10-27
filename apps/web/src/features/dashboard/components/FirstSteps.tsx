@@ -4,6 +4,7 @@ import { cn } from '../../../lib/utils';
 import { useFormStore } from '../../../stores/formStore';
 import { Button } from '../../../components/ui/Button';
 import { BOT_URL } from '../../landing/links';
+import { t } from '../../../lib/i18n';
 
 interface Step {
   title: string;
@@ -18,36 +19,36 @@ export function FirstSteps({ hasAccount }: { hasAccount: boolean }) {
   const open = useFormStore((s) => s.open);
   const steps: Step[] = [
     {
-      title: 'Hisob qo‘shing',
-      hint: 'Karta, naqd pul yoki jamg‘arma',
+      title: t('dashboard.firstSteps.account'),
+      hint: t('dashboard.firstSteps.accountHint'),
       icon: Wallet,
       done: hasAccount,
       action: (
         <Button size="sm" onClick={() => open({ kind: 'account' })}>
-          Hisob qo‘shish
+          {t('dashboard.firstSteps.accountAction')}
         </Button>
       ),
     },
     {
-      title: 'Birinchi chiqimni yozing',
-      hint: 'Summa, kategoriya va hisob',
+      title: t('dashboard.firstSteps.expense'),
+      hint: t('dashboard.firstSteps.expenseHint'),
       icon: ArrowUpRight,
       done: false,
       action: (
         <Button size="sm" variant="outline" onClick={() => open({ kind: 'transaction', type: 'EXPENSE' })}>
-          Chiqim yozish
+          {t('dashboard.firstSteps.expenseAction')}
         </Button>
       ),
     },
     {
-      title: 'Telegram botni sinab ko‘ring',
-      hint: '“45k tushlik” deb yozib ko‘ring',
+      title: t('dashboard.firstSteps.bot'),
+      hint: t('dashboard.firstSteps.botHint'),
       icon: Send,
       done: false,
       action: (
         <Button size="sm" variant="outline" asChild>
           <a href={BOT_URL} target="_blank" rel="noopener noreferrer">
-            Botni ochish
+            {t('dashboard.firstSteps.botAction')}
           </a>
         </Button>
       ),
@@ -59,8 +60,8 @@ export function FirstSteps({ hasAccount }: { hasAccount: boolean }) {
     <section className="flex flex-col gap-5 rounded-xl border border-border bg-card px-4 py-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-[20px] font-semibold leading-7">Boshlash uchun uchta qadam</h2>
-          <p className="text-text-secondary">Hisob qo‘shganingizdan keyin bu yerda balans, grafiklar va byudjetlar paydo bo‘ladi.</p>
+          <h2 className="text-[20px] font-semibold leading-7">{t('dashboard.firstSteps.title')}</h2>
+          <p className="text-text-secondary">{t('dashboard.firstSteps.text')}</p>
         </div>
         <span className="flex h-7 shrink-0 items-center rounded-full bg-secondary px-2.5 text-[13px] font-semibold">
           {doneCount} / {steps.length}
@@ -74,7 +75,7 @@ export function FirstSteps({ hasAccount }: { hasAccount: boolean }) {
                 'flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
                 step.done ? 'bg-success text-primary-foreground' : 'border-[1.5px] border-input',
               )}
-              aria-label={step.done ? 'Bajarildi' : 'Bajarilmagan'}
+              aria-label={step.done ? t('dashboard.firstSteps.done') : t('dashboard.firstSteps.notDone')}
             >
               {step.done && <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />}
             </span>

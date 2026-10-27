@@ -1,22 +1,12 @@
 import { RecurrenceFrequency, RecurringRuleResponse } from '@fintrack/shared';
-import { formatDate, weekdayIndex } from '../../lib/format';
+import { formatDayMonth, weekdayIndex, weekdayNames } from '../../lib/format';
+import { t, type TextKey } from '../../lib/i18n';
 
-/** ISO weekday order, matching the API's dayOfCycle 1 (Monday) … 7 (Sunday). */
-export const WEEKDAYS = [
-  'dushanba',
-  'seshanba',
-  'chorshanba',
-  'payshanba',
-  'juma',
-  'shanba',
-  'yakshanba',
-];
-
-export const FREQUENCY_OPTIONS: Array<{ value: RecurrenceFrequency; label: string }> = [
-  { value: 'MONTHLY', label: 'Har oy' },
-  { value: 'WEEKLY', label: 'Har hafta' },
-  { value: 'DAILY', label: 'Har kuni' },
-  { value: 'YEARLY', label: 'Har yili' },
+export const FREQUENCY_OPTIONS: Array<{ value: RecurrenceFrequency; label: TextKey }> = [
+  { value: 'MONTHLY', label: 'recurring.frequency.MONTHLY' },
+  { value: 'WEEKLY', label: 'recurring.frequency.WEEKLY' },
+  { value: 'DAILY', label: 'recurring.frequency.DAILY' },
+  { value: 'YEARLY', label: 'recurring.frequency.YEARLY' },
 ];
 
 /** Whether the rule lets the user pick the day (weekday or day of month). */
@@ -35,20 +25,20 @@ type Schedule = Pick<RecurringRuleResponse, 'frequency' | 'dayOfCycle' | 'starts
 export function scheduleLabel({ frequency, dayOfCycle, startsAt }: Schedule): string {
   switch (frequency) {
     case 'DAILY':
-      return 'Har kuni';
+      return t('recurring.frequency.DAILY');
     case 'WEEKLY':
-      return `Har hafta, ${WEEKDAYS[(dayOfCycle ?? isoWeekday(startsAt)) - 1]}`;
+      return t('recurring.schedule.weekly', { day: weekdayNames()[(dayOfCycle ?? isoWeekday(startsAt)) - 1] });
     case 'MONTHLY': {
       const day = dayOfCycle ?? Number(startsAt.slice(8, 10));
       // The API moves a missing day (31 February) to the month's last day.
-      return day >= 29 ? `Har oy, ${day}-kuni (qisqa oylarda oxirgi kuni)` : `Har oy, ${day}-kuni`;
+      return t(day >= 29 ? 'recurring.schedule.monthlyLate' : 'recurring.schedule.monthly', { day });
     }
     case 'YEARLY':
-      return `Har yili, ${formatDate(startsAt).replace(/, \d{4}$/, '')}`;
+      return t('recurring.schedule.yearly', { date: formatDayMonth(startsAt) });
   }
 }
 
 /** The category names the rule; without one the note does, then the type. */
 export function ruleTitle(rule: Pick<RecurringRuleResponse, 'category' | 'note' | 'type'>): string {
-  return rule.category?.name ?? (rule.note || (rule.type === 'INCOME' ? 'Kirim' : 'Chiqim'));
+  return rule.category?.name ?? (rule.note || (rule.type === 'INCOME' ? t('common.income') : t('common.expense')));
 }

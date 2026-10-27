@@ -8,6 +8,7 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useStatsBalanceTrend } from '../hooks/useDashboard';
 import { WidgetCard, WidgetState } from './WidgetCard';
+import { t } from '../../../lib/i18n';
 
 /** Running total of all accounts over the period, with where it started and ended. */
 export function BalanceTrendCard() {
@@ -20,7 +21,7 @@ export function BalanceTrendCard() {
   // The line starts from the balance before the period ("Boshi"), so even a single day draws a line.
   const points = data
     ? [
-        { label: 'Boshi', title: 'Davr boshi', balance: tiyinToChartNumber(data.meta.startingBalance) },
+        { label: t('dashboard.balanceTrend.start'), title: t('dashboard.balanceTrend.startTitle'), balance: tiyinToChartNumber(data.meta.startingBalance) },
         ...data.data.map((item) => ({
           label: formatShortDate(item.date),
           title: formatDayMonth(item.date),
@@ -38,12 +39,12 @@ export function BalanceTrendCard() {
 
   return (
     <WidgetCard
-      title="Balans dinamikasi"
+      title={t('dashboard.balanceTrend.title')}
       extra={
         data ? (
           <div className="flex gap-5">
-            {stat('Boshlang‘ich', data.meta.startingBalance)}
-            {stat(running ? 'Bugun' : 'Yakuniy', data.meta.endingBalance)}
+            {stat(t('dashboard.balanceTrend.opening'), data.meta.startingBalance)}
+            {stat(running ? t('common.today') : t('dashboard.balanceTrend.closing'), data.meta.endingBalance)}
           </div>
         ) : undefined
       }
@@ -55,13 +56,13 @@ export function BalanceTrendCard() {
         skeleton={<Skeleton className="h-[180px] w-full sm:h-[220px]" />}
       >
         {points.length === 0 ? (
-          <EmptyState variant="widget" title="Balans maʼlumotlari yo‘q" description="Hisob qo‘shib, birinchi yozuvni kiriting." />
+          <EmptyState variant="widget" title={t('dashboard.balanceTrend.empty')} description={t('dashboard.balanceTrend.emptyText')} />
         ) : (
           <div className="h-[180px] sm:h-[220px]">
             <AreaTrend
-              ariaLabel="Balans dinamikasi grafigi"
+              ariaLabel={t('dashboard.balanceTrend.chart')}
               data={points}
-              series={[{ key: 'balance', label: 'Balans', color: 'var(--chart-2)' }]}
+              series={[{ key: 'balance', label: t('dashboard.balanceTrend.series'), color: 'var(--chart-2)' }]}
               height="100%"
               formatValue={(value) => formatAmount(BigInt(Math.round(value)) * 100n, { sign: 'negative' })}
             />

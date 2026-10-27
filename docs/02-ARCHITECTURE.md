@@ -96,13 +96,19 @@ apps/web/src/
 ```
 
 **Tillar (uz, ru).** Kutubxonasiz, tiplangan lug'atlar:
-- **Asosiy lug'at.** `lib/i18n/uz.ts` asosiy lug'at. `ru.ts` uning `Dict` tipiga yoziladi, shuning uchun yetishmagan kalitni kompilyator ushlaydi.
-- **Matn olish.** Komponentlarda `useT()`, React'dan tashqarida `t()` / `currentLocale()`.
-- **Til qayerda saqlanadi.** Til `stores/localeStore.ts` da va `localStorage` da turadi. Kirgan foydalanuvchida `user.locale` ham hisobga olinadi.
+- **Asosiy lug'at.** `lib/i18n/uz/` asosiy lug'at, bo'lim (namespace) bo'yicha fayllarga bo'lingan. `lib/i18n/ru/` dagi har bir fayl `Dict['bo'lim']` tipiga yoziladi, shuning uchun yetishmagan kalitni kompilyator ushlaydi.
+- **Matn olish.** Sahifa va komponentlarda render paytida `t()` / `tn()`. Router'dan tashqarida qayta chizilishi kerak bo'lgan joyda (toast) `useT()`.
+- **Son bilan matn.** `tn(key, count)` `{count}` ni o'zi qo'yadi. O'zbekchada `counted('{count} ta …')` bitta shakl beradi, ruschada `ruForms(one, few, many)` uchta shakl beradi.
+- **Modul darajasidagi konstantalar** matnning o'zini emas, `TextKey` ni saqlaydi va u render paytida tarjima qilinadi. Modul yuklanganda `t()` yoki `currencyWord()` chaqirilsa, til almashgandan keyin ham eski til qoladi.
+- **Til qayerda saqlanadi.**
+  - Til `stores/localeStore.ts` da va `localStorage` da turadi.
+  - Sozlamalarda tanlangan til `PATCH /users/me { locale }` bilan akkauntga ham yoziladi.
+  - Kirgan foydalanuvchida `user.locale` qo'llanadi (`lib/i18n/followAccount.ts`), shuning uchun boshqa qurilmalar ham shu tilda ochiladi.
 - **Til almashganda** butun router qayta chiziladi: sana va summalar render paytida yoziladi.
 - **Umumiy jadvallar.** Oy va hafta kunlari nomlari, valyuta so'zi, qisqa birliklar, `plural()` va xato kodlarining matni (`ERROR_TEXT`) `packages/shared/src/i18n/` da. Ularni web ham, bot ham ishlatadi.
 - **Admin panel** har doim o'zbekcha.
-- **Rus tili hozircha yashirin.** `RUSSIAN_READY` (`lib/i18n/index.ts`) hamma sahifa tarjima qilinguncha `false`. Shu vaqtgacha til tanlagich faqat dev serverda ko'rinadi.
+- **Hali o'zbekcha qolganlar.** Landing va login sahifasi B3 bosqichida, bot esa B4 bosqichida tarjima qilinadi.
+- **Tekshiruv.** Har sahifa va forma uchun ruscha smoke test bor: `test/russian.ts` dagi `latinLeftovers()` rus ekranida lotin harfli so'z qoldirmaydi, testdagi ma'lumotdan tashqari.
 
 ## Ma'lumot oqimi
 

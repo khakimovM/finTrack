@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw';
 import type { CategoryResponse } from '@fintrack/shared';
 import { CategoryModal, type CategoryModalProps } from './CategoryModal';
 import { renderWithProviders } from '../../../test/render';
+import { inRussian, latinLeftovers } from '../../../test/russian';
 import { fail, ok, server } from '../../../test/server';
 import { category } from '../../../test/fixtures';
 
@@ -70,5 +71,17 @@ describe('CategoryModal', () => {
     await userEvent.type(await screen.findByLabelText('Kategoriya nomi'), 'Oziq-ovqat');
     await userEvent.click(screen.getByRole('button', { name: 'Saqlash' }));
     expect((await screen.findByRole('alert')).textContent).toBe('Bunday nomli kategoriya allaqachon mavjud');
+  });
+});
+
+describe('CategoryModal in Russian', () => {
+  it('leaves no Uzbek in the form', async () => {
+    inRussian();
+    serveTree();
+    renderWithProviders(<Harness defaultParentId={transport.id} />);
+
+    expect(await screen.findByRole('heading', { name: 'Новая подкатегория' })).toBeTruthy();
+    await screen.findByRole('radio', { name: /Transport/ });
+    expect(latinLeftovers(['Transport', 'Taksi', 'Oziq-ovqat'])).toEqual([]);
   });
 });

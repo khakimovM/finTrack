@@ -8,6 +8,7 @@ import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { exchangeInitData, isMiniAppSession } from '../../../lib/miniAppAuth';
 import { useMiniAppStore } from '../../../stores/miniAppStore';
+import { t } from '../../../lib/i18n';
 
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
@@ -23,7 +24,7 @@ export function useUpdateProfile() {
         queryClient.invalidateQueries({ queryKey: ['stats'] });
         queryClient.invalidateQueries({ queryKey: ['budgets'] });
       }
-      toast.success(input.name !== undefined || input.timezone !== undefined ? 'Profil saqlandi' : 'Sozlamalar saqlandi');
+      toast.success(input.name !== undefined || input.timezone !== undefined ? t('settings.profile.saved') : t('settings.profile.settingsSaved'));
     },
     onError: (err) => toast.error(apiErrorToMessage(err)),
   });
@@ -39,7 +40,7 @@ export function useRevokeSession() {
     mutationFn: usersApi.revokeSession,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.sessions() });
-      toast.success('Sessiya yakunlandi');
+      toast.success(t('settings.sessions.ended'));
     },
     onError: (err) => toast.error(apiErrorToMessage(err)),
   });
@@ -63,7 +64,7 @@ export function useLogoutAll() {
       if (stayed) {
         signIn(stayed);
         queryClient.setQueryData(queryKeys.auth.me(), stayed);
-        toast.success('Boshqa qurilmalardagi sessiyalar yakunlandi');
+        toast.success(t('settings.sessions.othersEnded'));
         return;
       }
       resetSessionCache();

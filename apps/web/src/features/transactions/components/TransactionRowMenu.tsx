@@ -4,6 +4,7 @@ import { Menu, type MenuItem } from '../../../components/ui/Menu';
 import { Amount } from '../../../components/ui/Amount';
 import { cn } from '../../../lib/utils';
 import { TxTile, rowKind, rowSubtitle, rowTitle } from '../rowView';
+import { t } from '../../../lib/i18n';
 
 export interface RowActions {
   onEdit: (tx: TransactionResponse) => void;
@@ -16,13 +17,13 @@ function itemsFor(tx: TransactionResponse, actions: RowActions): MenuItem[] {
   switch (rowKind(tx)) {
     case 'entry':
       return [
-        { label: 'Tahrirlash', icon: Pencil, onSelect: () => actions.onEdit(tx) },
-        { label: 'O‘chirish', icon: Trash2, danger: true, separatorBefore: true, onSelect: () => actions.onDelete(tx) },
+        { label: t('common.edit'), icon: Pencil, onSelect: () => actions.onEdit(tx) },
+        { label: t('common.delete'), icon: Trash2, danger: true, separatorBefore: true, onSelect: () => actions.onDelete(tx) },
       ];
     case 'transfer':
-      return [{ label: 'O‘tkazmani bekor qilish', icon: Undo2, danger: true, onSelect: () => actions.onCancelTransfer(tx) }];
+      return [{ label: t('transactions.info.cancelTransfer'), icon: Undo2, danger: true, onSelect: () => actions.onCancelTransfer(tx) }];
     case 'debt':
-      return [{ label: 'Qarzga o‘tish', icon: ExternalLink, disabled: !tx.debtId, onSelect: () => actions.onOpenDebt(tx) }];
+      return [{ label: t('transactions.info.openDebt'), icon: ExternalLink, disabled: !tx.debtId, onSelect: () => actions.onOpenDebt(tx) }];
     default:
       return [];
   }
@@ -34,7 +35,7 @@ export function TransactionRowMenu({ tx, when, actions, size = 'sm' }: { tx: Tra
     // The row itself opens on click; nothing in the menu (or its portalled sheet) may reach it.
     <div onClick={(e) => e.stopPropagation()} className="flex">
       <Menu
-        label="Amallar"
+        label={t('transactions.list.actions')}
         items={itemsFor(tx, actions)}
         sheetHeader={
           <div className="flex items-center gap-3">
@@ -50,7 +51,7 @@ export function TransactionRowMenu({ tx, when, actions, size = 'sm' }: { tx: Tra
           <button
             {...props}
             type="button"
-            aria-label="Amallar"
+            aria-label={t('transactions.list.actions')}
             className={cn(
               'flex items-center justify-center rounded-full text-text-secondary transition-colors duration-fast hover:bg-secondary hover:text-text focus-ring aria-expanded:bg-secondary',
               size === 'sm' ? 'h-8 w-8' : 'h-9 w-9',

@@ -12,7 +12,7 @@ import {
 } from '../../features/settings/components/ProfileSection';
 import { DangerZoneSection, SessionsSection, TelegramSection } from '../../features/settings/components/SecuritySections';
 import { LanguageSection } from '../../features/settings/components/LanguageSection';
-import { LANGUAGE_SWITCH_VISIBLE } from '../../lib/i18n';
+import { t } from '../../lib/i18n';
 
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user);
@@ -22,11 +22,11 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-[824px] flex-col gap-4">
-      <PageHeader title="Sozlamalar" subtitle="Profil, qoidalar, ko‘rinish va xavfsizlik" />
+      <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
       {!user ? (
-        <SettingsCard title="Profil">
-          <div role="status" aria-label="Yuklanmoqda" className="flex flex-col gap-3">
+        <SettingsCard title={t('settings.profile.title')}>
+          <div role="status" aria-label={t('transactions.page.loading')} className="flex flex-col gap-3">
             <Skeleton className="h-3.5 w-1/5" />
             <Skeleton className="h-12" />
             <Skeleton className="h-3.5 w-1/4" />
@@ -37,7 +37,7 @@ export function SettingsPage() {
         <>
           <ProfileSection user={user} />
           <PreferencesSection user={user} />
-          {LANGUAGE_SWITCH_VISIBLE && <LanguageSection />}
+          <LanguageSection />
           {/* Inside Telegram the theme follows the Telegram app. */}
           {!inMiniApp && <AppearanceSection />}
           <TelegramSection user={user} />
@@ -53,7 +53,7 @@ export function SettingsPage() {
               <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-danger-soft" aria-hidden>
                 <LogOut className="h-[18px] w-[18px]" />
               </span>
-              Chiqish
+              {t('nav.logout')}
             </button>
           )}
         </>

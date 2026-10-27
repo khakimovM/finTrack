@@ -5,6 +5,7 @@ import { EmojiTile } from '../../../components/ui/EmojiTile';
 import { formatDate } from '../../../lib/format';
 import { cn } from '../../../lib/utils';
 import { ruleTitle, scheduleLabel } from '../recurringLabels';
+import { t } from '../../../lib/i18n';
 
 export interface RecurringRuleCardProps {
   rule: RecurringRuleResponse;
@@ -21,7 +22,11 @@ export function RecurringRuleCard({ rule, onRunNow, onToggleActive, onEdit, onDe
   // The note is the title when there is no category; otherwise it is shown under the details.
   const note = rule.category ? rule.note : null;
   const finished = rule.endsAt !== null && rule.nextRunAt > rule.endsAt;
-  const next = !rule.isActive ? 'To‘xtatilgan' : finished ? 'Tugagan' : `Keyingi: ${formatDate(rule.nextRunAt)}`;
+  const next = !rule.isActive
+    ? t('recurring.card.paused')
+    : finished
+      ? t('recurring.card.finished')
+      : t('recurring.card.next', { date: formatDate(rule.nextRunAt) });
 
   return (
     <article
@@ -54,7 +59,7 @@ export function RecurringRuleCard({ rule, onRunNow, onToggleActive, onEdit, onDe
               {rule.account.icon} {rule.account.name}
             </span>
             <span className={cn('font-medium', rule.isActive ? 'text-text' : 'text-warning')}>{next}</span>
-            {rule.endsAt && <span>{formatDate(rule.endsAt)} gacha</span>}
+            {rule.endsAt && <span>{t('recurring.card.until', { date: formatDate(rule.endsAt) })}</span>}
           </div>
           {note && <span className="text-[13px] text-text-secondary">{note}</span>}
         </div>
@@ -67,7 +72,7 @@ export function RecurringRuleCard({ rule, onRunNow, onToggleActive, onEdit, onDe
             disabled={busy}
             className="h-[34px] whitespace-nowrap rounded-full border border-input px-3 text-[13px] font-medium text-text hover:bg-secondary focus-ring disabled:opacity-50"
           >
-            Hozir bajarish
+            {t('recurring.card.runNow')}
           </button>
         )}
         <button
@@ -77,13 +82,13 @@ export function RecurringRuleCard({ rule, onRunNow, onToggleActive, onEdit, onDe
           className="flex h-[34px] items-center gap-1.5 whitespace-nowrap rounded-full bg-secondary px-3 text-[13px] font-medium text-text hover:bg-secondary-hover focus-ring disabled:opacity-50"
         >
           {rule.isActive ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}
-          {rule.isActive ? 'To‘xtatish' : 'Davom ettirish'}
+          {rule.isActive ? t('recurring.card.pause') : t('recurring.card.resume')}
         </button>
         <span className="flex-1 sm:hidden" />
-        <button type="button" onClick={() => onEdit(rule)} aria-label="Tahrirlash" title="Tahrirlash" className={cn(iconButton, 'hover:bg-secondary hover:text-text')}>
+        <button type="button" onClick={() => onEdit(rule)} aria-label={t('common.edit')} title={t('common.edit')} className={cn(iconButton, 'hover:bg-secondary hover:text-text')}>
           <Pencil className="h-4 w-4" aria-hidden />
         </button>
-        <button type="button" onClick={() => onDelete(rule)} aria-label="O‘chirish" title="O‘chirish" className={cn(iconButton, 'hover:bg-danger-soft hover:text-danger')}>
+        <button type="button" onClick={() => onDelete(rule)} aria-label={t('common.delete')} title={t('common.delete')} className={cn(iconButton, 'hover:bg-danger-soft hover:text-danger')}>
           <Trash2 className="h-4 w-4" aria-hidden />
         </button>
       </div>

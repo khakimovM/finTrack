@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { somToTiyin, tiyinToSom } from '@fintrack/shared';
 import { cn } from '../../lib/utils';
-import { NBSP } from '../../lib/money';
+import { NBSP, currencyWord } from '../../lib/money';
 import { Field, useFieldId } from './Field';
 
 export interface MoneyChip {
@@ -136,7 +136,7 @@ export function MoneyInput({
           )}
         />
         <span className={cn('shrink-0 font-medium text-text-muted', s.unit)} aria-hidden>
-          so‘m
+          {currencyWord()}
         </span>
       </div>
       {chips && chips.length > 0 && (

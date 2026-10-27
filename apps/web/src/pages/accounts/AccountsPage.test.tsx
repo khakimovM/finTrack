@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import type { AccountResponse } from '@fintrack/shared';
 import { AccountsPage } from './AccountsPage';
+import { TransferModal } from '../../features/accounts/components/TransferModal';
 import { renderWithProviders } from '../../test/render';
+import { inRussian, latinLeftovers } from '../../test/russian';
 import { fail, ok, server } from '../../test/server';
 import { account } from '../../test/fixtures';
 
@@ -132,5 +134,30 @@ describe('AccountsPage', () => {
         },
       ]),
     );
+  });
+});
+
+describe('AccountsPage in Russian', () => {
+  it('leaves no Uzbek on the cards and tabs', async () => {
+    inRussian();
+    serve([card, cash, old]);
+    renderWithProviders(<AccountsPage />);
+
+    expect(await screen.findByText('Humo karta')).toBeTruthy();
+    expect(screen.getByText('Активных счетов: 2')).toBeTruthy();
+    expect(latinLeftovers(['Humo karta', 'Naqd pul'])).toEqual([]);
+  });
+});
+
+describe('TransferModal in Russian', () => {
+  it('leaves no Uzbek in the form', async () => {
+    inRussian();
+    serve([card, cash]);
+    // The app shell opens it from the page's button.
+    renderWithProviders(<TransferModal isOpen onClose={() => undefined} />);
+
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    await screen.findAllByText(/Humo karta/);
+    expect(latinLeftovers(['Humo karta', 'Naqd pul'])).toEqual([]);
   });
 });

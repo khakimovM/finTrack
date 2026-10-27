@@ -9,7 +9,7 @@ import { Progress, budgetToneOf } from '../../components/ui/Progress';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { formatMonth } from '../../lib/format';
-import { formatAmount } from '../../lib/money';
+import { currencyWord, formatAmount } from '../../lib/money';
 import { useIsMobile } from '../../lib/useMediaQuery';
 import { cn } from '../../lib/utils';
 import { useCategories } from '../../features/categories/hooks/useCategories';
@@ -17,6 +17,7 @@ import { BudgetCard } from '../../features/budgets/components/BudgetCard';
 import { BudgetModal } from '../../features/budgets/components/BudgetModal';
 import { useBudgetsStatus, useDeleteBudget } from '../../features/budgets/hooks/useBudgets';
 import { DebtsSkeleton } from '../debts/DebtsPageParts';
+import { t } from '../../lib/i18n';
 
 const CARD = 'rounded-[20px] border border-border bg-card';
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -31,7 +32,7 @@ function MonthSwitcher({ month, onChange }: { month: string; onChange: (month: s
       <button
         type="button"
         onClick={() => onChange(shiftMonth(month, -1))}
-        aria-label="Oldingi oy"
+        aria-label={t('ui.date.previousMonth')}
         className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-secondary focus-ring"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -42,7 +43,7 @@ function MonthSwitcher({ month, onChange }: { month: string; onChange: (month: s
       <button
         type="button"
         onClick={() => onChange(shiftMonth(month, 1))}
-        aria-label="Keyingi oy"
+        aria-label={t('ui.date.nextMonth')}
         className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-secondary focus-ring"
       >
         <ChevronRight className="h-4 w-4" aria-hidden />
@@ -57,7 +58,7 @@ function Total({ label, tiyin, sub, className }: { label: string; tiyin: bigint 
       <span className="text-[13px] text-text-muted">{label}</span>
       <span className={cn('whitespace-nowrap text-[19px] font-semibold leading-[1.2] tracking-[-0.02em] tabular-nums sm:text-[28px]', className)}>
         {formatAmount(tiyin, { sign: 'negative', currency: false })}{' '}
-        <span className="text-[13px] font-medium tracking-normal text-text-muted">so‘m</span>
+        <span className="text-[13px] font-medium tracking-normal text-text-muted">{currencyWord()}</span>
       </span>
       {sub && <span className="text-[12.5px] text-text-muted">{sub}</span>}
     </div>
@@ -86,9 +87,9 @@ export function BudgetsPage() {
 
   const remove = async (budget: BudgetStatusItem) => {
     const ok = await confirm({
-      title: `“${budget.category.name}” byudjeti o‘chirilsinmi?`,
-      description: `${formatMonth(month)} uchun limit olib tashlanadi. Tranzaksiyalar o‘zgarmaydi.`,
-      confirmLabel: 'O‘chirish',
+      title: t('budgets.confirm.delete', { name: budget.category.name }),
+      description: t('budgets.confirm.deleteText', { month: formatMonth(month) }),
+      confirmLabel: t('common.delete'),
       destructive: true,
     });
     if (ok) await deleteBudget.mutateAsync(budget.id).catch(() => undefined);
@@ -98,38 +99,38 @@ export function BudgetsPage() {
   const newButton = (
     <Button onClick={openNew} className={isMobile ? 'h-11 min-w-0 flex-1 gap-1.5 px-3' : undefined}>
       <Plus className="h-[18px] w-[18px]" aria-hidden />
-      Byudjet belgilash
+      {t('budgets.page.new')}
     </Button>
   );
 
   let body;
   if (isLoading) body = <DebtsSkeleton />;
-  else if (isError) body = <ErrorState title="Byudjetlarni yuklab bo‘lmadi" onRetry={() => void refetch()} className={CARD} />;
+  else if (isError) body = <ErrorState title={t('budgets.page.loadFailed')} onRetry={() => void refetch()} className={CARD} />;
   else if (budgets.length === 0)
     body = (
       <EmptyState
         icon={<Wallet className="h-6 w-6" aria-hidden />}
-        title={`${formatMonth(month)} uchun byudjet yo‘q`}
-        description="Kategoriya uchun oylik limit belgilang — 80% va 100% da ogohlantiramiz."
-        action={<Button onClick={openNew}>Byudjet belgilash</Button>}
+        title={t('budgets.page.emptyTitle', { month: formatMonth(month) })}
+        description={t('budgets.page.emptyText')}
+        action={<Button onClick={openNew}>{t('budgets.page.new')}</Button>}
         className={CARD}
       />
     );
   else
     body = (
       <>
-        <section aria-label="Oy bo‘yicha jami" className={cn(CARD, 'flex flex-col gap-4 px-4 py-5 sm:p-6')}>
+        <section aria-label={t('budgets.page.totals')} className={cn(CARD, 'flex flex-col gap-4 px-4 py-5 sm:p-6')}>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <Total label="Jami limit" tiyin={totalLimit} className="max-sm:col-span-2" />
+            <Total label={t('budgets.page.totalLimit')} tiyin={totalLimit} className="max-sm:col-span-2" />
             <Total
-              label="Sarflangan"
+              label={t('budgets.page.spent')}
               tiyin={totalSpent}
-              sub={`Limitdan ${Math.round(percent)}% sarflandi`}
+              sub={t('budgets.page.spentPercent', { percent: Math.round(percent) })}
               className={totalSpent > totalLimit ? 'text-danger' : undefined}
             />
-            <Total label="Qoldiq" tiyin={left} className={left < 0n ? 'text-danger' : 'text-success'} />
+            <Total label={t('budgets.page.left')} tiyin={left} className={left < 0n ? 'text-danger' : 'text-success'} />
           </div>
-          <Progress value={percent} size="lg" tone={budgetToneOf(totalSpent, totalLimit)} aria-label={`Limitdan ${Math.round(percent)}% sarflandi`} />
+          <Progress value={percent} size="lg" tone={budgetToneOf(totalSpent, totalLimit)} aria-label={t('budgets.page.spentPercent', { percent: Math.round(percent) })} />
         </section>
         <div className="ft-stagger grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[repeat(auto-fill,minmax(360px,1fr))]">
           {budgets.map((budget) => (
@@ -148,8 +149,8 @@ export function BudgetsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Byudjetlar"
-        subtitle="Kategoriyalar bo‘yicha oylik limitlar"
+        title={t('nav.budgets')}
+        subtitle={t('budgets.page.subtitle')}
         actions={
           <>
             <MonthSwitcher month={month} onChange={setMonth} />

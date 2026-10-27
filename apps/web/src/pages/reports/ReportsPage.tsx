@@ -12,6 +12,7 @@ import { bucketPlan } from '../../features/reports/buckets';
 import { useReport } from '../../features/reports/useReport';
 import { ReportPeriodPicker } from '../../features/reports/components/ReportPeriodPicker';
 import { CategoryCompare, CompareCards, PeriodChart } from '../../features/reports/components/ReportParts';
+import { t } from '../../lib/i18n';
 
 const CARD = 'rounded-[20px] border border-border bg-card';
 
@@ -30,13 +31,13 @@ export function ReportsPage() {
   const exportProps = {
     query: { from: comparison.current.from, to: comparison.current.to },
     heading: range,
-    doneMessage: 'Hisobot yuklab olindi',
+    doneMessage: t('reports.page.exported'),
   };
 
   let body;
   if (report.isLoading)
     body = (
-      <div role="status" aria-label="Yuklanmoqda" className="flex flex-col gap-4">
+      <div role="status" aria-label={t('transactions.page.loading')} className="flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
           {[0, 1, 2].map((i) => (
             <div key={i} className={`${CARD} flex flex-col gap-2.5 p-5`}>
@@ -49,13 +50,13 @@ export function ReportsPage() {
         <Skeleton className="h-[300px] rounded-[20px]" />
       </div>
     );
-  else if (report.isError) body = <ErrorState title="Hisobotni yuklab bo‘lmadi" onRetry={report.refetch} className={CARD} />;
+  else if (report.isError) body = <ErrorState title={t('reports.page.loadFailed')} onRetry={report.refetch} className={CARD} />;
   else if (!data || !hasActivity)
     body = (
       <EmptyState
         icon={<ChartColumn className="h-6 w-6" aria-hidden />}
-        title="Bu davrlarda yozuvlar yo‘q"
-        description="Boshqa davrni tanlang yoki kirim-chiqimlaringizni yozib boring."
+        title={t('reports.page.empty')}
+        description={t('reports.page.emptyText')}
         className={CARD}
       />
     );
@@ -65,8 +66,8 @@ export function ReportsPage() {
         <CompareCards data={data} />
         {report.series && <PeriodChart plan={plan} comparison={comparison} series={report.series} />}
         <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-2">
-          <CategoryCompare title="Xarajatlar kategoriyalar bo‘yicha" rows={report.expense} type="expense" />
-          <CategoryCompare title="Kirimlar kategoriyalar bo‘yicha" rows={report.income} type="income" />
+          <CategoryCompare title={t('reports.page.expenseByCategory')} rows={report.expense} type="expense" />
+          <CategoryCompare title={t('reports.page.incomeByCategory')} rows={report.income} type="income" />
         </div>
       </>
     );
@@ -74,8 +75,8 @@ export function ReportsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Hisobotlar"
-        subtitle="Davrlarni solishtirish, kategoriyalar bo‘yicha o‘zgarish va eksport"
+        title={t('nav.reports')}
+        subtitle={t('reports.page.subtitle')}
         actions={<ExportMenu {...exportProps} />}
         mobileActions={<ExportMenu {...exportProps} variant="wide" />}
       />
@@ -84,7 +85,7 @@ export function ReportsPage() {
         <p className="flex items-center gap-2 text-pretty text-[14px] leading-5 text-text-secondary">
           <CalendarRange className="h-4 w-4 shrink-0" aria-hidden />
           <span>
-            <b className="font-semibold text-text">{range}</b> va oldingi davr{' '}
+            <b className="font-semibold text-text">{range}</b> {t('reports.page.andPrevious')}{' '}
             {formatRange(comparison.previous.from, comparison.previous.to)}
           </span>
         </p>

@@ -9,6 +9,7 @@ import {
   parseIsoDate,
   startOfMonth,
 } from '@fintrack/shared';
+import type { TextKey } from '../../lib/i18n';
 
 export type PeriodKey = '' | 'last7' | 'thisMonth' | 'lastMonth' | 'last90' | 'custom';
 export type SortKey = 'new' | 'old' | 'big' | 'small';
@@ -30,19 +31,19 @@ export interface TxFilters {
   page: number;
 }
 
-export const PERIOD_OPTIONS: { value: Exclude<PeriodKey, 'custom'>; label: string }[] = [
-  { value: '', label: 'Barcha sanalar' },
-  { value: 'last7', label: 'So‘nggi 7 kun' },
-  { value: 'thisMonth', label: 'Shu oy' },
-  { value: 'lastMonth', label: 'O‘tgan oy' },
-  { value: 'last90', label: 'So‘nggi 3 oy' },
+export const PERIOD_OPTIONS: { value: Exclude<PeriodKey, 'custom'>; label: TextKey }[] = [
+  { value: '', label: 'transactions.filters.allDates' },
+  { value: 'last7', label: 'transactions.filters.last7' },
+  { value: 'thisMonth', label: 'transactions.filters.thisMonth' },
+  { value: 'lastMonth', label: 'transactions.filters.lastMonth' },
+  { value: 'last90', label: 'transactions.filters.last90' },
 ];
 
-export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: 'new', label: 'Eng yangi' },
-  { value: 'old', label: 'Eng eski' },
-  { value: 'big', label: 'Eng katta summa' },
-  { value: 'small', label: 'Eng kichik summa' },
+export const SORT_OPTIONS: { value: SortKey; label: TextKey }[] = [
+  { value: 'new', label: 'transactions.filters.sortNew' },
+  { value: 'old', label: 'transactions.filters.sortOld' },
+  { value: 'big', label: 'transactions.filters.sortBig' },
+  { value: 'small', label: 'transactions.filters.sortSmall' },
 ];
 
 const SORT_QUERY: Record<SortKey, ListTransactionsQuery['sort']> = {

@@ -10,6 +10,7 @@ import { Sheet } from '../ui/Sheet';
 import { MORE_ITEMS, TAB_ITEMS, type NavItem } from './nav';
 import { QuickAddSheet } from './QuickAdd';
 import { ModeChip, useInMiniApp, useLogout, userHandle } from './ShellParts';
+import { t } from '../../lib/i18n';
 
 function Tab({ item }: { item: NavItem }) {
   return (
@@ -27,7 +28,7 @@ function Tab({ item }: { item: NavItem }) {
         <>
           {/* The icon gives a small hop when its tab becomes the current one. */}
           <item.icon className={cn('h-[22px] w-[22px]', isActive && 'animate-ft-pop')} strokeWidth={isActive ? 2.3 : 2} aria-hidden />
-          {item.label}
+          {t(item.label)}
         </>
       )}
     </NavLink>
@@ -42,7 +43,7 @@ function MoreSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   const { resolvedTheme, setTheme } = useUiStore();
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} aria-label="Ko‘proq">
+    <Sheet isOpen={isOpen} onClose={onClose} aria-label={t('nav.more')}>
       {user && (
         <div className="flex items-center gap-3 border-b border-border pb-3.5 pt-2">
           <Avatar name={user.name} size={44} />
@@ -53,7 +54,7 @@ function MoreSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
           <ModeChip strict={user.strictMode} className="self-center" />
         </div>
       )}
-      <nav className="flex flex-col py-1" aria-label="Boshqa bo‘limlar">
+      <nav className="flex flex-col py-1" aria-label={t('nav.otherSections')}>
         {MORE_ITEMS.map((item) => (
           <button
             key={item.to}
@@ -67,24 +68,24 @@ function MoreSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
             <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-secondary">
               <item.icon className="h-[18px] w-[18px]" aria-hidden />
             </span>
-            <span className="flex-1">{item.label}</span>
+            <span className="flex-1">{t(item.label)}</span>
             <ChevronRight className="h-[18px] w-[18px] text-text-muted" aria-hidden />
           </button>
         ))}
       </nav>
       {inMiniApp ? (
-        <p className="border-t border-border pt-3 text-[12px] leading-4 text-text-muted">Mavzu Telegram sozlamalariga moslashadi.</p>
+        <p className="border-t border-border pt-3 text-[12px] leading-4 text-text-muted">{t('nav.themeFollowsTelegram')}</p>
       ) : (
         <div className="flex flex-col border-t border-border pt-1">
           <div className="flex min-h-14 items-center justify-between gap-3">
-            <span className="text-[16px] font-medium">Mavzu</span>
+            <span className="text-[16px] font-medium">{t('nav.theme')}</span>
             <Segmented
-              aria-label="Mavzu"
+              aria-label={t('nav.theme')}
               value={resolvedTheme}
               onChange={setTheme}
               options={[
-                { value: 'light', label: 'Yorug‘' },
-                { value: 'dark', label: 'Qorong‘i' },
+                { value: 'light', label: t('nav.themeLight') },
+                { value: 'dark', label: t('nav.themeDark') },
               ]}
             />
           </div>
@@ -99,7 +100,7 @@ function MoreSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
             <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-danger-soft">
               <LogOut className="h-[18px] w-[18px]" aria-hidden />
             </span>
-            Chiqish
+            {t('nav.logout')}
           </button>
         </div>
       )}
@@ -117,7 +118,7 @@ export function TabBar() {
   return (
     <>
       <nav
-        aria-label="Asosiy menyu"
+        aria-label={t('nav.mainMenu')}
         className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-card px-1.5 pt-1.5"
         style={{ paddingBottom: 'calc(6px + env(safe-area-inset-bottom, 0px))' }}
       >
@@ -127,7 +128,7 @@ export function TabBar() {
           <button
             type="button"
             onClick={() => setQuickOpen(true)}
-            aria-label="Qo‘shish"
+            aria-label={t('common.add')}
             className="-mt-3.5 mb-0.5 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_0_0_4px_var(--card),var(--shadow-md)] transition-transform duration-fast ease-standard focus-ring active:scale-95 motion-reduce:active:scale-100"
           >
             <Plus className="h-6 w-6" strokeWidth={2.2} aria-hidden />
@@ -144,7 +145,7 @@ export function TabBar() {
           )}
         >
           <LayoutGrid className="h-[22px] w-[22px]" strokeWidth={moreActive ? 2.3 : 2} aria-hidden />
-          Ko‘proq
+          {t('nav.more')}
         </button>
       </nav>
       <QuickAddSheet isOpen={quickOpen} onClose={() => setQuickOpen(false)} />

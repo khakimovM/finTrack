@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useRouteError } from 'react-router-dom';
 import { RotateCcw, TriangleAlert } from 'lucide-react';
 import { PublicHeader } from '../components/layout/PublicHeader';
+import { t } from '../lib/i18n';
 
 /** A render crash: calm words for the user (their data is safe), details only in the console. */
 export function ErrorPage() {
@@ -19,9 +20,9 @@ export function ErrorPage() {
           <span className="flex h-[72px] w-[72px] items-center justify-center rounded-xl bg-danger-soft text-danger">
             <TriangleAlert className="h-8 w-8" strokeWidth={1.8} aria-hidden />
           </span>
-          <h1 className="mt-4 text-[clamp(26px,2.2vw,32px)] font-semibold leading-[1.2] tracking-[-0.02em]">Xatolik yuz berdi</h1>
+          <h1 className="mt-4 text-[clamp(26px,2.2vw,32px)] font-semibold leading-[1.2] tracking-[-0.02em]">{t('pages.error.title')}</h1>
           <p className="text-[16px] leading-6 text-text-secondary">
-            Sahifani ko‘rsatishda kutilmagan muammo chiqdi. Maʼlumotlaringiz saqlanib qolgan — sahifani yangilab ko‘ring.
+            {t('pages.error.text')}
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-2.5">
             <button
@@ -30,13 +31,13 @@ export function ErrorPage() {
               className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-[22px] text-[15px] font-medium text-primary-foreground hover:bg-primary-hover focus-ring"
             >
               <RotateCcw className="h-[17px] w-[17px]" aria-hidden />
-              Sahifani yangilash
+              {t('pages.error.reload')}
             </button>
             <Link
               to="/app"
               className="inline-flex h-12 items-center rounded-full border border-input px-[22px] text-[15px] font-medium hover:bg-secondary focus-ring"
             >
-              Bosh sahifaga o‘tish
+              {t('pages.error.home')}
             </Link>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { RecurringRuleResponse } from '@fintrack/shared';
 import { RecurringPage } from './RecurringPage';
 import { renderWithProviders } from '../../test/render';
+import { inRussian, latinLeftovers } from '../../test/russian';
 import { fail, ok, server } from '../../test/server';
 import { account, rule } from '../../test/fixtures';
 
@@ -133,5 +134,17 @@ describe('RecurringPage', () => {
     expect(screen.queryByRole('button', { name: 'Hozir bajarish' })).toBeNull();
     // One request brings both tabs.
     expect(calls.lists).toEqual(['']);
+  });
+});
+
+describe('RecurringPage in Russian', () => {
+  it('leaves no Uzbek in the schedule and the next run', async () => {
+    inRussian();
+    mockApi({ active: [rule()] }, newCalls());
+    renderWithProviders(<RecurringPage />);
+
+    expect(await screen.findByText('Uy-joy')).toBeTruthy();
+    expect(screen.getByText('Каждый месяц, 5-го числа')).toBeTruthy();
+    expect(latinLeftovers(['Uy-joy', 'Naqd pul'])).toEqual([]);
   });
 });

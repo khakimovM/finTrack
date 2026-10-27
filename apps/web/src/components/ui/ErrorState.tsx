@@ -1,6 +1,7 @@
 import { RotateCcw, TriangleAlert } from 'lucide-react';
 import { Button } from './Button';
 import { cn } from '../../lib/utils';
+import { t } from '../../lib/i18n';
 
 export interface ErrorStateProps {
   /** "Tranzaksiyalarni yuklab bo‘lmadi". */
@@ -13,8 +14,8 @@ export interface ErrorStateProps {
 }
 
 export function ErrorState({
-  title = 'Maʼlumotlarni yuklab bo‘lmadi',
-  message = 'Internet aloqasini tekshirib, qayta urinib ko‘ring.',
+  title = t('ui.error.title'),
+  message = t('ui.error.message'),
   onRetry,
   variant = 'page',
   className,
@@ -42,7 +43,7 @@ export function ErrorState({
       {onRetry && (
         <Button variant="outline" size={widget ? 'sm' : 'md'} onClick={onRetry} className="mt-2">
           <RotateCcw className="h-4 w-4" aria-hidden />
-          Qayta urinish
+          {t('common.retry')}
         </Button>
       )}
     </div>

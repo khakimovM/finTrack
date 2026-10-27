@@ -14,6 +14,7 @@ import { apiErrorToMessage } from '../../../lib/apiError';
 import { formatAmount } from '../../../lib/money';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCreateTransfer } from '../../transfers/hooks/useTransfers';
+import { t } from '../../../lib/i18n';
 
 export interface TransferModalProps {
   isOpen: boolean;
@@ -68,16 +69,16 @@ export function TransferModal({ isOpen, onClose, defaultFromAccountId }: Transfe
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Hisoblararo o‘tkazma"
-      description="Bir hisobingizdan boshqasiga pul o‘tkazish"
+      title={t('transfer.title')}
+      description={t('transfer.description')}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={formState.isSubmitting}>
-            Bekor qilish
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="transfer-form" loading={formState.isSubmitting} disabled={same}>
             <ArrowLeftRight className="h-4 w-4" aria-hidden />
-            O‘tkazish
+            {t('transfer.submit')}
           </Button>
         </>
       }
@@ -88,14 +89,14 @@ export function TransferModal({ isOpen, onClose, defaultFromAccountId }: Transfe
             name="fromAccountId"
             control={control}
             render={({ field }) => (
-              <AccountPicker label="Qayerdan" accounts={accounts} value={field.value} onChange={field.onChange} />
+              <AccountPicker label={t('transfer.from')} accounts={accounts} value={field.value} onChange={field.onChange} />
             )}
           />
           <div className="-mb-1.5 mt-0.5 flex justify-center">
             <button
               type="button"
               onClick={swap}
-              aria-label="Hisoblarni almashtirish"
+              aria-label={t('transfer.swap')}
               className="focus-ring flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-text shadow-xs transition-colors duration-fast hover:bg-secondary"
             >
               <ArrowDownUp className="h-[18px] w-[18px]" aria-hidden />
@@ -106,7 +107,7 @@ export function TransferModal({ isOpen, onClose, defaultFromAccountId }: Transfe
             control={control}
             render={({ field }) => (
               <AccountPicker
-                label="Qayerga"
+                label={t('transfer.to')}
                 accounts={accounts}
                 value={field.value}
                 onChange={field.onChange}
@@ -118,7 +119,7 @@ export function TransferModal({ isOpen, onClose, defaultFromAccountId }: Transfe
           {same && (
             <p role="alert" className="flex items-center gap-1.5 text-[13px] font-medium leading-[18px] text-danger">
               <AlertCircle className="h-[15px] w-[15px] shrink-0" aria-hidden />
-              Jo‘natuvchi va qabul qiluvchi hisob bir xil bo‘lishi mumkin emas
+              {t('transfer.sameAccount')}
             </p>
           )}
         </div>
@@ -127,12 +128,12 @@ export function TransferModal({ isOpen, onClose, defaultFromAccountId }: Transfe
           control={control}
           render={({ field, fieldState }) => (
             <MoneyInput
-              label="Summa"
+              label={t('transactions.form.amount')}
               size="lg"
               autoFocus
               value={field.value}
               onChange={field.onChange}
-              error={fieldState.error ? 'Summa 0 dan katta bo‘lishi kerak' : undefined}
+              error={fieldState.error ? t('transactions.form.amountError') : undefined}
             />
           )}
         />
@@ -140,7 +141,7 @@ export function TransferModal({ isOpen, onClose, defaultFromAccountId }: Transfe
           name="date"
           control={control}
           render={({ field }) => (
-            <DatePicker label="Sana" value={field.value} onChange={field.onChange} chips={['today', 'yesterday']} max={today} today={today} />
+            <DatePicker label={t('transactions.form.date')} value={field.value} onChange={field.onChange} chips={['today', 'yesterday']} max={today} today={today} />
           )}
         />
         <Controller
@@ -148,8 +149,8 @@ export function TransferModal({ isOpen, onClose, defaultFromAccountId }: Transfe
           control={control}
           render={({ field }) => (
             <Textarea
-              label="Izoh (ixtiyoriy)"
-              placeholder="Masalan: Kartani to‘ldirish"
+              label={t('transactions.form.note')}
+              placeholder={t('transfer.notePlaceholder')}
               maxLength={500}
               value={field.value ?? ''}
               onChange={field.onChange}

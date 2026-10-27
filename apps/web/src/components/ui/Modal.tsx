@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { EXIT_MS, useOpenSnapshot, usePresence } from '../../lib/motion';
 import { useKeyboardFrame } from '../../lib/keyboard';
 import { Portal, useOverlay } from './overlay';
+import { t } from '../../lib/i18n';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -89,7 +90,7 @@ export function Modal({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Yopish"
+              aria-label={t('common.close')}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-text-secondary transition-colors duration-fast hover:bg-secondary-hover hover:text-text focus-ring"
             >
               <X className="h-4 w-4" aria-hidden />

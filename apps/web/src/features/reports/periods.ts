@@ -7,6 +7,7 @@ import {
   startOfMonth,
   startOfYear,
 } from '@fintrack/shared';
+import type { TextKey } from '../../lib/i18n';
 
 export type ReportPreset = 'this_month' | 'last_month' | 'this_year' | 'custom';
 
@@ -20,11 +21,11 @@ export interface Comparison {
   previous: DateRange;
 }
 
-export const REPORT_PRESETS: Array<{ value: ReportPreset; label: string }> = [
-  { value: 'this_month', label: 'Shu oy' },
-  { value: 'last_month', label: 'O‘tgan oy' },
-  { value: 'this_year', label: 'Shu yil' },
-  { value: 'custom', label: 'Oraliq' },
+export const REPORT_PRESETS: Array<{ value: ReportPreset; label: TextKey }> = [
+  { value: 'this_month', label: 'reports.presets.this_month' },
+  { value: 'last_month', label: 'reports.presets.last_month' },
+  { value: 'this_year', label: 'reports.presets.this_year' },
+  { value: 'custom', label: 'reports.presets.custom' },
 ];
 
 const range = (from: Date, to: Date): DateRange => ({

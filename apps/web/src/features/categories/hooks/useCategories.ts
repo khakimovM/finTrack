@@ -5,6 +5,7 @@ import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { invalidateAfter } from '../../../lib/invalidation';
+import { t } from '../../../lib/i18n';
 
 export function useCategories() {
   return useQuery({
@@ -21,7 +22,7 @@ export function useCreateCategory() {
     mutationFn: categoriesApi.create,
     onSuccess: () => {
       void invalidateAfter(queryClient, 'category');
-      toast.success('Kategoriya qo‘shildi');
+      toast.success(t('categories.toast.added'));
     },
   });
 }
@@ -34,7 +35,7 @@ export function useUpdateCategory() {
       categoriesApi.update(id, data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'category');
-      toast.success('O‘zgarishlar saqlandi');
+      toast.success(t('transactions.toast.changesSaved'));
     },
   });
 }
@@ -46,7 +47,7 @@ export function useDeleteCategory() {
     mutationFn: categoriesApi.delete,
     onSuccess: () => {
       void invalidateAfter(queryClient, 'category');
-      toast.success('Kategoriya o‘chirildi');
+      toast.success(t('categories.toast.deleted'));
     },
     onError: (err) => {
       toast.error(apiErrorToMessage(err));
@@ -74,7 +75,7 @@ export function useReorderCategories() {
       if (previous) queryClient.setQueryData(queryKeys.categories.all(), sort(previous));
       return { previous };
     },
-    onSuccess: () => toast.success('Tartib saqlandi'),
+    onSuccess: () => toast.success(t('accounts.toast.orderSaved')),
     onError: (err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKeys.categories.all(), context.previous);
       toast.error(apiErrorToMessage(err));

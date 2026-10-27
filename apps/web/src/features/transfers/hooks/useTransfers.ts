@@ -4,6 +4,7 @@ import { transfersApi } from '../api/transfers.api';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { invalidateAfter } from '../../../lib/invalidation';
+import { t } from '../../../lib/i18n';
 
 /** Silent on success: the form shows its own toast; field errors stay inside the form. */
 export function useCreateTransfer() {
@@ -13,7 +14,7 @@ export function useCreateTransfer() {
     mutationFn: transfersApi.create,
     onSuccess: () => {
       void invalidateAfter(queryClient, 'transfer');
-      toast.success('O‘tkazma bajarildi');
+      toast.success(t('transfer.done'));
     },
   });
 }
@@ -36,10 +37,10 @@ export function useDeleteTransfer() {
     onSuccess: (_, { original }) => {
       void invalidateAfter(queryClient, 'transfer');
       if (!original) {
-        toast.success('O‘tkazma bekor qilindi');
+        toast.success(t('transfer.cancelled'));
         return;
       }
-      toast.undo('O‘tkazma bekor qilindi', () => {
+      toast.undo(t('transfer.cancelled'), () => {
         void transfersApi
           .create(original)
           .then(() => invalidateAfter(queryClient, 'transfer'))

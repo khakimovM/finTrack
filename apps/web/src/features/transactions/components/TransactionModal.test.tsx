@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw';
 import { CategoryResponse, TransactionResponse } from '@fintrack/shared';
 import { TransactionModal } from './TransactionModal';
 import { renderWithProviders } from '../../../test/render';
+import { inRussian, latinLeftovers } from '../../../test/russian';
 import { fail, ok, server } from '../../../test/server';
 import { account, cash, transaction, user } from '../../../test/fixtures';
 import { useAuthStore } from '../../../stores/authStore';
@@ -161,5 +162,19 @@ describe('TransactionModal', () => {
 
     await actor.click(screen.getByRole('button', { name: 'Saqlash' }));
     await waitFor(() => expect(posted?.tagIds).toEqual([newTag.id]));
+  });
+});
+
+describe('TransactionModal in Russian', () => {
+  it('leaves no Uzbek in the form', async () => {
+    inRussian();
+    serveLists();
+    useAuthStore.setState({ user: user() });
+    renderWithProviders(<Harness />);
+    await userEvent.click(screen.getByRole('button', { name: 'ochish' }));
+
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    await screen.findAllByText(/Naqd pul/);
+    expect(latinLeftovers(['ochish', 'Naqd pul', 'Oziq-ovqat', 'Oylik'])).toEqual([]);
   });
 });

@@ -9,6 +9,7 @@ import { useIsMobile } from '../../../lib/useMediaQuery';
 import { cn } from '../../../lib/utils';
 import { SORT_OPTIONS, activeFilterCount, digitsOnly, type SortKey, type TxFilters } from '../filters';
 import { groupSom, useFilterOptions } from '../useFilterOptions';
+import { t } from '../../../lib/i18n';
 
 export interface TransactionFiltersProps {
   filters: TxFilters;
@@ -43,7 +44,7 @@ function AmountInput({ value, onChange, label, mobile }: { value: string; onChan
       onChange={(e) => onChange(digitsOnly(e.target.value))}
       inputMode="numeric"
       placeholder={label}
-      aria-label={`Summa ${label}`}
+      aria-label={t('transactions.filters.amountInput', { label })}
       className={cn(
         'min-w-0 bg-secondary text-right font-medium tabular-nums text-text outline-none placeholder:text-text-muted',
         mobile
@@ -81,7 +82,7 @@ export function TransactionFilters({ filters, onChange, onClear, total }: Transa
         onClick={onClear}
         className="h-8 shrink-0 whitespace-nowrap rounded-full px-2.5 text-[13px] font-medium text-text underline decoration-input underline-offset-[3px] hover:decoration-text focus-ring"
       >
-        Filtrlarni tozalash
+        {t('transactions.filters.clear')}
       </button>
     </div>
   );
@@ -90,11 +91,11 @@ export function TransactionFilters({ filters, onChange, onClear, total }: Transa
     <Dropdown
       variant="pill"
       plain
-      aria-label="Saralash"
+      aria-label={t('transactions.filters.sort')}
       icon={<ArrowDownUp className="h-4 w-4 text-text-muted" aria-hidden />}
       value={filters.sort}
       onChange={(value) => onChange({ sort: value as SortKey })}
-      options={SORT_OPTIONS}
+      options={SORT_OPTIONS.map((option) => ({ value: option.value, label: t(option.label) }))}
       align="end"
       className="h-11 gap-2 pl-4 pr-3.5 text-[14px]"
       listClassName="w-[230px]"
@@ -107,8 +108,8 @@ export function TransactionFilters({ filters, onChange, onClear, total }: Transa
         <SearchInput
           value={search}
           onChange={setSearch}
-          placeholder="Izoh bo‘yicha qidiruv..."
-          aria-label="Izoh bo‘yicha qidiruv"
+          placeholder={t('transactions.filters.search')}
+          aria-label={t('transactions.filters.searchLabel')}
           className="min-w-0 flex-[1_1_200px] sm:flex-[1_1_280px]"
         />
         {isMobile ? (
@@ -121,7 +122,7 @@ export function TransactionFilters({ filters, onChange, onClear, total }: Transa
             )}
           >
             <SlidersHorizontal className="h-4 w-4" aria-hidden />
-            {count > 0 ? `Filtrlar (${count})` : 'Filtrlar'}
+            {count > 0 ? t('transactions.filters.titleCount', { count }) : t('transactions.filters.title')}
           </button>
         ) : (
           sortControl
@@ -149,10 +150,10 @@ export function TransactionFilters({ filters, onChange, onClear, total }: Transa
               filters.min || filters.max ? 'border-text bg-secondary' : 'border-input bg-card',
             )}
           >
-            Summa:
-            <AmountInput value={min} onChange={setMin} label="dan" />
+            {t('transactions.filters.amountColon')}
+            <AmountInput value={min} onChange={setMin} label={t('transactions.filters.from')} />
             <span className="text-text-muted">—</span>
-            <AmountInput value={max} onChange={setMax} label="gacha" />
+            <AmountInput value={max} onChange={setMax} label={t('transactions.filters.to')} />
           </div>
         </div>
       )}
@@ -163,17 +164,17 @@ export function TransactionFilters({ filters, onChange, onClear, total }: Transa
         <Sheet
           isOpen={sheetOpen}
           onClose={() => setSheetOpen(false)}
-          title="Filtrlar"
+          title={t('transactions.filters.title')}
           full
           bodyClassName="flex flex-col gap-3.5"
           footerClassName="grid-cols-[auto_minmax(0,1fr)] gap-2"
           footer={
             <>
               <Button variant="secondary" size="lg" onClick={onClear}>
-                Tozalash
+                {t('transactions.filters.reset')}
               </Button>
               <Button size="lg" onClick={() => setSheetOpen(false)}>
-                Natijalarni ko‘rsatish ({total})
+                {t('transactions.filters.showResults', { total })}
               </Button>
             </>
           }
@@ -191,15 +192,15 @@ export function TransactionFilters({ filters, onChange, onClear, total }: Transa
             />
           ))}
           <div className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-text-secondary">Summa</span>
+            <span className="text-[13px] font-medium text-text-secondary">{t('transactions.filters.amount')}</span>
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-              <AmountInput value={min} onChange={setMin} label="dan" mobile />
+              <AmountInput value={min} onChange={setMin} label={t('transactions.filters.from')} mobile />
               <span className="text-text-muted">—</span>
-              <AmountInput value={max} onChange={setMax} label="gacha" mobile />
+              <AmountInput value={max} onChange={setMax} label={t('transactions.filters.to')} mobile />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-text-secondary">Saralash</span>
+            <span className="text-[13px] font-medium text-text-secondary">{t('transactions.filters.sort')}</span>
             <div className="flex flex-wrap gap-1.5">
               {SORT_OPTIONS.map((option) => {
                 const on = filters.sort === option.value;
@@ -214,7 +215,7 @@ export function TransactionFilters({ filters, onChange, onClear, total }: Transa
                       on ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card text-text',
                     )}
                   >
-                    {option.label}
+                    {t(option.label)}
                   </button>
                 );
               })}

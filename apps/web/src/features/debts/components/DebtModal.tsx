@@ -16,6 +16,7 @@ import { apiErrorCode, apiErrorToMessage } from '../../../lib/apiError';
 import { useInitOnOpen } from '../../../lib/useInitOnOpen';
 import { useAccounts } from '../../accounts/hooks/useAccounts';
 import { useCreateDebt, useUpdateDebt } from '../hooks/useDebts';
+import { t } from '../../../lib/i18n';
 
 export interface DebtModalProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ export interface DebtModalProps {
   debt?: DebtResponse | null;
 }
 
-const STRICT = 'Hisobda yetarli mablag‘ yo‘q (Qatʼiy rejim)';
+
 
 export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt = null }: DebtModalProps) {
   const editing = debt !== null;
@@ -73,7 +74,7 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
       }
       onClose();
     } catch (err) {
-      setServerError(apiErrorCode(err) === 'INSUFFICIENT_BALANCE' ? STRICT : apiErrorToMessage(err));
+      setServerError(apiErrorCode(err) === 'INSUFFICIENT_BALANCE' ? t('transactions.form.strict') : apiErrorToMessage(err));
     }
   };
 
@@ -81,14 +82,14 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editing ? 'Qarzni tahrirlash' : 'Yangi qarz'}
+      title={editing ? t('debts.form.titleEdit') : t('debts.form.titleNew')}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={formState.isSubmitting}>
-            Bekor qilish
+            {t('common.cancel')}
           </Button>
           <Button type="submit" form="debt-form" loading={formState.isSubmitting}>
-            Saqlash
+            {t('common.save')}
           </Button>
         </>
       }
@@ -100,14 +101,14 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
             control={control}
             render={({ field }) => (
               <Segmented
-                aria-label="Yo‘nalish"
+                aria-label={t('debts.form.direction')}
                 size="lg"
                 fullWidth
                 value={field.value}
                 onChange={field.onChange}
                 options={[
-                  { value: 'I_LENT', label: 'Men berdim', tone: 'debt' },
-                  { value: 'I_BORROWED', label: 'Men oldim', tone: 'debt' },
+                  { value: 'I_LENT', label: t('debts.lent'), tone: 'debt' },
+                  { value: 'I_BORROWED', label: t('debts.borrowed'), tone: 'debt' },
                 ]}
               />
             )}
@@ -119,12 +120,12 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
           render={({ field, fieldState }) => (
             <Input
               {...field}
-              label="Shaxs ismi"
-              placeholder="Masalan: Jasur Karimov"
+              label={t('debts.form.person')}
+              placeholder={t('debts.form.personPlaceholder')}
               maxLength={100}
               showCounter
               autoFocus={!editing}
-              error={fieldState.error ? 'Shaxs ismini kiriting' : undefined}
+              error={fieldState.error ? t('debts.form.personRequired') : undefined}
             />
           )}
         />
@@ -138,20 +139,20 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
               onChange={(e) => field.onChange(e.target.value.replace(/[^\d+ ]/g, ''))}
               type="tel"
               inputMode="tel"
-              label="Telefon raqami (ixtiyoriy)"
+              label={t('debts.form.phone')}
               placeholder="+998 90 123 45 67"
               maxLength={17}
-              error={fieldState.error ? 'Telefon raqami noto‘g‘ri' : undefined}
+              error={fieldState.error ? t('debts.form.phoneInvalid') : undefined}
             />
           )}
         />
         {editing && debt ? (
           <div className="flex flex-col gap-2">
-            <span className="text-[13px] font-medium text-text-secondary">O‘zgarmaydigan maydonlar</span>
+            <span className="text-[13px] font-medium text-text-secondary">{t('debts.form.fixed')}</span>
             <dl className="flex flex-col rounded-md border border-border bg-surface px-3.5 py-1">
               {[
-                ['Yo‘nalish', debt.direction === 'I_LENT' ? 'Men berdim' : 'Men oldim'],
-                ['Summa', formatAmount(debt.amount)],
+                [t('debts.form.direction'), debt.direction === 'I_LENT' ? t('debts.lent') : t('debts.borrowed')],
+                [t('transactions.form.amount'), formatAmount(debt.amount)],
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-4 border-b border-border py-2.5 text-[14px] last:border-b-0">
                   <dt className="text-text-muted">{label}</dt>
@@ -159,7 +160,7 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
                 </div>
               ))}
             </dl>
-            <p className="text-[12.5px] leading-[17px] text-text-muted">Summa va hisob o‘zgarmaydi: ular yozuvlarga bog‘langan</p>
+            <p className="text-[12.5px] leading-[17px] text-text-muted">{t('debts.form.fixedHint')}</p>
           </div>
         ) : (
           <>
@@ -168,7 +169,7 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
               control={control}
               render={({ field }) => (
                 <ChoiceGrid
-                  label="Hisob"
+                  label={t('transactions.form.account')}
                   columns={2}
                   phoneColumns={1}
                   value={field.value}
@@ -188,11 +189,11 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
               control={control}
               render={({ field, fieldState }) => (
                 <MoneyInput
-                  label="Summa"
+                  label={t('transactions.form.amount')}
                   size="md"
                   value={field.value}
                   onChange={field.onChange}
-                  error={fieldState.error ? 'Summa 0 dan katta bo‘lishi kerak' : undefined}
+                  error={fieldState.error ? t('transactions.form.amountError') : undefined}
                 />
               )}
             />
@@ -203,11 +204,11 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
           control={control}
           render={({ field }) => (
             <DatePicker
-              label="Qaytarish muddati (ixtiyoriy)"
+              label={t('debts.form.dueDate')}
               value={field.value ?? ''}
               onChange={field.onChange}
               chips={['none']}
-              placeholder="Muddatsiz"
+              placeholder={t('debts.due.none')}
               min={editing ? undefined : today}
               today={today}
             />
@@ -218,8 +219,8 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
           control={control}
           render={({ field }) => (
             <Textarea
-              label="Izoh"
-              placeholder="Masalan: Mashina taʼmiri uchun"
+              label={t('debts.form.note')}
+              placeholder={t('debts.form.notePlaceholder')}
               maxLength={500}
               value={field.value ?? ''}
               onChange={field.onChange}
@@ -231,8 +232,8 @@ export function DebtModal({ isOpen, onClose, defaultDirection = 'I_LENT', debt =
             <Info className="mt-px h-[18px] w-[18px] shrink-0" aria-hidden />
             <span className="text-pretty text-[13.5px] font-medium leading-[19px] text-text">
               {direction === 'I_LENT'
-                ? 'Hisob balansi darhol o‘zgaradi, lekin bu xarajat hisoblanmaydi.'
-                : 'Hisob balansi darhol o‘zgaradi, lekin bu kirim hisoblanmaydi.'}
+                ? t('debts.form.lentHint')
+                : t('debts.form.borrowedHint')}
             </span>
           </p>
         )}

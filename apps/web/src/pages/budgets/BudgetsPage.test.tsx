@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import type { BudgetStatusItem } from '@fintrack/shared';
 import { BudgetsPage } from './BudgetsPage';
 import { renderWithProviders } from '../../test/render';
+import { inRussian, latinLeftovers } from '../../test/russian';
 import { ok, server } from '../../test/server';
 import { category } from '../../test/fixtures';
 
@@ -92,5 +93,29 @@ describe('BudgetsPage', () => {
     await userEvent.type(within(dialog).getByLabelText('Oylik limit'), '300000');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Saqlash' }));
     await waitFor(() => expect(posted).toEqual([{ categoryId: transport.id, month: '2026-10', limitAmount: '30000000' }]));
+  });
+});
+
+describe('BudgetsPage in Russian', () => {
+  it('leaves no Uzbek in the zones and the month total', async () => {
+    inRussian();
+    serve([item(food, '100000000', '50000000', 50), item(transport, '50000000', '45000000', 90), item(fun, '20000000', '30000000', 150)]);
+    renderWithProviders(<BudgetsPage />, { route: '/app/budgets?month=2026-10' });
+
+    expect(await screen.findByText('Потрачено 74% лимита')).toBeTruthy();
+    expect(latinLeftovers(['Oziq-ovqat', 'Transport', 'Ko‘ngilochar', 'Taksi'])).toEqual([]);
+  });
+});
+
+describe('BudgetModal in Russian', () => {
+  it('leaves no Uzbek in the form', async () => {
+    inRussian();
+    serve([item(food, '100000000', '0', 0)]);
+    renderWithProviders(<BudgetsPage />, { route: '/app/budgets?month=2026-10' });
+    await userEvent.click((await screen.findAllByRole('button', { name: /Задать бюджет/ }))[0]);
+
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByRole('radio', { name: /Transport/ });
+    expect(latinLeftovers(['Oziq-ovqat', 'Transport', 'Ko‘ngilochar', 'Taksi'])).toEqual([]);
   });
 });

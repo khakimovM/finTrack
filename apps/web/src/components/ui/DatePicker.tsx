@@ -4,6 +4,7 @@ import { todayLocalIso } from '@fintrack/shared';
 import { cn } from '../../lib/utils';
 import { formatDate } from '../../lib/format';
 import { Field, useFieldId } from './Field';
+import { t } from '../../lib/i18n';
 
 export type DateChip = 'today' | 'yesterday' | 'none';
 
@@ -43,8 +44,8 @@ export function DatePicker({
   min,
   max,
   chips = [],
-  noneLabel = 'Muddatsiz',
-  placeholder = 'Sanani tanlang',
+  noneLabel = t('ui.date.none'),
+  placeholder = t('ui.date.placeholder'),
   error,
   hint,
   today = todayLocalIso(),
@@ -56,7 +57,7 @@ export function DatePicker({
   const yesterday = shift(today, -1);
 
   const chipValue: Record<DateChip, string> = { today, yesterday, none: '' };
-  const chipLabel: Record<DateChip, string> = { today: 'Bugun', yesterday: 'Kecha', none: noneLabel };
+  const chipLabel: Record<DateChip, string> = { today: t('common.today'), yesterday: t('common.yesterday'), none: noneLabel };
 
   const openPicker = () => {
     const input = inputRef.current;

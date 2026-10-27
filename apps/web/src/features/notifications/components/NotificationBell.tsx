@@ -15,6 +15,7 @@ import { useDismiss } from '../../../components/ui/Popover';
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications } from '../hooks/useNotifications';
 import { notificationLink } from '../notificationMeta';
 import { NotificationItem } from './NotificationItem';
+import { t, tn } from '../../../lib/i18n';
 
 /** Marks the item read and goes to what it is about. */
 export function useOpenNotification(afterOpen?: () => void) {
@@ -40,14 +41,14 @@ function NotificationList({ onOpen }: { onOpen: (n: NotificationResponse) => voi
     );
   }
   if (isError) {
-    return <ErrorState variant="widget" title="Bildirishnomalarni yuklab bo‘lmadi" onRetry={() => void refetch()} className="m-2 min-h-0" />;
+    return <ErrorState variant="widget" title={t('notifications.loadFailed')} onRetry={() => void refetch()} className="m-2 min-h-0" />;
   }
   const items = (data?.data ?? []).slice(0, 6);
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
         <BellOff className="h-6 w-6 text-text-muted" strokeWidth={1.8} aria-hidden />
-        <p className="text-[14px] text-text-muted">Hozircha yangi bildirishnomalar yo‘q</p>
+        <p className="text-[14px] text-text-muted">{t('notifications.empty')}</p>
       </div>
     );
   }
@@ -81,7 +82,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
       onClick={() => markAll.mutate()}
     >
       <CheckCheck className="h-4 w-4" aria-hidden />
-      Barchasini o‘qilgan qilish
+      {t('notifications.markAllRead')}
     </Button>
   );
 
@@ -91,7 +92,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
       onClick={close}
       className="flex h-12 items-center justify-center gap-1 border-t border-border text-[14px] font-medium text-text hover:bg-secondary focus-ring"
     >
-      Barchasini ko‘rish <ChevronRight className="h-4 w-4" aria-hidden />
+      {t('notifications.seeAll')} <ChevronRight className="h-4 w-4" aria-hidden />
     </Link>
   );
 
@@ -100,7 +101,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={unread > 0 ? `Bildirishnomalar, ${unread} ta yangi` : 'Bildirishnomalar'}
+        aria-label={unread > 0 ? tn('notifications.titleWithNew', unread) : t('notifications.title')}
         aria-expanded={open}
         className={cn(
           'relative flex items-center justify-center rounded-full transition-colors duration-fast focus-ring',
@@ -123,7 +124,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
       {popover.mounted && (
         <div
           role="dialog"
-          aria-label="Bildirishnomalar"
+          aria-label={t('notifications.title')}
           aria-hidden={popover.closing || undefined}
           className={cn(
             'absolute right-0 top-[52px] z-40 w-[420px] origin-top-right overflow-hidden rounded-xl border border-border bg-popover shadow-md',
@@ -131,10 +132,10 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
           )}
         >
           <div className="flex items-center gap-2 px-4 pb-2.5 pt-4">
-            <span className="text-[16px] font-semibold">Bildirishnomalar</span>
+            <span className="text-[16px] font-semibold">{t('notifications.title')}</span>
             {unread > 0 && (
               <Chip tone="info" size="sm" className="font-semibold">
-                {unread} ta yangi
+                {tn('notifications.newCount', unread)}
               </Chip>
             )}
             <span className="ml-auto">{markAllButton}</span>
@@ -151,11 +152,11 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
           isOpen={open}
           onClose={close}
           full
-          title="Bildirishnomalar"
+          title={t('notifications.title')}
           headerExtra={
             unread > 0 ? (
               <Chip tone="info" size="sm" className="font-semibold">
-                {unread} ta yangi
+                {tn('notifications.newCount', unread)}
               </Chip>
             ) : undefined
           }

@@ -4,6 +4,7 @@ import { invalidateAfter } from '../../../lib/invalidation';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { toast } from '../../../stores/toastStore';
 import { tagsApi } from '../api/tags.api';
+import { t } from '../../../lib/i18n';
 
 export function useTags() {
   return useQuery({ queryKey: queryKeys.tags.all(), queryFn: tagsApi.list, staleTime: 60_000 });
@@ -25,7 +26,7 @@ export function useUpdateTag() {
     mutationFn: tagsApi.update,
     onSuccess: () => {
       void invalidateAfter(queryClient, 'tag');
-      toast.success('Teg saqlandi');
+      toast.success(t('tags.saved'));
     },
     onError: (err) => toast.error(apiErrorToMessage(err)),
   });
@@ -37,7 +38,7 @@ export function useDeleteTag() {
     mutationFn: tagsApi.delete,
     onSuccess: () => {
       void invalidateAfter(queryClient, 'tag');
-      toast.success('Teg o‘chirildi');
+      toast.success(t('tags.deleted'));
     },
     onError: (err) => toast.error(apiErrorToMessage(err)),
   });

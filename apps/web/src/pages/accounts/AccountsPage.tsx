@@ -24,6 +24,7 @@ import {
   useUpdateAccount,
 } from '../../features/accounts/hooks/useAccounts';
 import { AccountsBanner, AccountsSkeleton, ReorderBar } from './AccountsPageParts';
+import { t, tn } from '../../lib/i18n';
 
 type Tab = 'active' | 'archived';
 
@@ -57,9 +58,9 @@ export function AccountsPage() {
 
   const lastActive = () =>
     confirm({
-      title: 'Kamida bitta faol hisob qolishi kerak',
-      description: 'Avval yangi hisob qo‘shing yoki boshqasini arxivdan chiqaring.',
-      confirmLabel: 'Tushunarli',
+      title: t('accounts.confirm.lastActive'),
+      description: t('accounts.confirm.lastActiveText'),
+      confirmLabel: t('accounts.confirm.gotIt'),
       hasCancel: false,
       warning: true,
       icon: Info,
@@ -81,14 +82,14 @@ export function AccountsPage() {
     onMakeDefault: (account) =>
       makeDefault
         .mutateAsync({ id: account.id, data: { isDefault: true } })
-        .then(() => toast.success(`“${account.name}” asosiy hisob qilindi`))
+        .then(() => toast.success(t('accounts.toast.madePrimary', { name: account.name })))
         .catch((err: unknown) => toast.error(apiErrorToMessage(err))),
     onArchive: async (account) => {
       if (active.length <= 1) return void lastActive();
       const ok = await confirm({
-        title: 'Hisob arxivlansinmi?',
-        description: 'Arxivlangan hisob tarixda saqlanadi, ammo yangi amallar uchun ko‘rsatilmaydi.',
-        confirmLabel: 'Arxivlash',
+        title: t('accounts.confirm.archive'),
+        description: t('accounts.confirm.archiveText'),
+        confirmLabel: t('accounts.card.archiveAction'),
         icon: Archive,
       });
       if (ok) await archive(account);
@@ -101,11 +102,11 @@ export function AccountsPage() {
       if (account.transactionCount > 0) {
         const isArchived = account.archivedAt !== null;
         const ok = await confirm({
-          title: 'Hisobda tranzaksiyalar bor. O‘chirish o‘rniga arxivlang',
-          description: isArchived
-            ? `“${account.name}” hisobida ${account.transactionCount} ta tranzaksiya bor, shuning uchun u arxivda saqlanadi.`
-            : `“${account.name}” hisobida ${account.transactionCount} ta tranzaksiya bor. Arxivlansa, ular tarixda saqlanib qoladi.`,
-          confirmLabel: isArchived ? 'Tushunarli' : 'Arxivlash',
+          title: t('accounts.confirm.hasEntries'),
+          description: tn(isArchived ? 'accounts.confirm.hasEntriesArchived' : 'accounts.confirm.hasEntriesActive', account.transactionCount, {
+            name: account.name,
+          }),
+          confirmLabel: isArchived ? t('accounts.confirm.gotIt') : t('accounts.card.archiveAction'),
           hasCancel: !isArchived,
           warning: true,
           icon: Lock,
@@ -115,9 +116,9 @@ export function AccountsPage() {
       }
       if (account.archivedAt === null && active.length <= 1) return void lastActive();
       const ok = await confirm({
-        title: 'Hisob o‘chirilsinmi?',
-        description: 'Bu hisobda hech qanday yozuv yo‘q, u butunlay o‘chiriladi.',
-        confirmLabel: 'O‘chirish',
+        title: t('accounts.confirm.delete'),
+        description: t('accounts.confirm.deleteText'),
+        confirmLabel: t('common.delete'),
         destructive: true,
         icon: Trash2,
       });
@@ -145,13 +146,13 @@ export function AccountsPage() {
   const transferButton = canTransfer && (
     <Button variant="outline" onClick={() => openForm({ kind: 'transfer' })}>
       <ArrowLeftRight className="h-4 w-4" aria-hidden />
-      O‘tkazma
+      {t('common.transfer')}
     </Button>
   );
   const newButton = (
     <Button onClick={openNew}>
       <Plus className="h-[18px] w-[18px]" aria-hidden />
-      Yangi hisob
+      {t('accounts.page.new')}
     </Button>
   );
 
@@ -182,8 +183,8 @@ export function AccountsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Hisoblar"
-        subtitle="Bank kartalari, naqd pul va jamg‘armalar"
+        title={t('nav.accounts')}
+        subtitle={t('accounts.page.subtitle')}
         actions={
           <>
             {transferButton}
@@ -203,15 +204,15 @@ export function AccountsPage() {
 
       <div className={cn('flex flex-wrap items-center gap-2', draft === null && 'max-sm:flex-nowrap')}>
         <Tabs
-          aria-label="Hisoblar"
+          aria-label={t('nav.accounts')}
           value={tab}
           onChange={(next) => {
             setTab(next);
             setDraft(null);
           }}
           items={[
-            { value: 'active', label: 'Faol', count: active.length },
-            { value: 'archived', label: 'Arxiv', count: archived.length },
+            { value: 'active', label: t('accounts.page.active'), count: active.length },
+            { value: 'archived', label: t('accounts.page.archive'), count: archived.length },
           ]}
         />
         <span className="flex-1" />
@@ -230,13 +231,13 @@ export function AccountsPage() {
       {isLoading ? (
         <AccountsSkeleton compact={isMobile} />
       ) : isError ? (
-        <ErrorState title="Hisoblarni yuklab bo‘lmadi" onRetry={() => void refetch()} className="rounded-[20px] border border-border bg-card" />
+        <ErrorState title={t('accounts.page.loadFailed')} onRetry={() => void refetch()} className="rounded-[20px] border border-border bg-card" />
       ) : shown.length === 0 ? (
         <EmptyState
           icon={<Wallet className="h-6 w-6" aria-hidden />}
-          title={tab === 'archived' ? 'Arxiv bo‘sh' : 'Hisoblar mavjud emas'}
-          description={tab === 'archived' ? 'Arxivlangan hisoblar shu yerda ko‘rinadi.' : 'Birinchi kartangiz yoki naqd pul hamyoningizni qo‘shing.'}
-          action={tab === 'active' ? <Button onClick={openNew}>Yangi hisob ochish</Button> : undefined}
+          title={tab === 'archived' ? t('accounts.page.archiveEmptyTitle') : t('accounts.page.emptyTitle')}
+          description={tab === 'archived' ? t('accounts.page.archiveEmptyText') : t('accounts.page.emptyText')}
+          action={tab === 'active' ? <Button onClick={openNew}>{t('accounts.page.openNew')}</Button> : undefined}
           className="rounded-[20px] border border-border bg-card"
         />
       ) : (

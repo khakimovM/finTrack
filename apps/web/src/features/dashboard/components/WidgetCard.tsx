@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ErrorState } from '../../../components/ui/ErrorState';
+import { t } from '../../../lib/i18n';
 
 interface WidgetCardProps {
   title: string;
@@ -26,7 +27,7 @@ export function WidgetCard({ title, to, extra, className, children }: WidgetCard
             to={to}
             className="-mr-2 flex h-8 items-center gap-0.5 rounded-full px-3 text-[13px] font-medium text-text-secondary transition-colors duration-fast hover:bg-secondary hover:text-text focus-ring"
           >
-            Barchasi <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+            {t('dashboard.all')} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
         )}
       </header>
@@ -45,14 +46,14 @@ interface WidgetStateProps {
 }
 
 /** One failing widget shows its own error and retry; the rest of the page keeps working. */
-export function WidgetState({ isLoading, isError, onRetry, skeleton, errorTitle = 'Grafikni yuklab bo‘lmadi', children }: WidgetStateProps) {
+export function WidgetState({ isLoading, isError, onRetry, skeleton, errorTitle = t('dashboard.chartFailed'), children }: WidgetStateProps) {
   if (isLoading) return <>{skeleton}</>;
   if (isError) {
     return (
       <ErrorState
         variant="widget"
         title={errorTitle}
-        message="Boshqa bo‘limlar ishlayapti. Faqat shu qismni qayta yuklang."
+        message={t('dashboard.othersWork')}
         onRetry={onRetry}
       />
     );

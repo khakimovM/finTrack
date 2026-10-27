@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { CategoryStatsItem } from '@fintrack/shared';
 import { formatPercent } from '../../../lib/format';
-import { formatAmount, shortMoney, tiyinToChartNumber } from '../../../lib/money';
+import { currencyWord, formatAmount, shortMoney, tiyinToChartNumber } from '../../../lib/money';
 import { chartColorAt, colorVar } from '../../../lib/colors';
 import { Donut } from '../../../components/charts/Donut';
 import { BarList } from '../../../components/charts/BarList';
@@ -9,6 +9,7 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useStatsByCategory } from '../hooks/useDashboard';
 import { WidgetCard, WidgetState } from './WidgetCard';
+import { t, tn } from '../../../lib/i18n';
 
 /** Uncategorised spending has no colour of its own. */
 function colourOf(item: CategoryStatsItem, index: number): string {
@@ -32,14 +33,14 @@ export function ExpenseShareCard() {
       name: item.name,
       value: tiyinToChartNumber(item.amount),
       color: colourOf(item, i),
-      detail: `${formatPercent(item.percent)} · ${item.count} ta tranzaksiya`,
+      detail: `${formatPercent(item.percent)} · ${tn('dashboard.categories.txCount', item.count)}`,
     })),
-    ...(restAmount > 0n ? [{ name: 'Boshqalar', value: tiyinToChartNumber(restAmount), color: 'var(--chart-9)' }] : []),
+    ...(restAmount > 0n ? [{ name: t('dashboard.categories.others'), value: tiyinToChartNumber(restAmount), color: 'var(--chart-9)' }] : []),
   ];
   const legend = showAll ? items : top;
 
   return (
-    <WidgetCard title="Xarajatlar taqsimoti" className="xl:col-span-5">
+    <WidgetCard title={t('dashboard.categories.share')} className="xl:col-span-5">
       <WidgetState
         isLoading={query.isLoading}
         isError={query.isError}
@@ -56,17 +57,17 @@ export function ExpenseShareCard() {
         }
       >
         {items.length === 0 ? (
-          <EmptyState variant="widget" title="Xarajatlar mavjud emas" description="Ushbu davrda kategoriya bo‘yicha xarajat yozilmagan." />
+          <EmptyState variant="widget" title={t('dashboard.categories.empty')} description={t('dashboard.categories.emptyText')} />
         ) : (
           <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
             <Donut
-              ariaLabel="Xarajatlar taqsimoti diagrammasi"
+              ariaLabel={t('dashboard.categories.shareChart')}
               data={slices}
               center={
                 <>
-                  <span className="text-[11.5px] text-text-muted">Jami chiqim</span>
+                  <span className="text-[11.5px] text-text-muted">{t('dashboard.categories.totalExpense')}</span>
                   <span className="text-[17px] font-semibold leading-[22px]">{shortMoney(total)}</span>
-                  <span className="text-[11.5px] text-text-muted">so‘m</span>
+                  <span className="text-[11.5px] text-text-muted">{currencyWord()}</span>
                 </>
               }
             />
@@ -88,7 +89,7 @@ export function ExpenseShareCard() {
                   onClick={() => setShowAll((v) => !v)}
                   className="self-start rounded-sm text-[13px] font-medium text-text-secondary underline decoration-input underline-offset-[3px] hover:text-text focus-ring"
                 >
-                  {showAll ? 'Kamroq ko‘rsatish' : `+ yana ${rest.length} ta kategoriya`}
+                  {showAll ? t('dashboard.categories.showLess') : tn('dashboard.categories.showMore', rest.length)}
                 </button>
               )}
             </div>
@@ -104,7 +105,7 @@ export function CategoryBarsCard() {
   const query = useStatsByCategory('EXPENSE');
   const items = (query.data?.items ?? []).slice(0, 8);
   return (
-    <WidgetCard title="Kategoriyalar bo‘yicha xarajat">
+    <WidgetCard title={t('dashboard.categories.byCategory')}>
       <WidgetState
         isLoading={query.isLoading}
         isError={query.isError}
@@ -118,7 +119,7 @@ export function CategoryBarsCard() {
         }
       >
         {items.length === 0 ? (
-          <EmptyState variant="widget" title="Ushbu davrda maʼlumot yo‘q" description="Boshqa davrni tanlang yoki tranzaksiya qo‘shing." />
+          <EmptyState variant="widget" title={t('dashboard.noData')} description={t('dashboard.noDataText')} />
         ) : (
           <BarList
             items={items.map((item, i) => ({

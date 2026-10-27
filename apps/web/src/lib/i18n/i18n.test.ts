@@ -5,6 +5,9 @@ import { apiErrorToMessage } from '../apiError';
 import { fail, server } from '../../test/server';
 import { useLocaleStore } from '../../stores/localeStore';
 import { translate } from '.';
+import { followAccountLanguage } from './followAccount';
+import { useAuthStore } from '../../stores/authStore';
+import { user } from '../../test/fixtures';
 
 describe('translate', () => {
   it('looks the key up in the language and fills the placeholders', () => {
@@ -35,5 +38,19 @@ describe('requests and their errors', () => {
     expect(asked).toEqual(['ru', 'uz']);
     expect(apiErrorToMessage(error)).toBe('На счёте недостаточно средств');
     expect(apiErrorToMessage(null)).toBe('Произошла непредвиденная ошибка. Попробуйте ещё раз');
+  });
+});
+
+describe('the account language', () => {
+  it('is followed when the user signs in and when it changes on another device', () => {
+    const stop = followAccountLanguage();
+    useAuthStore.setState({ user: user({ locale: 'ru' }) });
+    expect(useLocaleStore.getState().locale).toBe('ru');
+
+    useAuthStore.setState({ user: user({ locale: 'uz', name: 'Aziz K' }) });
+    expect(useLocaleStore.getState().locale).toBe('uz');
+
+    stop();
+    useAuthStore.setState({ user: null });
   });
 });

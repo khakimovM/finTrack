@@ -1,6 +1,7 @@
 import type { TransactionListMeta } from '@fintrack/shared';
-import { formatAmount } from '../../../lib/money';
+import { currencyWord, formatAmount } from '../../../lib/money';
 import { cn } from '../../../lib/utils';
+import { t, tn } from '../../../lib/i18n';
 
 function SumCard({ label, tiyin, count, tone }: { label: string; tiyin: string; count: string; tone: 'income' | 'expense' }) {
   const zero = BigInt(tiyin) === 0n;
@@ -15,7 +16,7 @@ function SumCard({ label, tiyin, count, tone }: { label: string; tiyin: string; 
         )}
       >
         {formatAmount(tiyin, { sign, currency: false })}{' '}
-        <span className="text-[13px] font-medium tracking-normal text-text-muted">so‘m</span>
+        <span className="text-[13px] font-medium tracking-normal text-text-muted">{currencyWord()}</span>
       </span>
       <span className="text-[12px] leading-4 text-text-muted">{count}</span>
     </div>
@@ -26,8 +27,8 @@ function SumCard({ label, tiyin, count, tone }: { label: string; tiyin: string; 
 export function TransactionSums({ sums }: { sums: TransactionListMeta['sums'] }) {
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-[repeat(2,minmax(0,300px))] sm:gap-4">
-      <SumCard label="Filtr bo‘yicha kirim" tiyin={sums.income} count={`${sums.incomeCount} ta kirim`} tone="income" />
-      <SumCard label="Filtr bo‘yicha chiqim" tiyin={sums.expense} count={`${sums.expenseCount} ta chiqim`} tone="expense" />
+      <SumCard label={t('transactions.sums.income')} tiyin={sums.income} count={tn('transactions.sums.incomeCount', sums.incomeCount)} tone="income" />
+      <SumCard label={t('transactions.sums.expense')} tiyin={sums.expense} count={tn('transactions.sums.expenseCount', sums.expenseCount)} tone="expense" />
     </div>
   );
 }

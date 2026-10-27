@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { DELETE_ACCOUNT_CONFIRMATION } from '@fintrack/shared';
 import { SettingsPage } from './SettingsPage';
 import { renderWithProviders } from '../../test/render';
+import { inRussian, latinLeftovers } from '../../test/russian';
 import { ok, server } from '../../test/server';
 import { user } from '../../test/fixtures';
 import { useAuthStore } from '../../stores/authStore';
@@ -40,7 +42,7 @@ beforeEach(() => useAuthStore.setState({ user: user({ name: 'Aziz Karimov', tele
 afterEach(() => useAuthStore.setState({ user: null }));
 
 describe('SettingsPage', () => {
-  it('switches the language on this device; the account keeps Uzbek until Russian is ready', async () => {
+  it('switches the language on this device and keeps it on the account', async () => {
     const calls = serve();
     renderWithProviders(<SettingsPage />);
 
@@ -51,7 +53,7 @@ describe('SettingsPage', () => {
     expect(useLocaleStore.getState().locale).toBe('ru');
     expect(document.documentElement.lang).toBe('ru');
     expect(await screen.findByRole('radiogroup', { name: 'Язык' })).toBeTruthy();
-    expect(calls.patches).toEqual([]);
+    await waitFor(() => expect(calls.patches).toEqual([{ locale: 'ru' }]));
   });
 
   it('saves the profile only when it changed and is valid', async () => {
@@ -129,5 +131,17 @@ describe('maskIp', () => {
     expect(maskIp('::ffff:10.0.0.1')).toBe('IP 10.0.**');
     expect(maskIp('2001:db8:85a3::1')).toBe('IP 2001:db8:**');
     expect(maskIp(null)).toBe('IP nomaʼlum');
+  });
+});
+
+describe('SettingsPage in Russian', () => {
+  it('leaves no Uzbek in any section', async () => {
+    inRussian();
+    serve();
+    renderWithProviders(<SettingsPage />);
+
+    expect(await screen.findByText('Это устройство')).toBeTruthy();
+    // The language keeps its own name, and the API checks the Uzbek phrase that deletes the account.
+    expect(latinLeftovers(['Aziz Karimov', 'aziz_k', 'AK', 'A', 'O‘zbekcha', DELETE_ACCOUNT_CONFIRMATION])).toEqual([]);
   });
 });

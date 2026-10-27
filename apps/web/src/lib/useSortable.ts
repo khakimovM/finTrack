@@ -1,4 +1,5 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
+import { t } from './i18n';
 
 export interface SortableOptions {
   /** Items only change places inside their group (categories: siblings under one parent). */
@@ -44,7 +45,7 @@ export function useSortable(ids: string[], { groupOf = () => null, onCommit }: S
   };
 
   const handleProps = (id: string) => ({
-    'aria-label': 'Sudrash',
+    'aria-label': t('ui.drag'),
     'aria-keyshortcuts': 'ArrowUp ArrowDown',
     tabIndex: 0,
     style: { touchAction: 'none', cursor: dragId === id ? 'grabbing' : 'grab' } satisfies CSSProperties,

@@ -5,6 +5,7 @@ import { queryKeys } from '../../../lib/queryKeys';
 import { toast } from '../../../stores/toastStore';
 import { apiErrorToMessage } from '../../../lib/apiError';
 import { invalidateAfter } from '../../../lib/invalidation';
+import { t } from '../../../lib/i18n';
 
 export function useDebts(filters?: Partial<ListDebtsQuery>) {
   return useQuery({
@@ -39,7 +40,7 @@ export function useCreateDebt() {
     mutationFn: (data: CreateDebtInput) => debtsApi.create(data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'debt');
-      toast.success('Qarz qo‘shildi');
+      toast.success(t('debts.toast.added'));
     },
   });
 }
@@ -50,7 +51,7 @@ export function useUpdateDebt() {
     mutationFn: ({ id, data }: { id: string; data: UpdateDebtInput }) => debtsApi.update(id, data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'debt');
-      toast.success('O‘zgarishlar saqlandi');
+      toast.success(t('transactions.toast.changesSaved'));
     },
   });
 }
@@ -61,7 +62,7 @@ export function useDeleteDebt() {
     mutationFn: (id: string) => debtsApi.delete(id),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'debt');
-      toast.success('Qarz o‘chirildi');
+      toast.success(t('debts.toast.deleted'));
     },
     onError: (err) => toast.error(apiErrorToMessage(err)),
   });
@@ -73,7 +74,7 @@ export function useCreateDebtPayment() {
     mutationFn: ({ id, data }: { id: string; data: CreateDebtPaymentInput }) => debtsApi.createPayment(id, data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'debtPayment');
-      toast.success('To‘lov kiritildi');
+      toast.success(t('debts.toast.paymentAdded'));
     },
   });
 }
@@ -84,7 +85,7 @@ export function useSettleDebt() {
     mutationFn: ({ id, data }: { id: string; data: SettleDebtInput }) => debtsApi.settle(id, data),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'debtPayment');
-      toast.success('Qarz yopildi');
+      toast.success(t('debts.toast.settled'));
     },
   });
 }
@@ -95,7 +96,7 @@ export function useDeleteDebtPayment() {
     mutationFn: ({ debtId, paymentId }: { debtId: string; paymentId: string }) => debtsApi.deletePayment(debtId, paymentId),
     onSuccess: () => {
       void invalidateAfter(queryClient, 'debtPayment');
-      toast.success('To‘lov o‘chirildi');
+      toast.success(t('debts.toast.paymentDeleted'));
     },
     onError: (err) => toast.error(apiErrorToMessage(err)),
   });

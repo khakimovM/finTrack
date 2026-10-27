@@ -37,6 +37,7 @@ import {
   type TxFilters,
 } from '../../features/transactions/filters';
 import { parentNames, rowKind } from '../../features/transactions/rowView';
+import { t, tn } from '../../lib/i18n';
 
 /** The transfer as the user booked it, so "Qaytarish" can book it again. */
 function transferInput(tx: TransactionResponse): CreateTransferInput | undefined {
@@ -101,9 +102,9 @@ export function TransactionsPage() {
     onEdit: (tx) => openForm({ kind: 'transaction', type: tx.type === 'INCOME' ? 'INCOME' : 'EXPENSE', transaction: tx }),
     onDelete: async (tx) => {
       const ok = await confirm({
-        title: 'Tranzaksiya o‘chirilsinmi?',
-        description: 'O‘chirilgan yozuv balans va hisobotlardan chiqariladi.',
-        confirmLabel: 'O‘chirish',
+        title: t('transactions.confirm.deleteOne'),
+        description: t('transactions.confirm.deleteText'),
+        confirmLabel: t('common.delete'),
         destructive: true,
       });
       if (!ok) return;
@@ -114,10 +115,10 @@ export function TransactionsPage() {
       if (!tx.transferGroupId) return;
       setInfo(null);
       const ok = await confirm({
-        title: 'O‘tkazma bekor qilinsinmi?',
-        description: 'Ikkala hisobdagi yozuv ham o‘chiriladi va balanslar avvalgi holatiga qaytadi.',
-        confirmLabel: 'O‘tkazmani bekor qilish',
-        cancelLabel: 'Yopish',
+        title: t('transactions.confirm.cancelTransfer'),
+        description: t('transactions.confirm.cancelTransferText'),
+        confirmLabel: t('transactions.info.cancelTransfer'),
+        cancelLabel: t('common.close'),
         destructive: true,
         icon: Undo2,
       });
@@ -146,9 +147,9 @@ export function TransactionsPage() {
   const removeSelected = async () => {
     const ids = [...selected];
     const ok = await confirm({
-      title: ids.length > 1 ? `${ids.length} ta tranzaksiya o‘chirilsinmi?` : 'Tranzaksiya o‘chirilsinmi?',
-      description: 'O‘chirilgan yozuv balans va hisobotlardan chiqariladi.',
-      confirmLabel: 'O‘chirish',
+      title: ids.length > 1 ? tn('transactions.confirm.deleteMany', ids.length) : t('transactions.confirm.deleteOne'),
+      description: t('transactions.confirm.deleteText'),
+      confirmLabel: t('common.delete'),
       destructive: true,
       icon: Trash2,
     });
@@ -165,17 +166,17 @@ export function TransactionsPage() {
   let body: ReactNode;
   if (active.isLoading) body = <ListSkeleton table={!isMobile} />;
   else if (active.isError)
-    body = <ErrorState title="Tranzaksiyalarni yuklab bo‘lmadi" onRetry={() => void active.refetch()} className="flex-1" />;
+    body = <ErrorState title={t('transactions.page.loadFailed')} onRetry={() => void active.refetch()} className="flex-1" />;
   else if (total === 0 && !hasAnyFilter(filters))
     body = (
       <EmptyState
         icon={<ArrowUpDown className="h-6 w-6" aria-hidden />}
-        title="Hali tranzaksiyalar yo‘q"
-        description="Kirim yoki chiqimni qo‘shing — u shu yerda paydo bo‘ladi."
+        title={t('transactions.page.emptyTitle')}
+        description={t('transactions.page.emptyText')}
         action={
           <Button onClick={openNew}>
             <Plus className="h-[18px] w-[18px]" aria-hidden />
-            Birinchi tranzaksiyani qo‘shish
+            {t('transactions.page.addFirst')}
           </Button>
         }
         className="flex-1"
@@ -185,11 +186,11 @@ export function TransactionsPage() {
     body = (
       <EmptyState
         icon={<SearchX className="h-6 w-6" aria-hidden />}
-        title="Tranzaksiyalar topilmadi"
-        description="Ushbu filtrlarga mos tranzaksiya mavjud emas."
+        title={t('transactions.page.notFoundTitle')}
+        description={t('transactions.page.notFoundText')}
         action={
           <Button variant="outline" onClick={() => update(clearedFilters(filters.sort))}>
-            Filtrlarni tozalash
+            {t('transactions.filters.clear')}
           </Button>
         }
         className="flex-1"
@@ -211,11 +212,11 @@ export function TransactionsPage() {
           <div className="flex flex-col items-center gap-2.5 pb-2 pt-4">
             {infinite.hasNextPage && (
               <Button variant="outline" className="w-full" loading={infinite.isFetchingNextPage} onClick={() => void infinite.fetchNextPage()}>
-                Yana yuklash
+                {t('transactions.page.loadMore')}
               </Button>
             )}
             <span className="text-[13px] text-text-muted">
-              Jami {total} tadan 1–{rows.length} ko‘rsatilmoqda
+              {t('ui.pagination.shown', { total, first: 1, last: rows.length })}
             </span>
           </div>
         ) : (
@@ -236,18 +237,18 @@ export function TransactionsPage() {
   return (
     <div className="flex flex-col gap-3.5">
       <PageHeader
-        title="Tranzaksiyalar"
-        subtitle="Kirim va chiqimlar ro‘yxati, hisoblararo o‘tkazmalar"
+        title={t('nav.transactions')}
+        subtitle={t('transactions.page.subtitle')}
         actions={
           <>
             <ExportMenu query={exportQuery} />
             <Button variant="outline" onClick={openTransfer}>
               <ArrowLeftRight className="h-4 w-4" aria-hidden />
-              O‘tkazma
+              {t('common.transfer')}
             </Button>
             <Button onClick={openNew}>
               <Plus className="h-[18px] w-[18px]" aria-hidden />
-              Yangi tranzaksiya
+              {t('transactions.page.new')}
             </Button>
           </>
         }
@@ -257,11 +258,11 @@ export function TransactionsPage() {
           <>
             <Button variant="outline" onClick={openTransfer}>
               <ArrowLeftRight className="h-4 w-4" aria-hidden />
-              O‘tkazma
+              {t('common.transfer')}
             </Button>
             <Button onClick={openNew}>
               <Plus className="h-[18px] w-[18px]" aria-hidden />
-              Yangi tranzaksiya
+              {t('transactions.page.new')}
             </Button>
           </>
         }
@@ -276,7 +277,7 @@ export function TransactionsPage() {
       )}
 
       <section
-        aria-label="Tranzaksiyalar ro‘yxati"
+        aria-label={t('transactions.page.listLabel')}
         className={cn('flex min-h-[320px] flex-col', !isMobile && 'rounded-[20px] border border-border bg-card')}
       >
         {body}

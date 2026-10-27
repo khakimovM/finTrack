@@ -14,6 +14,7 @@ import { DebtPaymentModal } from '../../features/debts/components/DebtPaymentMod
 import { useAllDebts, useDeleteDebt, useDeleteDebtPayment } from '../../features/debts/hooks/useDebts';
 import { matchesFilter, sortDebts, type DebtFilter } from '../../features/debts/debtView';
 import { DebtFilters, DebtsSkeleton, DebtsSummary, type Direction } from './DebtsPageParts';
+import { t } from '../../lib/i18n';
 
 const CARD = 'rounded-[20px] border border-border bg-card';
 
@@ -53,18 +54,18 @@ export function DebtsPage() {
     onEdit: setEditing,
     onDelete: async (debt) => {
       const ok = await confirm({
-        title: 'Qarz o‘chirilsinmi?',
-        description: 'Unga bog‘liq barcha yozuvlar ham bekor qilinadi va balans tiklanadi.',
-        confirmLabel: 'O‘chirish',
+        title: t('debts.confirm.delete'),
+        description: t('debts.confirm.deleteText'),
+        confirmLabel: t('common.delete'),
         destructive: true,
       });
       if (ok) await deleteDebt.mutateAsync(debt.id).catch(() => undefined);
     },
     onDeletePayment: async (debt: DebtResponse, payment: DebtPaymentResponse) => {
       const ok = await confirm({
-        title: 'To‘lov o‘chirilsinmi?',
-        description: 'Qoldiq va hisob balansi qayta hisoblanadi.',
-        confirmLabel: 'O‘chirish',
+        title: t('debts.confirm.deletePayment'),
+        description: t('debts.confirm.deletePaymentText'),
+        confirmLabel: t('common.delete'),
         destructive: true,
       });
       if (ok) await deletePayment.mutateAsync({ debtId: debt.id, paymentId: payment.id }).catch(() => undefined);
@@ -75,22 +76,20 @@ export function DebtsPage() {
   const newButton = (
     <Button onClick={openNew}>
       <Plus className="h-[18px] w-[18px]" aria-hidden />
-      Yangi qarz
+      {t('debts.page.new')}
     </Button>
   );
   const filtered = direction !== null || filter !== 'all';
 
   let body;
   if (isLoading) body = <DebtsSkeleton />;
-  else if (isError) body = <ErrorState title="Qarzlarni yuklashda xatolik yuz berdi" onRetry={() => void refetch()} className={CARD} />;
+  else if (isError) body = <ErrorState title={t('debts.page.loadFailed')} onRetry={() => void refetch()} className={CARD} />;
   else if (shown.length === 0)
     body = (
       <EmptyState
         icon={<Handshake className="h-6 w-6" aria-hidden />}
-        title={filtered && debts.length > 0 ? 'Mos qarz topilmadi' : 'Hozircha qarzlar yo‘q'}
-        description={
-          filtered && debts.length > 0 ? 'Ushbu filtrga mos qarz yo‘q.' : 'Kimga qarz berganingiz yoki kimdan olganingizni yozib boring.'
-        }
+        title={filtered && debts.length > 0 ? t('debts.page.notFoundTitle') : t('debts.page.emptyTitle')}
+        description={filtered && debts.length > 0 ? t('debts.page.notFoundText') : t('debts.page.emptyText')}
         action={
           filtered && debts.length > 0 ? (
             <Button
@@ -100,10 +99,10 @@ export function DebtsPage() {
                 setDirection(null);
               }}
             >
-              Filtrni tozalash
+              {t('debts.page.clearFilter')}
             </Button>
           ) : (
-            <Button onClick={openNew}>Yangi qarz qo‘shish</Button>
+            <Button onClick={openNew}>{t('debts.page.addNew')}</Button>
           )
         }
         className={CARD}
@@ -136,8 +135,8 @@ export function DebtsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Qarzlar"
-        subtitle="Berilgan va olingan qarzlar, qisman to‘lovlar va muddatlar"
+        title={t('nav.debts')}
+        subtitle={t('debts.page.subtitle')}
         actions={newButton}
         mobileActions={newButton}
       />

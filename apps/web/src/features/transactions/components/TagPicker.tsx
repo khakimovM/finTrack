@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useCreateTag, useTags } from '../../tags/hooks/useTags';
+import { t } from '../../../lib/i18n';
 
 export interface TagPickerProps {
   value: string[];
@@ -40,7 +41,7 @@ export function TagPicker({ value, onChange }: TagPickerProps) {
   return (
     <div role="group" aria-labelledby="tag-picker-label" className="flex flex-col gap-2">
       <span id="tag-picker-label" className="text-[13px] font-medium text-text-secondary">
-        Teglar
+        {t('transactions.tags.title')}
       </span>
       <div className="flex flex-wrap items-center gap-1.5">
         {tags.map((tag) => {
@@ -78,8 +79,8 @@ export function TagPicker({ value, onChange }: TagPickerProps) {
               }
             }}
             onBlur={() => void commit()}
-            placeholder="teg nomi"
-            aria-label="Yangi teg"
+            placeholder={t('transactions.tags.newPlaceholder')}
+            aria-label={t('transactions.tags.newLabel')}
             className="h-8 w-[120px] rounded-[8px] border border-ring bg-card px-2.5 text-[13px] font-medium text-text shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_22%,transparent)] outline-none placeholder:text-text-muted"
           />
         ) : (
@@ -89,7 +90,7 @@ export function TagPicker({ value, onChange }: TagPickerProps) {
             disabled={createTag.isPending}
             className="focus-ring h-8 rounded-[8px] border border-dashed border-input px-3 text-[13px] font-medium text-text-secondary transition-colors duration-fast hover:text-text"
           >
-            + Yangi teg
+            {t('transactions.tags.newButton')}
           </button>
         )}
       </div>

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { DebtModal } from './DebtModal';
 import { renderWithProviders } from '../../../test/render';
+import { inRussian, latinLeftovers } from '../../../test/russian';
 import { ok, server } from '../../../test/server';
 import { account, cash } from '../../../test/fixtures';
 
@@ -26,5 +27,16 @@ describe('DebtModal', () => {
 
     await waitFor(() => expect(posted).toHaveLength(1));
     expect(posted[0]).toMatchObject({ accountId: cash.id, personName: 'Ali Valiyev', amount: '150000000' });
+  });
+});
+
+describe('DebtModal in Russian', () => {
+  it('leaves no Uzbek in the form', async () => {
+    inRussian();
+    server.use(http.get('*/api/v1/accounts', () => HttpResponse.json(ok([account()], { totalBalance: '0' }))));
+    renderWithProviders(<DebtModal isOpen onClose={() => undefined} />);
+
+    await screen.findAllByText(/Naqd pul/);
+    expect(latinLeftovers(['Naqd pul'])).toEqual([]);
   });
 });

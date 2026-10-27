@@ -1,23 +1,24 @@
 import { ChartPie, Clock, Repeat, Users, Wallet, type LucideIcon } from 'lucide-react';
 import type { NotificationResponse, NotificationType } from '@fintrack/shared';
 import { formatDayMonth, formatShortDate, formatTime } from '../../lib/format';
+import { t, type TextKey } from '../../lib/i18n';
 
 type Tone = 'warning' | 'danger' | 'info';
 
 interface TypeStyle {
   icon: LucideIcon;
   tone: Tone;
-  linkLabel: string;
+  linkLabel: TextKey;
 }
 
 export const NOTIFICATION_STYLE: Record<NotificationType, TypeStyle> = {
-  BUDGET_WARNING: { icon: ChartPie, tone: 'warning', linkLabel: 'Byudjetni ochish' },
-  BUDGET_EXCEEDED: { icon: ChartPie, tone: 'danger', linkLabel: 'Byudjetni ochish' },
-  DEBT_DUE_SOON: { icon: Clock, tone: 'warning', linkLabel: 'Qarzni ochish' },
-  DEBT_OVERDUE: { icon: Users, tone: 'danger', linkLabel: 'Qarzni ochish' },
-  NEGATIVE_BALANCE: { icon: Wallet, tone: 'danger', linkLabel: 'Hisobni ochish' },
-  RECURRING_CREATED: { icon: Repeat, tone: 'info', linkLabel: 'Qoidani ochish' },
-  RECURRING_SKIPPED: { icon: Repeat, tone: 'warning', linkLabel: 'Qoidani ochish' },
+  BUDGET_WARNING: { icon: ChartPie, tone: 'warning', linkLabel: 'notifications.open.budget' },
+  BUDGET_EXCEEDED: { icon: ChartPie, tone: 'danger', linkLabel: 'notifications.open.budget' },
+  DEBT_DUE_SOON: { icon: Clock, tone: 'warning', linkLabel: 'notifications.open.debt' },
+  DEBT_OVERDUE: { icon: Users, tone: 'danger', linkLabel: 'notifications.open.debt' },
+  NEGATIVE_BALANCE: { icon: Wallet, tone: 'danger', linkLabel: 'notifications.open.account' },
+  RECURRING_CREATED: { icon: Repeat, tone: 'info', linkLabel: 'notifications.open.rule' },
+  RECURRING_SKIPPED: { icon: Repeat, tone: 'warning', linkLabel: 'notifications.open.rule' },
 };
 
 export const TONE_TILE: Record<Tone, string> = {
@@ -66,7 +67,7 @@ export function notificationTime(createdAt: string, today: string): string {
 
 /** Group heading: "Bugun", "Kecha", then "1-oktabr". */
 export function notificationDayLabel(day: string, today: string, yesterday: string): string {
-  if (day === today) return 'Bugun';
-  if (day === yesterday) return 'Kecha';
+  if (day === today) return t('common.today');
+  if (day === yesterday) return t('common.yesterday');
   return formatDayMonth(day);
 }

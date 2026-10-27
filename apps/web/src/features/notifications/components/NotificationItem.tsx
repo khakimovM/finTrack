@@ -2,6 +2,7 @@ import { ChevronRight, Trash2 } from 'lucide-react';
 import type { NotificationResponse } from '@fintrack/shared';
 import { cn } from '../../../lib/utils';
 import { NOTIFICATION_STYLE, notificationTime, TONE_TILE } from '../notificationMeta';
+import { t } from '../../../lib/i18n';
 
 export interface NotificationItemProps {
   notification: NotificationResponse;
@@ -39,7 +40,7 @@ export function NotificationItem({ notification, today, onOpen, onDelete, varian
           <span className={cn('truncate text-[14px] leading-5', unread ? 'font-semibold text-text' : 'font-medium text-text-secondary')}>
             {notification.title}
           </span>
-          {unread && page && <span className="h-2 w-2 shrink-0 rounded-full bg-info" aria-label="O‘qilmagan" />}
+          {unread && page && <span className="h-2 w-2 shrink-0 rounded-full bg-info" aria-label={t('notifications.unread')} />}
         </span>
         <span className="text-[13px] leading-[18px] text-text-secondary">{notification.body}</span>
         <span className="flex items-center gap-1 text-[12px] leading-4 text-text-muted">
@@ -47,18 +48,18 @@ export function NotificationItem({ notification, today, onOpen, onDelete, varian
           {page && (
             <>
               <span aria-hidden>·</span>
-              <span className="font-medium text-text-secondary">{style.linkLabel}</span>
+              <span className="font-medium text-text-secondary">{t(style.linkLabel)}</span>
               <ChevronRight className="h-3 w-3" aria-hidden />
             </>
           )}
         </span>
       </button>
-      {unread && !page && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-info" aria-label="O‘qilmagan" />}
+      {unread && !page && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-info" aria-label={t('notifications.unread')} />}
       {page && onDelete && (
         <button
           type="button"
           onClick={() => onDelete(notification)}
-          aria-label="O‘chirish"
+          aria-label={t('common.delete')}
           className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors duration-fast hover:bg-danger-soft hover:text-danger focus-ring"
         >
           <Trash2 className="h-4 w-4" aria-hidden />

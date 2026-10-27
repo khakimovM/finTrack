@@ -6,6 +6,7 @@ import { CountingAmount } from '../../../components/ui/Amount';
 import { ChangeChip } from '../../../components/ui/Chip';
 import { KpiCard } from '../../../components/ui/KpiCard';
 import { changePercent } from '../periods';
+import { t } from '../../../lib/i18n';
 
 interface KpiGridProps {
   summary?: StatsSummaryResponse;
@@ -17,12 +18,15 @@ interface KpiGridProps {
   empty?: boolean;
 }
 
-const unit = (
-  <>
-    {NBSP}
-    <span className="text-[14px] font-medium tracking-normal text-text-muted">{currencyWord()}</span>
-  </>
-);
+/** Read at render: the currency word follows the language. */
+function Unit() {
+  return (
+    <>
+      {NBSP}
+      <span className="text-[14px] font-medium tracking-normal text-text-muted">{currencyWord()}</span>
+    </>
+  );
+}
 
 /** Balance, income, expense and debt balance, each against the previous period. */
 export function KpiGrid({ summary, trend, isLoading, vs, empty = false }: KpiGridProps) {
@@ -57,20 +61,20 @@ function KpiCards({ summary, trend, vs, empty, className }: Required<Pick<KpiGri
   return (
     <div className={className}>
       <KpiCard
-        label="Umumiy balans"
+        label={t('dashboard.kpi.balance')}
         value={<CountingAmount value={summary.totalBalance} unit="muted" />}
         change={showChanges && balanceChange !== undefined ? <ChangeChip value={balanceChange} upIsGood /> : undefined}
         vsText={showChanges && balanceChange !== undefined ? vs.balance : undefined}
-        sub="Barcha hisoblar jami"
+        sub={t('dashboard.kpi.balanceSub')}
       />
       <KpiCard
-        label="Kirim"
+        label={t('common.income')}
         value={<CountingAmount value={summary.periodIncome} tone={income === 0n ? 'neutral' : 'income'} unit="muted" />}
         change={showChanges ? <ChangeChip value={changePercent(income, BigInt(summary.previousPeriod.income))} upIsGood /> : undefined}
         vsText={showChanges ? vs.flow : undefined}
       />
       <KpiCard
-        label="Chiqim"
+        label={t('common.expense')}
         value={<CountingAmount value={summary.periodExpense} tone={expense === 0n ? 'neutral' : 'expense'} unit="muted" />}
         change={
           showChanges ? <ChangeChip value={changePercent(expense, BigInt(summary.previousPeriod.expense))} upIsGood={false} /> : undefined
@@ -78,18 +82,18 @@ function KpiCards({ summary, trend, vs, empty, className }: Required<Pick<KpiGri
         vsText={showChanges ? vs.flow : undefined}
       />
       <KpiCard
-        label="Qarz saldosi"
+        label={t('dashboard.kpi.debt')}
         value={
           <span className={cn('whitespace-nowrap font-semibold', net < 0n ? 'text-danger' : net > 0n ? 'text-debt' : 'text-text')}>
             {net > 0n ? '+' : net < 0n ? MINUS : ''}
             {formatAmountNumber(shownNet)}
-            {unit}
+            <Unit />
           </span>
         }
         sub={
           summary.debt.overdueCount > 0
-            ? `${summary.debt.overdueCount} ta muddati o‘tgan qarz`
-            : 'Berilgan va olingan qarzlar farqi'
+            ? t('dashboard.kpi.overdue', { count: summary.debt.overdueCount })
+            : t('dashboard.kpi.debtSub')
         }
         subClassName={summary.debt.overdueCount > 0 ? 'font-medium text-danger' : undefined}
       />

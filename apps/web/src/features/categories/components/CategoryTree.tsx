@@ -4,6 +4,7 @@ import { EmojiTile } from '../../../components/ui/EmojiTile';
 import { SystemChip } from '../../../components/ui/Chip';
 import { useSortable } from '../../../lib/useSortable';
 import { cn } from '../../../lib/utils';
+import { t, tn } from '../../../lib/i18n';
 
 export interface CategoryTreeProps {
   /** Top-level categories of one type, children nested, in their saved order. */
@@ -96,29 +97,29 @@ export function CategoryTree({ categories, compact, onAddChild, onEdit, onDelete
                 <span className={cn('truncate text-[15px] leading-5', child ? 'font-medium' : 'font-semibold')}>{category.name}</span>
                 {category.isSystem && <SystemChip />}
               </span>
-              {!child && kids > 0 && <span className="text-[12.5px] leading-[17px] text-text-muted">{kids} ta subkategoriya</span>}
+              {!child && kids > 0 && <span className="text-[12.5px] leading-[17px] text-text-muted">{tn('categories.tree.children', kids)}</span>}
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
               {!child && (
                 <button
                   type="button"
                   onClick={() => onAddChild(category)}
-                  aria-label="Subkategoriya qo‘shish"
-                  title="+ Subkategoriya"
+                  aria-label={t('categories.tree.addChild')}
+                  title={t('categories.tree.addChildTitle')}
                   className={cn(
                     'flex h-[34px] items-center gap-1 whitespace-nowrap rounded-full text-[13px] font-medium text-text-secondary hover:bg-secondary hover:text-text focus-ring',
                     compact ? 'px-[9px]' : 'px-3',
                   )}
                 >
                   <Plus className="h-4 w-4" aria-hidden />
-                  {!compact && 'Subkategoriya'}
+                  {!compact && t('categories.tree.child')}
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => onEdit(category)}
-                aria-label="Tahrirlash"
-                title="Tahrirlash"
+                aria-label={t('common.edit')}
+                title={t('common.edit')}
                 className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-text-secondary hover:bg-secondary hover:text-text focus-ring"
               >
                 <Pencil className="h-4 w-4" aria-hidden />
@@ -129,8 +130,8 @@ export function CategoryTree({ categories, compact, onAddChild, onEdit, onDelete
                 <button
                   type="button"
                   onClick={() => onDelete(category)}
-                  aria-label="O‘chirish"
-                  title="O‘chirish"
+                  aria-label={t('common.delete')}
+                  title={t('common.delete')}
                   className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-text-secondary hover:bg-danger-soft hover:text-danger focus-ring"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />

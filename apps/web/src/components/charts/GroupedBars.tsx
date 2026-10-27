@@ -2,6 +2,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { shortSom } from '../../lib/money';
 import { useReducedMotion } from '../../lib/motion';
 import { CHART_ANIMATION_MS, ChartTooltipBox, type RechartsTooltipProps } from './ChartTooltip';
+import { t } from '../../lib/i18n';
 
 export interface GroupedPoint {
   label: string;
@@ -33,8 +34,8 @@ function GroupedTooltip({
     <ChartTooltipBox
       title={point.title}
       rows={[
-        { label: 'Hozir', value: formatValue(point.current), color: currentColor },
-        { label: 'Oldin', value: formatValue(point.previous), color: previousColor },
+        { label: t('common.now'), value: formatValue(point.current), color: currentColor },
+        { label: t('common.before'), value: formatValue(point.previous), color: previousColor },
       ]}
     />
   );

@@ -12,47 +12,40 @@ import {
 } from '../../lib/format';
 import { tiyinToChartNumber } from '../../lib/money';
 import type { TrendPoint } from '../../components/charts/AreaTrend';
+import { t, type TextKey } from '../../lib/i18n';
 
 const EN_DASH = String.fromCharCode(0x2013);
 
-export const PERIOD_OPTIONS: Array<{ value: PeriodPreset; label: string }> = [
-  { value: 'today', label: 'Bugun' },
-  { value: 'this_week', label: 'Shu hafta' },
-  { value: 'this_month', label: 'Shu oy' },
-  { value: 'this_year', label: 'Shu yil' },
-  { value: 'custom', label: 'Oraliq' },
+export const PERIOD_OPTIONS: Array<{ value: PeriodPreset; label: TextKey }> = [
+  { value: 'today', label: 'dashboard.period.today' },
+  { value: 'this_week', label: 'dashboard.period.this_week' },
+  { value: 'this_month', label: 'dashboard.period.this_month' },
+  { value: 'this_year', label: 'dashboard.period.this_year' },
+  { value: 'custom', label: 'dashboard.period.custom' },
 ];
 
-/** What the income and expense chips compare with (`summary.previousPeriod`). */
-const VS_TEXT: Record<PeriodPreset, string> = {
-  today: 'kechaga nisbatan',
-  this_week: 'o‘tgan haftaga nisbatan',
-  this_month: 'o‘tgan oyga nisbatan',
-  this_year: 'o‘tgan yilga nisbatan',
-  custom: 'oldingi davrga nisbatan',
-};
-
 /** A period still running is compared with the same days of the one before (comparablePreviousPeriod). */
-const VS_TEXT_SO_FAR: Partial<Record<PeriodPreset, string>> = {
-  this_week: 'o‘tgan haftaning shu kunlariga nisbatan',
-  this_month: 'o‘tgan oyning shu kunlariga nisbatan',
-  this_year: 'o‘tgan yilning shu davriga nisbatan',
+const VS_SO_FAR: Partial<Record<PeriodPreset, TextKey>> = {
+  this_week: 'dashboard.vs.weekSoFar',
+  this_month: 'dashboard.vs.monthSoFar',
+  this_year: 'dashboard.vs.yearSoFar',
 };
 
 /** What the balance chip compares with: the balance just before the period began. */
-const BALANCE_VS_TEXT: Record<PeriodPreset, string> = {
-  today: 'kechaga nisbatan',
-  this_week: 'hafta boshiga nisbatan',
-  this_month: 'oy boshiga nisbatan',
-  this_year: 'yil boshiga nisbatan',
-  custom: 'davr boshiga nisbatan',
+const BALANCE_VS: Record<PeriodPreset, TextKey> = {
+  today: 'dashboard.vs.balanceToday',
+  this_week: 'dashboard.vs.balanceWeek',
+  this_month: 'dashboard.vs.balanceMonth',
+  this_year: 'dashboard.vs.balanceYear',
+  custom: 'dashboard.vs.balanceCustom',
 };
 
+/** What the income and expense chips compare with (`summary.previousPeriod`), and the balance chip. */
 export function comparisonTexts(range: { preset: PeriodPreset; from: string; to: string }, today: string) {
   const running = range.from <= today && today < range.to;
   return {
-    flow: (running && VS_TEXT_SO_FAR[range.preset]) || VS_TEXT[range.preset],
-    balance: BALANCE_VS_TEXT[range.preset],
+    flow: t((running && VS_SO_FAR[range.preset]) || `dashboard.vs.${range.preset}`),
+    balance: t(BALANCE_VS[range.preset]),
   };
 }
 
@@ -130,11 +123,11 @@ export function hourlyPoints(transactions: TransactionResponse[], today: string)
     const next = String(i * 2 + 2).padStart(2, '0');
     return { label: h, title: `${h}:00${EN_DASH}${next}:00`, income: 0, expense: 0 };
   });
-  for (const t of transactions) {
-    if (t.date !== today || (t.type !== 'INCOME' && t.type !== 'EXPENSE')) continue;
-    const slot = Math.floor(new Date(t.createdAt).getHours() / 2);
-    const key = t.type === 'INCOME' ? 'income' : 'expense';
-    points[slot][key] = Number(points[slot][key]) + tiyinToChartNumber(t.amount);
+  for (const tx of transactions) {
+    if (tx.date !== today || (tx.type !== 'INCOME' && tx.type !== 'EXPENSE')) continue;
+    const slot = Math.floor(new Date(tx.createdAt).getHours() / 2);
+    const key = tx.type === 'INCOME' ? 'income' : 'expense';
+    points[slot][key] = Number(points[slot][key]) + tiyinToChartNumber(tx.amount);
   }
   return points;
 }

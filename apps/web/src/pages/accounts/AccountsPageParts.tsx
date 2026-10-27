@@ -1,8 +1,9 @@
 import { ArrowUpDown, TriangleAlert } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { formatAmount } from '../../lib/money';
+import { currencyWord, formatAmount } from '../../lib/money';
 import { cn } from '../../lib/utils';
+import { t } from '../../lib/i18n';
 
 /** The total of all accounts; it turns red when the money is below zero. */
 export function AccountsBanner({ total, activeCount }: { total: string; activeCount: number }) {
@@ -13,28 +14,28 @@ export function AccountsBanner({ total, activeCount }: { total: string; activeCo
   );
   return (
     <section
-      aria-label="Jami balans"
+      aria-label={t('accounts.page.total')}
       className={cn(
         'flex flex-wrap items-end gap-x-8 gap-y-4 rounded-[20px] px-4 py-5 sm:p-6',
         negative ? 'bg-danger-soft text-text' : 'bg-primary text-primary-foreground',
       )}
     >
       <div className="flex flex-[1_1_260px] flex-col gap-1">
-        <span className="text-[14px] opacity-75">Jami balans</span>
+        <span className="text-[14px] opacity-75">{t('accounts.page.total')}</span>
         <span
           className={cn(
             'flex items-center gap-2.5 whitespace-nowrap text-[30px] font-semibold leading-[1.15] tracking-[-0.03em] tabular-nums sm:text-[44px]',
             negative && 'text-danger',
           )}
         >
-          {negative && <TriangleAlert className="h-[0.8em] w-[0.8em] shrink-0" aria-label="Manfiy balans" />}
+          {negative && <TriangleAlert className="h-[0.8em] w-[0.8em] shrink-0" aria-label={t('common.negativeBalance')} />}
           {formatAmount(total, { sign: 'negative', currency: false })}{' '}
-          <span className="text-[0.45em] font-medium tracking-normal opacity-70">so‘m</span>
+          <span className="text-[0.45em] font-medium tracking-normal opacity-70">{currencyWord()}</span>
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
-        <span className={chip}>Faol hisoblar: {activeCount} ta</span>
-        <span className={chip}>Valyuta: UZS (O‘zbek so‘mi)</span>
+        <span className={chip}>{t('accounts.page.activeCount', { count: activeCount })}</span>
+        <span className={chip}>{t('accounts.page.currency')}</span>
       </div>
     </section>
   );
@@ -42,7 +43,7 @@ export function AccountsBanner({ total, activeCount }: { total: string; activeCo
 
 export function AccountsSkeleton({ compact }: { compact: boolean }) {
   return (
-    <div role="status" aria-label="Yuklanmoqda" className={cn('grid gap-4', !compact && 'grid-cols-[repeat(auto-fill,minmax(300px,1fr))]')}>
+    <div role="status" aria-label={t('transactions.page.loading')} className={cn('grid gap-4', !compact && 'grid-cols-[repeat(auto-fill,minmax(300px,1fr))]')}>
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
@@ -74,18 +75,18 @@ export function ReorderBar({ reordering, canStart, saving, onStart, onCancel, on
     return (
       <Button variant="ghost" size="sm" onClick={onStart} className="max-sm:px-2.5">
         <ArrowUpDown className="h-4 w-4" aria-hidden />
-        Tartibni o‘zgartirish
+        {t('accounts.page.reorder')}
       </Button>
     );
   }
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[13px] text-text-muted">Kartalarni sudrab joylashtiring</span>
+      <span className="text-[13px] text-text-muted">{t('accounts.page.reorderHint')}</span>
       <Button variant="secondary" size="sm" onClick={onCancel} disabled={saving}>
-        Bekor qilish
+        {t('common.cancel')}
       </Button>
       <Button size="sm" onClick={onSave} loading={saving}>
-        Saqlash
+        {t('common.save')}
       </Button>
     </div>
   );

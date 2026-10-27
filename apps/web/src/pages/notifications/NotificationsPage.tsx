@@ -16,6 +16,7 @@ import {
 import { NotificationItem } from '../../features/notifications/components/NotificationItem';
 import { useOpenNotification } from '../../features/notifications/components/NotificationBell';
 import { localDay, notificationDayLabel } from '../../features/notifications/notificationMeta';
+import { t, tn } from '../../lib/i18n';
 
 function shiftDay(iso: string, days: number): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -51,25 +52,25 @@ export function NotificationsPage() {
   return (
     <>
       <PageHeader
-        title="Bildirishnomalar"
-        subtitle={unread > 0 ? `${unread} ta o‘qilmagan` : 'Hammasi o‘qilgan'}
+        title={t('notifications.title')}
+        subtitle={unread > 0 ? tn('notifications.unreadCount', unread) : t('notifications.allRead')}
         quickAdd
         backTo="/app"
       />
       <div className="mx-auto flex w-full max-w-[960px] flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Tabs
-            aria-label="Bildirishnomalar"
+            aria-label={t('notifications.title')}
             value={filter}
             onChange={setFilter}
             items={[
-              { value: 'all', label: 'Hammasi' },
-              { value: 'unread', label: 'O‘qilmagan', badge: unread },
+              { value: 'all', label: t('notifications.all') },
+              { value: 'unread', label: t('notifications.unread'), badge: unread },
             ]}
           />
           <Button variant="ghost" size="sm" disabled={unread === 0 || markAll.isPending} onClick={() => markAll.mutate()}>
             <CheckCheck className="h-4 w-4" aria-hidden />
-            Barchasini o‘qilgan qilish
+            {t('notifications.markAllRead')}
           </Button>
         </div>
 
@@ -88,12 +89,12 @@ export function NotificationsPage() {
               ))}
             </div>
           ) : query.isError ? (
-            <ErrorState title="Bildirishnomalarni yuklab bo‘lmadi" onRetry={() => void query.refetch()} />
+            <ErrorState title={t('notifications.loadFailed')} onRetry={() => void query.refetch()} />
           ) : items.length === 0 ? (
             <EmptyState
               icon={<BellOff />}
-              title="Hozircha yangi bildirishnomalar yo‘q"
-              description="Byudjet, qarz muddati yoki takroriy to‘lov bo‘yicha xabarlar shu yerda chiqadi."
+              title={t('notifications.empty')}
+              description={t('notifications.emptyText')}
               className="py-12"
             />
           ) : (

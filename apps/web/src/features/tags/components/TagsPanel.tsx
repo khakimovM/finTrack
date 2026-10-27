@@ -4,6 +4,7 @@ import type { TagResponse } from '@fintrack/shared';
 import { CHART_COLORS, CHART_COLOR_NAMES, chartIndexOf, colorVar } from '../../../lib/colors';
 import { cn } from '../../../lib/utils';
 import { useCreateTag, useUpdateTag } from '../hooks/useTags';
+import { t, tn } from '../../../lib/i18n';
 
 interface Draft {
   /** null: a new tag. */
@@ -42,8 +43,8 @@ export function TagsPanel({ tags, compact, newTagSignal, onOpen, onDelete }: Tag
   const save = async () => {
     if (!current) return;
     const name = current.name.trim().replace(/^#+/, '').toLowerCase();
-    if (!name) return change({ error: 'Teg nomini kiriting' });
-    if (tags.some((t) => t.id !== current.id && t.name.toLowerCase() === name)) return change({ error: 'Bunday teg allaqachon mavjud' });
+    if (!name) return change({ error: t('tags.nameRequired') });
+    if (tags.some((tag) => tag.id !== current.id && tag.name.toLowerCase() === name)) return change({ error: t('tags.nameTaken') });
     try {
       if (current.id === null) await createTag.mutateAsync({ name, color: current.color });
       else await updateTag.mutateAsync({ id: current.id, data: { name, color: current.color } });
@@ -72,8 +73,8 @@ export function TagsPanel({ tags, compact, newTagSignal, onOpen, onDelete }: Tag
             }
             if (e.key === 'Escape') close();
           }}
-          placeholder="teg nomi"
-          aria-label="Teg nomi"
+          placeholder={t('tags.namePlaceholder')}
+          aria-label={t('tags.name')}
           aria-invalid={current.error ? true : undefined}
           className="min-w-0 flex-1 bg-transparent text-[15px] font-medium text-text outline-none placeholder:text-text-muted"
         />
@@ -84,7 +85,7 @@ export function TagsPanel({ tags, compact, newTagSignal, onOpen, onDelete }: Tag
           {current.error}
         </span>
       )}
-      <div role="radiogroup" aria-label="Rang" className="flex flex-wrap gap-1.5">
+      <div role="radiogroup" aria-label={t('ui.pickers.color')} className="flex flex-wrap gap-1.5">
         {CHART_COLORS.map((hex, index) => {
           const on = chartIndexOf(current.color) === index + 1;
           return (
@@ -93,7 +94,7 @@ export function TagsPanel({ tags, compact, newTagSignal, onOpen, onDelete }: Tag
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={CHART_COLOR_NAMES[index]}
+              aria-label={t(CHART_COLOR_NAMES[index])}
               onClick={() => change({ color: hex })}
               className={cn('h-7 w-7 rounded-full focus-ring', on && 'shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--text)]')}
               style={{ background: `var(--chart-${index + 1})` }}
@@ -103,7 +104,7 @@ export function TagsPanel({ tags, compact, newTagSignal, onOpen, onDelete }: Tag
       </div>
       <div className="flex justify-end gap-1.5">
         <button type="button" onClick={close} className="h-[34px] rounded-full bg-secondary px-3.5 text-[13px] font-medium text-text focus-ring">
-          Bekor qilish
+          {t('common.cancel')}
         </button>
         <button
           type="button"
@@ -111,7 +112,7 @@ export function TagsPanel({ tags, compact, newTagSignal, onOpen, onDelete }: Tag
           disabled={createTag.isPending || updateTag.isPending}
           className="h-[34px] rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground focus-ring disabled:opacity-60"
         >
-          Saqlash
+          {t('common.save')}
         </button>
       </div>
     </div>
@@ -131,11 +132,11 @@ export function TagsPanel({ tags, compact, newTagSignal, onOpen, onDelete }: Tag
             <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: colorVar(tag.color) }} aria-hidden />
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-[15px] font-semibold leading-5">#{tag.name}</span>
-              <span className="text-[12.5px] leading-[17px] text-text-muted">{tag.transactionCount} ta tranzaksiya</span>
+              <span className="text-[12.5px] leading-[17px] text-text-muted">{tn('tags.count', tag.transactionCount)}</span>
             </div>
             <button
               type="button"
-              aria-label="Tahrirlash"
+              aria-label={t('common.edit')}
               onClick={(e) => {
                 e.stopPropagation();
                 setCurrent({ id: tag.id, name: tag.name, color: tag.color, error: null });
@@ -146,7 +147,7 @@ export function TagsPanel({ tags, compact, newTagSignal, onOpen, onDelete }: Tag
             </button>
             <button
               type="button"
-              aria-label="O‘chirish"
+              aria-label={t('common.delete')}
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(tag);
@@ -166,7 +167,7 @@ export function TagsPanel({ tags, compact, newTagSignal, onOpen, onDelete }: Tag
           className="flex min-h-[72px] items-center justify-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-input text-[14px] font-medium text-text-secondary transition-colors duration-fast hover:bg-card hover:text-text focus-ring"
         >
           <Plus className="h-4 w-4" aria-hidden />
-          Yangi teg
+          {t('tags.new')}
         </button>
       )}
     </div>
