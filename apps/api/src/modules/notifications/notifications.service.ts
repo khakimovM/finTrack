@@ -6,6 +6,13 @@ import { NewNotification, NotificationsRepository } from './notifications.reposi
 import { ListNotificationsQueryDto } from './dto/notification.dto';
 import { NotFoundDomainException } from '../../common/exceptions/domain.exception';
 import { Notification, Prisma } from '@prisma/client';
+import { toAppLocale } from '@fintrack/shared';
+import { NOTIFICATION_TEXTS, NotificationText, NotificationTexts } from './notification-texts';
+
+/** A notification to create: its words come from the texts of the owner's language. */
+export interface LocalizedNotification extends Omit<NewNotification, 'title' | 'body'> {
+  text: (texts: NotificationTexts) => NotificationText;
+}
 
 @Injectable()
 export class NotificationsService {
@@ -63,9 +70,11 @@ export class NotificationsService {
    * Internal helper for other modules to safely create notifications.
    * Will never throw to prevent blocking the main business operation.
    */
-  async createSafe(userId: string, data: NewNotification): Promise<Notification | null> {
+  async createSafe(userId: string, data: LocalizedNotification): Promise<Notification | null> {
     try {
-      const notification = await this.repository.create(userId, data);
+      const { text, ...rest } = data;
+      const texts = NOTIFICATION_TEXTS[toAppLocale(await this.repository.localeOf(userId))];
+      const notification = await this.repository.create(userId, { ...rest, ...text(texts) });
       await this.enqueueTelegram(notification.id);
       return notification;
     } catch (err) {

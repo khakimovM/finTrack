@@ -113,9 +113,11 @@ butunlay o'chiriladi. Oxirgi faol hisobni o'chirib/arxivlab bo'lmaydi.
   Faqat o'sha oyda kamida bitta INCOME/EXPENSE yozuvi borlarga; ularga o'sha kechagi kunlik xulosa
   bormaydi (hisobot uning o'rnida). Oy bo'yi yozuvi yo'qlarga xulosa odatdagidek boradi.
 - `timezone` — "bugun" shu zonada hisoblanadi (qarz muddati, takroriy to'lov, `FUTURE_DATE`).
-- `locale` (`uz` | `ru`, standart `uz`) — ilova tili; sozlamalarda tanlanadi. Ro'yxatdan o'tishda
-  Telegram tili (`ru`) yoziladi. Rus tili qo'shilganda 0012 migratsiyasi hammani `uz` ga qaytardi:
-  shu paytgacha faqat o'zbekcha ko'rganlar kutilmaganda ruschaga o'tib qolmasin.
+- `locale` (`uz` | `ru`, standart `uz`) — ilova va bot tili; sayt sozlamalarida yoki bot ⚙️ Sozlamalarida
+  tanlanadi. Ro'yxatdan o'tishda: saytdan boshlanganda sahifa tili (`TelegramLoginRequest.locale`), faqat
+  botda boshlanganda Telegram tili (`ru` → `ru`, boshqasi `uz`). Rus tili qo'shilganda 0012 migratsiyasi
+  hammani `uz` ga qaytardi: shu paytgacha faqat o'zbekcha ko'rganlar kutilmaganda ruschaga o'tib qolmasin.
+  Bildirishnomalar, avto izohlar va standart kategoriyalar yaratilgan paytdagi tilda saqlanadi.
 
 ## Telegram orqali kirish — `TelegramLoginRequest`
 
@@ -124,6 +126,8 @@ kod ham `HMAC(requestId:code, OTP_SECRET)` — ochiq holda hech qayerda yo'q. Ko
 3 daqiqa amal qiladi, 5 urinish (`attempts`, qator qulfi ostida hisoblanadi), bir marta ishlatiladi.
 `status`: `PENDING` → `AWAITING_CONTACT` → `CODE_SENT` → `CONSUMED` | `CANCELLED` | `EXPIRED`.
 `purpose`: `LOGIN` (sayt), `LINK` (eski hisobga Telegram ulash), `ADMIN` (admin panel, 0005 migratsiyasi).
+`locale` (0013, ixtiyoriy) — so'rov ochilgan sahifaning tili (`Accept-Language`): yangi hisob va botdagi
+kirish xabarlari shu tilda bo'ladi.
 
 ## Faollik va manba (admin statistikasi uchun, 0006)
 

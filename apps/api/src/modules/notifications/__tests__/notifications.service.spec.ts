@@ -5,6 +5,7 @@ import { NotificationsService } from '../notifications.service';
 import { NotificationsRepository } from '../notifications.repository';
 import { NotFoundDomainException } from '../../../common/exceptions/domain.exception';
 import { Notification, NotificationType } from '@prisma/client';
+import { NotificationTexts } from '../notification-texts';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
@@ -31,6 +32,7 @@ describe('NotificationsService', () => {
       findMany: jest.fn(),
       findById: jest.fn(),
       create: jest.fn(),
+      localeOf: jest.fn().mockResolvedValue('uz'),
       markAsRead: jest.fn(),
       markAllAsRead: jest.fn(),
       delete: jest.fn(),
@@ -129,8 +131,7 @@ describe('NotificationsService', () => {
 
       const result = await service.createSafe(mockUserId, {
         type: NotificationType.BUDGET_WARNING,
-        title: 'Title',
-        body: 'Body',
+        text: () => ({ title: 'Title', body: 'Body' }),
       });
 
       expect(result).toEqual(mockNotification);
@@ -141,11 +142,27 @@ describe('NotificationsService', () => {
 
       const result = await service.createSafe(mockUserId, {
         type: NotificationType.BUDGET_WARNING,
-        title: 'Title',
-        body: 'Body',
+        text: () => ({ title: 'Title', body: 'Body' }),
       });
 
       expect(result).toBeNull();
+    });
+
+    it("writes the text in the owner's language, and in Uzbek when the language is not one of ours", async () => {
+      repository.create.mockResolvedValue(mockNotification);
+      const budget = { type: NotificationType.BUDGET_WARNING, text: (t: NotificationTexts) => t.budget(false, 'Kafe', 85) };
+
+      repository.localeOf.mockResolvedValueOnce('ru');
+      await service.createSafe(mockUserId, budget);
+      expect(repository.create).toHaveBeenLastCalledWith(mockUserId, {
+        type: NotificationType.BUDGET_WARNING,
+        title: 'Бюджет почти исчерпан',
+        body: 'Бюджет «Kafe» израсходован на 85%.',
+      });
+
+      repository.localeOf.mockResolvedValueOnce('en');
+      await service.createSafe(mockUserId, budget);
+      expect(repository.create).toHaveBeenLastCalledWith(mockUserId, expect.objectContaining({ title: 'Byudjet chegarasi ogohlantirishi' }));
     });
   });
 });
@@ -154,13 +171,14 @@ describe('NotificationsService.createSafe idempotency', () => {
   it('treats a duplicate dedupeKey as already delivered (returns null, never throws)', async () => {
     const { Prisma } = await import('@prisma/client');
     const repo = {
+      localeOf: jest.fn().mockResolvedValue('uz'),
       create: jest.fn().mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: '5.22.0' }),
       ),
     };
     const service = new NotificationsService(repo as unknown as NotificationsRepository, { add: jest.fn() } as never);
     await expect(
-      service.createSafe('u1', { type: 'DEBT_OVERDUE', title: 't', body: 'b', dedupeKey: 'k' }),
+      service.createSafe('u1', { type: 'DEBT_OVERDUE', text: () => ({ title: 't', body: 'b' }), dedupeKey: 'k' }),
     ).resolves.toBeNull();
   });
 });
@@ -168,10 +186,10 @@ describe('NotificationsService.createSafe idempotency', () => {
 describe('NotificationsService Telegram outbox', () => {
   it('queues Telegram delivery for every stored notification, keyed by its id', async () => {
     const outbox = { add: jest.fn().mockResolvedValue({}) };
-    const repo = { create: jest.fn().mockResolvedValue({ id: 'n-1' }) };
+    const repo = { localeOf: jest.fn().mockResolvedValue('uz'), create: jest.fn().mockResolvedValue({ id: 'n-1' }) };
     const service = new NotificationsService(repo as unknown as NotificationsRepository, outbox as never);
 
-    await service.createSafe('u1', { type: 'BUDGET_WARNING', title: 't', body: 'b' });
+    await service.createSafe('u1', { type: 'BUDGET_WARNING', text: () => ({ title: 't', body: 'b' }) });
 
     expect(outbox.add).toHaveBeenCalledWith(
       'deliver-notification',
@@ -182,10 +200,10 @@ describe('NotificationsService Telegram outbox', () => {
 
   it('keeps the in-app notification even if the queue is unavailable', async () => {
     const outbox = { add: jest.fn().mockRejectedValue(new Error('redis down')) };
-    const repo = { create: jest.fn().mockResolvedValue({ id: 'n-2' }) };
+    const repo = { localeOf: jest.fn().mockResolvedValue('uz'), create: jest.fn().mockResolvedValue({ id: 'n-2' }) };
     const service = new NotificationsService(repo as unknown as NotificationsRepository, outbox as never);
 
-    await expect(service.createSafe('u1', { type: 'BUDGET_WARNING', title: 't', body: 'b' })).resolves.toEqual({
+    await expect(service.createSafe('u1', { type: 'BUDGET_WARNING', text: () => ({ title: 't', body: 'b' }) })).resolves.toEqual({
       id: 'n-2',
     });
   });

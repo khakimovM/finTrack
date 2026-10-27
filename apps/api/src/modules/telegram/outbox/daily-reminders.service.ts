@@ -6,6 +6,7 @@ import { TelegramBotService } from '../../../infra/telegram/telegram-bot.service
 import { RedisService } from '../../../infra/redis/redis.service';
 import { ClockService } from '../../../infra/clock/clock.service';
 import { ReminderKind, reminderKeyboard, reminderText } from './reminder-texts';
+import { userLocale } from '../i18n';
 
 /** Stay well under Telegram's ~30 messages/second broadcast limit. */
 const SEND_INTERVAL_MS = 50;
@@ -47,9 +48,10 @@ export class DailyRemindersService {
       if (!(await this.redis.setIfAbsent(`reminder:${kind}:${day}:${user.id}`, '1', 36 * 3600))) continue;
 
       try {
-        const result = await this.telegram.send(user.telegramId, reminderText(kind, day, user.name), {
+        const locale = userLocale(user);
+        const result = await this.telegram.send(user.telegramId, reminderText(kind, day, user.name, locale), {
           html: true,
-          replyMarkup: reminderKeyboard(),
+          replyMarkup: reminderKeyboard(locale),
         });
         if (result === 'SENT') sent++;
       } catch (err) {

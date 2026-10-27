@@ -5,7 +5,7 @@ import { TelegramLoginRepository } from '../telegram-login.repository';
 import { TelegramLoginBotService } from '../telegram-login-bot.service';
 import { AuthRepository } from '../auth.repository';
 import { SessionStateService } from '../session-state.service';
-import { LOGIN_TEXT, describeDevice, escapeHtml } from '../telegram-login.messages';
+import { LOGIN_TEXTS, describeDevice, escapeHtml } from '../telegram-login.messages';
 import { TelegramBotService } from '../../../infra/telegram/telegram-bot.service';
 import { RedisService } from '../../../infra/redis/redis.service';
 import { AdminAccessService } from '../../admin/core/admin-access.service';
@@ -25,6 +25,7 @@ function request(overrides: Partial<TelegramLoginRequest> = {}): TelegramLoginRe
     codesSent: 0,
     ipAddress: '10.0.0.1',
     userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/120',
+    locale: null,
     expiresAt: new Date(Date.now() + 60_000),
     consumedAt: null,
     createdAt: new Date(),
@@ -49,7 +50,7 @@ function codeService(sentInWindow = 1) {
 describe('LoginCodeService', () => {
   it('stores only an HMAC of the code, bound to the request id', async () => {
     const t = codeService();
-    await t.service.issue(request(), 42n, 'user-1');
+    await t.service.issue(request(), 42n, { id: 'user-1', locale: 'uz' });
 
     const saved = t.repository.update.mock.calls[0][1];
     const sentText: string = t.telegram.send.mock.calls[0][1];
@@ -64,16 +65,26 @@ describe('LoginCodeService', () => {
 
   it('refuses to send more than the per-user limit in the window', async () => {
     const t = codeService(MAX_CODES_PER_WINDOW + 1);
-    await expect(t.service.issue(request(), 42n, 'user-1')).resolves.toBe('RATE_LIMITED');
+    await expect(t.service.issue(request(), 42n, { id: 'user-1', locale: 'uz' })).resolves.toBe('RATE_LIMITED');
     expect(t.repository.update).not.toHaveBeenCalled();
   });
 
   it('marks an admin code as an admin code, never as the ordinary sign-in one', async () => {
     const t = codeService();
-    await t.service.issue(request({ purpose: 'ADMIN' }), 42n, 'user-1');
+    await t.service.issue(request({ purpose: 'ADMIN' }), 42n, { id: 'user-1', locale: 'ru' });
     const sentText: string = t.telegram.send.mock.calls[0][1];
+    // Uzbek like the admin panel, whatever the account's own language.
     expect(sentText).toContain('admin panel');
     expect(sentText).toContain('admin huquqi');
+  });
+
+  it('sends the ordinary code in the account language, with the "not me" button in it too', async () => {
+    const t = codeService();
+    await t.service.issue(request(), 42n, { id: 'user-1', locale: 'ru' });
+    const [, text, options] = t.telegram.send.mock.calls[0];
+    expect(text).toContain('Код для входа');
+    expect(text).toContain('Chrome, Windows');
+    expect(options.replyMarkup.inline_keyboard[0][0].text).toBe(LOGIN_TEXTS.ru.cancelButton);
   });
 });
 
@@ -114,7 +125,7 @@ describe('TelegramLoginBotService admin sign-in', () => {
     t.auth.findUserByTelegramId.mockResolvedValue({ id: 'owner' });
 
     await expect(t.service.handleStartPayload(`admin_${NONCE}`, { id: 7001, firstName: 'Ega' })).resolves.toBe(true);
-    expect(t.codes.issue).toHaveBeenCalledWith(expect.objectContaining({ purpose: 'ADMIN' }), 7001n, 'owner');
+    expect(t.codes.issue).toHaveBeenCalledWith(expect.objectContaining({ purpose: 'ADMIN' }), 7001n, { id: 'owner' });
     expect(t.audit.record).not.toHaveBeenCalled();
   });
 
@@ -127,7 +138,7 @@ describe('TelegramLoginBotService admin sign-in', () => {
 
     expect(t.codes.issue).not.toHaveBeenCalled();
     expect(t.repository.transition).toHaveBeenCalledWith(request().id, ['PENDING'], 'CANCELLED');
-    expect(t.telegram.send).toHaveBeenCalledWith(9009n, LOGIN_TEXT.expired, { html: true });
+    expect(t.telegram.send).toHaveBeenCalledWith(9009n, LOGIN_TEXTS.uz.expired, { html: true });
     expect(t.audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'LOGIN_DENIED', telegramId: 9009n, meta: { reason: 'not_admin', username: 'begona' } }),
     );
@@ -149,7 +160,7 @@ describe('TelegramLoginBotService admin sign-in', () => {
 
     await t.service.handleStartPayload(`admin_${NONCE}`, { id: 7001, firstName: 'Ega' });
     expect(t.codes.issue).not.toHaveBeenCalled();
-    expect(t.telegram.send).toHaveBeenCalledWith(7001n, LOGIN_TEXT.expired, { html: true });
+    expect(t.telegram.send).toHaveBeenCalledWith(7001n, LOGIN_TEXTS.uz.expired, { html: true });
   });
 });
 
@@ -174,7 +185,33 @@ describe('TelegramLoginBotService.handleContact', () => {
     expect(t.auth.createTelegramUser).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Ali Valiyev', telegramId: 1n, phone: '+998901234567', locale: 'ru' }),
     );
-    expect(t.codes.issue).toHaveBeenCalledWith(expect.objectContaining({ status: 'AWAITING_CONTACT' }), 1n, 'new-user');
+    expect(t.codes.issue).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'AWAITING_CONTACT' }),
+      1n,
+      expect.objectContaining({ id: 'new-user' }),
+    );
+  });
+
+  it('starts an account made from the website in the language of the page, not of Telegram', async () => {
+    const t = setup();
+    t.repository.findAwaitingContact.mockResolvedValue(request({ status: 'AWAITING_CONTACT', telegramId: 1n, locale: 'uz' }));
+    t.auth.createTelegramUser.mockImplementation(async (data: { locale: string }) => ({ id: 'new-user', locale: data.locale }));
+
+    await t.service.handleContact({ id: 1, firstName: 'Ali', languageCode: 'ru' }, { userId: 1, phoneNumber: '998901234567' });
+
+    expect(t.auth.createTelegramUser).toHaveBeenCalledWith(expect.objectContaining({ locale: 'uz' }));
+    expect(t.telegram.send).toHaveBeenCalledWith(1n, LOGIN_TEXTS.uz.registered, expect.anything());
+  });
+
+  it('speaks Russian to someone who signs up in the bot alone from a Russian Telegram, and stores "uz" for English', async () => {
+    const t = setup();
+    t.auth.createTelegramUser.mockImplementation(async (data: { locale: string }) => ({ id: 'new-user', locale: data.locale }));
+
+    await t.service.handleContact({ id: 1, firstName: 'Ali', languageCode: 'ru' }, { userId: 1, phoneNumber: '998901234567' });
+    expect(t.telegram.send).toHaveBeenCalledWith(1n, LOGIN_TEXTS.ru.registeredPlain, expect.anything());
+
+    await t.service.handleContact({ id: 2, firstName: 'John', languageCode: 'en' }, { userId: 2, phoneNumber: '998901234568' });
+    expect(t.auth.createTelegramUser).toHaveBeenLastCalledWith(expect.objectContaining({ locale: 'uz' }));
   });
 });
 
@@ -186,5 +223,6 @@ describe('telegram login messages', () => {
   it('describes a device from its User-Agent', () => {
     expect(describeDevice('Mozilla/5.0 (Linux; Android 14) Chrome/120 Mobile')).toBe('Chrome, Android');
     expect(describeDevice(undefined)).toBe('noma’lum qurilma');
+    expect(describeDevice(undefined, 'ru')).toBe('неизвестное устройство');
   });
 });

@@ -12,6 +12,7 @@ import {
 import { ListDebtsQuery } from '@fintrack/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { Db } from '../../infra/prisma/prisma.types';
+import { autoNotes } from '../../common/i18n/auto-notes';
 import { toBigInt } from '../../infra/prisma/ledger-sql';
 import type { DebtPaymentWithAccount } from './debt.mapper';
 
@@ -190,7 +191,7 @@ export class DebtsRepository {
         amount: data.amount,
         debtId: debt.id,
         date: data.date,
-        note: data.note ?? `Qarz: ${data.personName}`,
+        note: data.note ?? (await autoNotes(db, userId)).debt(data.personName),
         source: data.source,
       },
     });

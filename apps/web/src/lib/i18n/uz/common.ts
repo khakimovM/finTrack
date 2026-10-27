@@ -27,6 +27,8 @@ export const common = {
   debt: 'Qarz',
   now: 'Hozir',
   before: 'Oldin',
+  /** The uncategorised share in the category charts. */
+  otherCategory: 'Boshqa',
   strictMode: 'Qatʼiy rejim',
   normalMode: 'Oddiy rejim',
 };

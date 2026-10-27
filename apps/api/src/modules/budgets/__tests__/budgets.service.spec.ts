@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { BudgetsService, percentOf } from '../budgets.service';
 import { BudgetsRepository, BudgetWithCategory } from '../budgets.repository';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { NOTIFICATION_TEXTS } from '../../notifications/notification-texts';
 import { CategoriesRepository } from '../../categories/categories.repository';
 import { ClockService } from '../../../infra/clock/clock.service';
 import { clockStub } from '../../../infra/clock/__tests__/clock.stub';
@@ -189,10 +190,10 @@ describe('BudgetsService', () => {
       t.repository.expenseByCategory.mockResolvedValue([{ categoryId: FOOD, parentId: null, spent: 200_000_000n }]);
       await t.service.checkAndNotify(USER, FOOD, new Date('2026-08-15T00:00:00Z'));
       expect(t.repository.claimThreshold).toHaveBeenLastCalledWith(USER, 'b1', 80);
-      expect(t.notifications.createSafe).toHaveBeenLastCalledWith(
-        USER,
-        expect.objectContaining({ type: 'BUDGET_WARNING', body: '"Oziq-ovqat" byudjetining 100% qismi sarflandi.' }),
-      );
+      const [, warning] = t.notifications.createSafe.mock.calls.at(-1);
+      expect(warning).toMatchObject({ type: 'BUDGET_WARNING', meta: { percent: 100 } });
+      expect(warning.text(NOTIFICATION_TEXTS.uz).body).toBe('"Oziq-ovqat" byudjetining 100% qismi sarflandi.');
+      expect(warning.text(NOTIFICATION_TEXTS.ru).body).toBe('Бюджет «Oziq-ovqat» израсходован на 100%.');
 
       // 500 so'm over a 2 mln limit still rounds down to 100.0%.
       t.repository.expenseByCategory.mockResolvedValue([{ categoryId: FOOD, parentId: null, spent: 200_050_000n }]);

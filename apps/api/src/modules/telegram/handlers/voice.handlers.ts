@@ -6,6 +6,7 @@ import { BotUserService } from '../bot-user.service';
 import { EntryService } from '../entry.service';
 import { EntryHandlers } from './entry.handlers';
 import { escapeHtml } from '../../auth/telegram-login.messages';
+import { BOT_TEXTS, userLocale } from '../i18n';
 import { AssistantOutcome, AssistantService } from '../../assistant/assistant.service';
 import { TelegramFileError, TelegramFilesService } from '../../../infra/telegram/telegram-files.service';
 
@@ -13,21 +14,6 @@ import { TelegramFileError, TelegramFilesService } from '../../../infra/telegram
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 const MAX_TRANSCRIPT_SHOWN = 500;
 
-const EXAMPLE = 'masalan: <code>50000 taksi</code>';
-
-export const VOICE_TEXT = {
-  disabled: `Ovozli xabarlar hozircha ishlamaydi. Summani matn bilan yozing, ${EXAMPLE}`,
-  tooLong: (seconds: number) => `Ovozli xabar ${seconds} soniyadan oshmasin. Qisqaroq qilib qayta yuboring.`,
-  tooLarge: 'Fayl juda katta. Qisqa ovozli xabar yuboring.',
-  downloadFailed: 'Ovozli xabarni yuklab bo‘lmadi. Birozdan so‘ng qayta urinib ko‘ring.',
-  limit: `Bugungi ovozli va AI so‘rovlar limiti tugadi. Ertaga urinib ko‘ring yoki matn bilan yozing, ${EXAMPLE}`,
-  unavailable: `Hozir xabarni tahlil qilib bo‘lmadi 😕 Summani matn bilan yozing, ${EXAMPLE}`,
-  heard: (transcript: string) => `🎙 Eshitdim: «${escapeHtml(transcript)}»`,
-  silence: '🎙 Ovozda gap eshitilmadi.',
-  noAmount: 'Summani topa olmadim. Masalan, “taksiga yigirma ming” deb ayting.',
-  several: (count: number) => `${count} ta yozuv topildi — har birini tekshirib, saqlang 👇`,
-  debtHint: 'Qarz berish yoki olish xarajat emas: uni ilovadagi “Qarzlar” bo‘limida qo‘shing.',
-};
 
 function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
@@ -56,8 +42,9 @@ export class VoiceHandlers {
       if (!user) return;
       const media = ctx.message.voice ?? ctx.message.audio;
       if (!media) return;
-      if (!this.assistant.voiceEnabled) return void (await ctx.reply(VOICE_TEXT.disabled, { parse_mode: 'HTML' }));
-      if (media.duration > this.maxSeconds) return void (await ctx.reply(VOICE_TEXT.tooLong(this.maxSeconds)));
+      const t = BOT_TEXTS[userLocale(user)].voice;
+      if (!this.assistant.voiceEnabled) return void (await ctx.reply(t.disabled, { parse_mode: 'HTML' }));
+      if (media.duration > this.maxSeconds) return void (await ctx.reply(t.tooLong(this.maxSeconds)));
 
       await ctx.replyWithChatAction('typing').catch(() => undefined);
       let data: Buffer;
@@ -65,7 +52,7 @@ export class VoiceHandlers {
         data = await this.files.download(media.file_id, MAX_AUDIO_BYTES);
       } catch (err) {
         const tooLarge = err instanceof TelegramFileError && err.reason === 'too-large';
-        return void (await ctx.reply(tooLarge ? VOICE_TEXT.tooLarge : VOICE_TEXT.downloadFailed));
+        return void (await ctx.reply(tooLarge ? t.tooLarge : t.downloadFailed));
       }
 
       const outcome = await this.assistant.fromVoice(user, {
@@ -88,10 +75,9 @@ export class VoiceHandlers {
   }
 
   private async present(ctx: Context, user: User, outcome: AssistantOutcome, source: 'voice' | 'text'): Promise<void> {
+    const t = BOT_TEXTS[userLocale(user)].voice;
     if (outcome.status !== 'ok') {
-      const text = { limit: VOICE_TEXT.limit, unavailable: VOICE_TEXT.unavailable, disabled: VOICE_TEXT.disabled }[
-        outcome.status
-      ];
+      const text = { limit: t.limit, unavailable: t.unavailable, disabled: t.disabled }[outcome.status];
       await ctx.reply(text, { parse_mode: 'HTML' });
       return;
     }
@@ -99,11 +85,11 @@ export class VoiceHandlers {
     const { transcript, entries, debtMentioned } = outcome.result;
     const lines: string[] = [];
     if (source === 'voice') {
-      lines.push(transcript ? VOICE_TEXT.heard(truncate(transcript, MAX_TRANSCRIPT_SHOWN)) : VOICE_TEXT.silence);
+      lines.push(transcript ? t.heard(escapeHtml(truncate(transcript, MAX_TRANSCRIPT_SHOWN))) : t.silence);
     }
-    if (entries.length === 0 && !debtMentioned) lines.push(VOICE_TEXT.noAmount);
-    if (entries.length > 1) lines.push(VOICE_TEXT.several(entries.length));
-    if (debtMentioned) lines.push(VOICE_TEXT.debtHint);
+    if (entries.length === 0 && !debtMentioned) lines.push(t.noAmount);
+    if (entries.length > 1) lines.push(t.several(entries.length));
+    if (debtMentioned) lines.push(t.debtHint);
     if (lines.length > 0) await ctx.reply(lines.join('\n\n'), { parse_mode: 'HTML' });
 
     for (const entry of entries) {

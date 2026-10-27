@@ -5,12 +5,13 @@ import {
   TelegramLoginStartResponse,
   TelegramLoginStatusResponse,
   VerifyTelegramLoginInput,
+  toAppLocale,
 } from '@fintrack/shared';
 import { TelegramLoginRepository } from './telegram-login.repository';
 import { LoginCodeService } from './login-code.service';
 import { AuthRepository } from './auth.repository';
 import { AuthResult, AuthService, TokenMeta } from './auth.service';
-import { LOGIN_TEXT, describeDevice, noticeTime } from './telegram-login.messages';
+import { loginText, describeDevice, noticeTime } from './telegram-login.messages';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ClockService } from '../../infra/clock/clock.service';
@@ -80,6 +81,7 @@ export class TelegramLoginService {
       userId,
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent?.slice(0, 300),
+      locale: meta.locale,
       expiresAt: new Date(Date.now() + REQUEST_TTL_MS),
     });
 
@@ -112,7 +114,7 @@ export class TelegramLoginService {
     if (user.bannedAt) throw new AccountBannedException();
 
     const session = await this.authService.issueSession(user, meta);
-    void this.notifyNewLogin(user.telegramId, meta, user.timezone);
+    void this.notifyNewLogin(user, meta);
     return session;
   }
 
@@ -180,7 +182,9 @@ export class TelegramLoginService {
       );
     }
 
-    const result = await this.codes.issue(request, request.telegramId, request.userId);
+    const user = await this.authRepository.findUserById(request.userId);
+    if (!user) throw this.expiredError();
+    const result = await this.codes.issue(request, request.telegramId, user);
     if (result === 'RATE_LIMITED') {
       throw new DomainException('Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring', 'RATE_LIMITED', HttpStatus.TOO_MANY_REQUESTS);
     }
@@ -204,11 +208,16 @@ export class TelegramLoginService {
   }
 
   /** Security notice in the bot; best effort, never blocks the sign-in response. */
-  private async notifyNewLogin(telegramId: bigint | null, meta: TokenMeta, timezone: string): Promise<void> {
-    if (telegramId === null) return;
+  private async notifyNewLogin(
+    user: { telegramId: bigint | null; timezone: string; locale: string },
+    meta: TokenMeta,
+  ): Promise<void> {
+    if (user.telegramId === null) return;
     try {
-      const time = noticeTime(this.clock.now(), timezone);
-      await this.telegram.send(telegramId, LOGIN_TEXT.newLogin(describeDevice(meta.userAgent), meta.ipAddress ?? null, time), {
+      const locale = toAppLocale(user.locale);
+      const time = noticeTime(this.clock.now(), user.timezone, locale);
+      const device = describeDevice(meta.userAgent, locale);
+      await this.telegram.send(user.telegramId, loginText(locale).newLogin(device, meta.ipAddress ?? null, time), {
         html: true,
       });
     } catch (err) {

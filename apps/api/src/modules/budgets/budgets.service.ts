@@ -207,10 +207,7 @@ export class BudgetsService {
     const exceeded = threshold === EXCEEDED_THRESHOLD;
     await this.notificationsService.createSafe(userId, {
       type: exceeded ? 'BUDGET_EXCEEDED' : 'BUDGET_WARNING',
-      title: exceeded ? 'Byudjet chegarasi oshib ketdi' : 'Byudjet chegarasi ogohlantirishi',
-      body: exceeded
-        ? `"${budget.category.name}" byudjeti ${percent}% ga yetdi va limitdan oshdi.`
-        : `"${budget.category.name}" byudjetining ${percent}% qismi sarflandi.`,
+      text: (t) => t.budget(exceeded, budget.category.name, percent),
       meta: { budgetId: budget.id, categoryId: budget.categoryId, percent },
     });
   }

@@ -96,12 +96,17 @@ describe('TelegramLifecycleService transport', () => {
 
     await lifecycle.onApplicationBootstrap();
 
-    const short = String(api.setMyShortDescription.mock.calls[0][0]);
-    const long = String(api.setMyDescription.mock.calls[0][0]);
-    expect(short).toContain('myfintrack.uz');
-    expect(short.length).toBeLessThanOrEqual(120);
-    expect(long).toContain('https://myfintrack.uz');
-    expect(long.length).toBeLessThanOrEqual(512);
+    // Uzbek for everyone, Russian for Telegram apps set to Russian.
+    expect(api.setMyShortDescription.mock.calls.map(([, other]) => other?.language_code)).toEqual([undefined, 'ru']);
+    for (const [short] of api.setMyShortDescription.mock.calls) {
+      expect(short).toContain('myfintrack.uz');
+      expect(short.length).toBeLessThanOrEqual(120);
+    }
+    for (const [long] of api.setMyDescription.mock.calls) {
+      expect(long).toContain('https://myfintrack.uz');
+      expect(long.length).toBeLessThanOrEqual(512);
+    }
+    expect(String(api.setMyDescription.mock.calls[1][0])).toContain('такси');
   });
 
   it('leaves the bot profile alone without an https site (local development)', async () => {
@@ -119,10 +124,15 @@ describe('TelegramLifecycleService transport', () => {
 
     await lifecycle.onApplicationBootstrap();
 
-    const [everyone, ...scoped] = api.setMyCommands.mock.calls;
-    expect(everyone[0].map((c) => c.command)).not.toContain('admin');
-    expect(everyone[0].map((c) => c.command)).not.toContain('oylik');
+    const calls = api.setMyCommands.mock.calls;
+    const [everyone, russian] = calls.filter(([, other]) => !other?.scope);
+    const scoped = calls.filter(([, other]) => other?.scope);
+    for (const [list] of [everyone, russian]) {
+      expect(list.map((c) => c.command)).toEqual(['start', 'menu', 'balans']);
+    }
     expect(everyone[1]).toBeUndefined();
+    expect(russian[1]).toEqual({ language_code: 'ru' });
+    expect(russian[0].map((c) => c.description)).toContain('Меню');
     expect(scoped.map(([, other]) => other?.scope)).toEqual([
       { type: 'chat', chat_id: 7001 },
       { type: 'chat', chat_id: 7002 },

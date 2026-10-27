@@ -10,10 +10,11 @@ import { TtsService } from '../../../infra/tts/tts.service';
 import { RedisService } from '../../../infra/redis/redis.service';
 import { ClockService } from '../../../infra/clock/clock.service';
 import { MonthlyReportData, monthlyReportScript, monthlyReportText } from './monthly-report-texts';
+import { categoryName } from '../bot-reports.service';
+import { BOT_TEXTS, userLocale } from '../i18n';
 
 /** Stay well under Telegram's ~30 messages/second broadcast limit. */
 const SEND_INTERVAL_MS = 50;
-const VOICE_CAPTION = '🎧 Hisobotni tinglang';
 
 export interface MonthlyDelivery {
   text: SendResult;
@@ -86,9 +87,10 @@ export class MonthlyReportService {
     const text = await this.telegram.send(user.telegramId, monthlyReportText(data), { html: true });
     if (text !== 'SENT') return { text, voice: null };
 
-    const speech = await this.tts.speak(monthlyReportScript(data), 'uz');
+    const speech = await this.tts.speak(monthlyReportScript(data), data.locale);
     if (!speech) return { text, voice: null };
-    const voice = await this.telegram.sendVoice(user.telegramId, speech.audio, { caption: VOICE_CAPTION });
+    const caption = BOT_TEXTS[data.locale].monthly.voiceCaption;
+    const voice = await this.telegram.sendVoice(user.telegramId, speech.audio, { caption });
     return { text, voice: voice === 'SENT' ? speech.provider : null };
   }
 
@@ -103,6 +105,7 @@ export class MonthlyReportService {
     const previousExpense = BigInt(summary.previousPeriod.expense);
 
     return {
+      locale: userLocale(user),
       from: month.from,
       to: month.to,
       name: user.name,
@@ -112,7 +115,7 @@ export class MonthlyReportService {
       previous: previousExpense > 0n ? { expense: previousExpense, changePercent: summary.previousPeriod.changePercent } : null,
       top: byCategory.items.slice(0, 5).map((item) => ({
         icon: item.icon,
-        name: item.name,
+        name: categoryName(item, user),
         amount: BigInt(item.amount),
         percent: item.percent,
       })),

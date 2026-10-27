@@ -5,6 +5,7 @@ import { dashboardApi } from '../dashboard/api/dashboard.api';
 import { useStatsCompare } from './useStatsCompare';
 import type { Comparison } from './periods';
 import type { BucketPlan } from './buckets';
+import { statsCategoryName } from '../../lib/categoryName';
 
 export interface CategoryChange {
   id: string;
@@ -21,7 +22,7 @@ export function mergeCategories(current: CategoryStatsItem[], previous: Category
   const add = (items: CategoryStatsItem[], key: 'current' | 'previous') => {
     for (const item of items) {
       const id = item.categoryId ?? 'none';
-      const row = rows.get(id) ?? { id, name: item.name, icon: item.icon, color: item.color, current: 0n, previous: 0n };
+      const row = rows.get(id) ?? { id, name: statsCategoryName(item), icon: item.icon, color: item.color, current: 0n, previous: 0n };
       row[key] += BigInt(item.amount);
       rows.set(id, row);
     }

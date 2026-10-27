@@ -17,6 +17,7 @@ export class TelegramLoginRepository {
     userId?: string;
     ipAddress?: string;
     userAgent?: string;
+    locale?: string;
     expiresAt: Date;
   }): Promise<TelegramLoginRequest> {
     return this.prisma.telegramLoginRequest.create({ data });

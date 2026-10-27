@@ -28,3 +28,27 @@ describe('guessCategory', () => {
     expect(guessCategory('', 'EXPENSE', categories)).toBeNull();
   });
 });
+
+describe('guessCategory in Russian', () => {
+  const russian = [
+    { id: 'food', name: 'Продукты', type: 'EXPENSE' as const },
+    { id: 'transport', name: 'Транспорт', type: 'EXPENSE' as const },
+    { id: 'housing', name: 'Жильё', type: 'EXPENSE' as const },
+    { id: 'salary', name: 'Зарплата', type: 'INCOME' as const },
+  ];
+
+  it.each([
+    ['обед', 'EXPENSE', 'food'],
+    ['корзинка', 'EXPENSE', 'food'],
+    ['такси до работы', 'EXPENSE', 'transport'],
+    ['аренда', 'EXPENSE', 'housing'],
+    ['зарплата за октябрь', 'INCOME', 'salary'],
+  ] as const)('%s → %s', (note, type, expected) => {
+    expect(guessCategory(note, type, russian)?.id).toBe(expected);
+  });
+
+  it('finds the Uzbek-named category for Russian words, and the other way round', () => {
+    expect(guessCategory('такси', 'EXPENSE', categories)?.id).toBe('transport');
+    expect(guessCategory('taksi', 'EXPENSE', russian)?.id).toBe('transport');
+  });
+});

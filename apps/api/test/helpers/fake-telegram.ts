@@ -18,6 +18,8 @@ export interface FakeTgUser {
   id: number;
   first_name: string;
   username?: string;
+  /** The Telegram app's language; 'uz' when not given. */
+  language_code?: string;
 }
 
 let updateSeq = 1;
@@ -50,9 +52,9 @@ export class FakeTelegram {
     this.blockedChats.add(chatId);
   }
 
-  newUser(firstName = 'Test'): FakeTgUser {
+  newUser(firstName = 'Test', languageCode?: string): FakeTgUser {
     tgUserSeq += 1;
-    return { id: tgUserSeq, first_name: firstName, username: `u${tgUserSeq}` };
+    return { id: tgUserSeq, first_name: firstName, username: `u${tgUserSeq}`, ...(languageCode ? { language_code: languageCode } : {}) };
   }
 
   messagesTo(chatId: number): string[] {
@@ -136,7 +138,7 @@ function base(from: FakeTgUser) {
     message_id: updateSeq,
     date: Math.floor(Date.now() / 1000),
     chat: { id: from.id, type: 'private', first_name: from.first_name },
-    from: { ...from, is_bot: false, language_code: 'uz' },
+    from: { ...from, is_bot: false, language_code: from.language_code ?? 'uz' },
   };
 }
 

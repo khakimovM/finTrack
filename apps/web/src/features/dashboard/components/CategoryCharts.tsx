@@ -10,6 +10,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { useStatsByCategory } from '../hooks/useDashboard';
 import { WidgetCard, WidgetState } from './WidgetCard';
 import { t, tn } from '../../../lib/i18n';
+import { statsCategoryName } from '../../../lib/categoryName';
 
 /** Uncategorised spending has no colour of its own. */
 function colourOf(item: CategoryStatsItem, index: number): string {
@@ -30,7 +31,7 @@ export function ExpenseShareCard() {
 
   const slices = [
     ...top.map((item, i) => ({
-      name: item.name,
+      name: statsCategoryName(item),
       value: tiyinToChartNumber(item.amount),
       color: colourOf(item, i),
       detail: `${formatPercent(item.percent)} · ${tn('dashboard.categories.txCount', item.count)}`,
@@ -77,7 +78,7 @@ export function ExpenseShareCard() {
                   <li key={item.categoryId ?? `none-${i}`} className="grid grid-cols-[10px_1fr_auto] items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: colourOf(item, i) }} aria-hidden />
                     <span className="truncate">
-                      {item.icon} {item.name}
+                      {item.icon} {statsCategoryName(item)}
                     </span>
                     <span className="font-medium text-text-secondary">{formatPercent(item.percent)}</span>
                   </li>
@@ -124,7 +125,7 @@ export function CategoryBarsCard() {
           <BarList
             items={items.map((item, i) => ({
               key: item.categoryId ?? `none-${i}`,
-              label: `${item.icon} ${item.name}`,
+              label: `${item.icon} ${statsCategoryName(item)}`,
               value: tiyinToChartNumber(item.amount),
               display: formatAmount(item.amount),
               color: colourOf(item, i),

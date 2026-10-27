@@ -5,7 +5,8 @@ import { LoginCodeService } from './login-code.service';
 import { AuthRepository } from './auth.repository';
 import { SessionStateService } from './session-state.service';
 import { START_PREFIX, hashNonce } from './telegram-login.service';
-import { LOGIN_TEXT } from './telegram-login.messages';
+import { toAppLocale } from '@fintrack/shared';
+import { ADMIN_LOGIN_TEXT, LoginTexts, loginText } from './telegram-login.messages';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { AdminAccessService } from '../admin/core/admin-access.service';
 import { AdminAuditService } from '../admin/core/admin-audit.service';
@@ -24,19 +25,17 @@ export interface TelegramContact {
   phoneNumber: string;
 }
 
-const CONTACT_KEYBOARD = {
-  keyboard: [[{ text: LOGIN_TEXT.shareContactButton, request_contact: true }]],
-  resize_keyboard: true,
-  one_time_keyboard: true,
-};
+function contactKeyboard(texts: LoginTexts) {
+  return {
+    keyboard: [[{ text: texts.shareContactButton, request_contact: true }]],
+    resize_keyboard: true,
+    one_time_keyboard: true,
+  };
+}
 
 function displayName(from: TelegramFrom): string {
   const name = [from.firstName, from.lastName].filter(Boolean).join(' ').trim();
   return (name.length >= 2 ? name : 'Foydalanuvchi').slice(0, 100);
-}
-
-function localeFrom(languageCode?: string): string {
-  return languageCode === 'ru' || languageCode === 'en' ? languageCode : 'uz';
 }
 
 function normalizePhone(raw: string): string {
@@ -64,35 +63,37 @@ export class TelegramLoginBotService {
 
     const request = await this.repository.findByNonceHash(hashNonce(match[2]));
     const telegramId = BigInt(from.id);
+    const user = await this.authRepository.findUserByTelegramId(telegramId);
+    // The account's language; a newcomer gets the language of the page they came from.
+    const texts = loginText(user?.locale ?? request?.locale ?? from.languageCode);
     if (!request || START_PREFIX[request.purpose] !== match[1]) {
-      await this.telegram.send(telegramId, LOGIN_TEXT.expired, { html: true });
+      await this.telegram.send(telegramId, texts.expired, { html: true });
       return true;
     }
     if (request.status !== 'PENDING' || request.expiresAt < new Date()) {
-      const text = request.status === 'CONSUMED' ? LOGIN_TEXT.alreadyUsed : LOGIN_TEXT.expired;
+      const text = request.status === 'CONSUMED' ? texts.alreadyUsed : texts.expired;
       await this.telegram.send(telegramId, text, { html: true });
       return true;
     }
 
     if (request.purpose === 'LINK') {
-      await this.completeLink(request, from);
+      await this.completeLink(request, from, user, texts);
       return true;
     }
     if (request.purpose === 'ADMIN') {
-      await this.issueAdminCode(request, from);
+      await this.issueAdminCode(request, from, user, texts);
       return true;
     }
 
-    const user = await this.authRepository.findUserByTelegramId(telegramId);
     if (user) {
       await this.authRepository.touchTelegramProfile(user.id, from.username ?? null);
-      await this.codes.issue(request, telegramId, user.id);
+      await this.codes.issue(request, telegramId, user);
       return true;
     }
 
     // Unknown Telegram user: register first, then the code is sent after the contact arrives.
     await this.repository.update(request.id, { status: 'AWAITING_CONTACT', telegramId });
-    await this.telegram.send(telegramId, LOGIN_TEXT.askContact, { html: true, replyMarkup: CONTACT_KEYBOARD });
+    await this.telegram.send(telegramId, texts.askContact, { html: true, replyMarkup: contactKeyboard(texts) });
     return true;
   }
 
@@ -103,7 +104,8 @@ export class TelegramLoginBotService {
       await this.authRepository.touchTelegramProfile(user.id, from.username ?? null);
       return user;
     }
-    await this.telegram.send(BigInt(from.id), LOGIN_TEXT.welcomeNew, { html: true, replyMarkup: CONTACT_KEYBOARD });
+    const texts = loginText(from.languageCode);
+    await this.telegram.send(BigInt(from.id), texts.welcomeNew, { html: true, replyMarkup: contactKeyboard(texts) });
     return null;
   }
 
@@ -114,12 +116,16 @@ export class TelegramLoginBotService {
   /** Returns the (possibly new) user when the contact was accepted. */
   async handleContact(from: TelegramFrom, contact: TelegramContact): Promise<User | null> {
     const telegramId = BigInt(from.id);
+    let user = await this.authRepository.findUserByTelegramId(telegramId);
+    const pending = await this.repository.findAwaitingContact(telegramId);
+    // Signing up from the website: the page's language. From the bot alone: Telegram's.
+    const locale = toAppLocale(user?.locale ?? pending?.locale ?? from.languageCode);
     if (contact.userId !== from.id) {
-      await this.telegram.send(telegramId, LOGIN_TEXT.contactNotYours, { html: true, replyMarkup: CONTACT_KEYBOARD });
+      const texts = loginText(locale);
+      await this.telegram.send(telegramId, texts.contactNotYours, { html: true, replyMarkup: contactKeyboard(texts) });
       return null;
     }
 
-    let user = await this.authRepository.findUserByTelegramId(telegramId);
     if (!user) {
       const phone = normalizePhone(contact.phoneNumber);
       try {
@@ -128,7 +134,7 @@ export class TelegramLoginBotService {
           telegramId,
           telegramUsername: from.username ?? null,
           phone: (await this.authRepository.isPhoneTaken(phone)) ? null : phone,
-          locale: localeFrom(from.languageCode),
+          locale,
         });
       } catch (err) {
         // A double tap on "share contact" races two registrations; the unique key keeps one.
@@ -138,13 +144,13 @@ export class TelegramLoginBotService {
       }
     }
 
-    const pending = await this.repository.findAwaitingContact(telegramId);
-    await this.telegram.send(telegramId, pending ? LOGIN_TEXT.registered : LOGIN_TEXT.registeredPlain, {
+    const texts = loginText(user.locale);
+    await this.telegram.send(telegramId, pending ? texts.registered : texts.registeredPlain, {
       html: true,
       replyMarkup: { remove_keyboard: true },
     });
     if (pending) {
-      await this.codes.issue(pending, telegramId, user.id);
+      await this.codes.issue(pending, telegramId, user);
     }
     return user;
   }
@@ -154,7 +160,8 @@ export class TelegramLoginBotService {
     const request = await this.repository.findById(requestId);
     if (!request || request.telegramId !== BigInt(fromId)) return;
     if (await this.repository.transition(request.id, ['PENDING', 'AWAITING_CONTACT', 'CODE_SENT'], 'CANCELLED')) {
-      await this.telegram.send(BigInt(fromId), LOGIN_TEXT.cancelled, { html: true });
+      const user = await this.authRepository.findUserByTelegramId(BigInt(fromId));
+      await this.telegram.send(BigInt(fromId), loginText(user?.locale ?? request.locale).cancelled, { html: true });
     }
   }
 
@@ -173,12 +180,17 @@ export class TelegramLoginBotService {
    * Admin sign-in: a code only for a registered account on the admin list. Anyone else gets the
    * ordinary "link expired" reply, so the bot never confirms that an admin panel exists.
    */
-  private async issueAdminCode(request: TelegramLoginRequest, from: TelegramFrom): Promise<void> {
+  private async issueAdminCode(
+    request: TelegramLoginRequest,
+    from: TelegramFrom,
+    account: User | null,
+    texts: LoginTexts,
+  ): Promise<void> {
     const telegramId = BigInt(from.id);
     const allowed = this.adminAccess.isAdmin(telegramId);
-    const user = allowed ? await this.authRepository.findUserByTelegramId(telegramId) : null;
+    const user = allowed ? account : null;
     if (user) {
-      await this.codes.issue(request, telegramId, user.id);
+      await this.codes.issue(request, telegramId, user);
       return;
     }
 
@@ -189,21 +201,26 @@ export class TelegramLoginBotService {
       ipAddress: request.ipAddress,
       meta: { reason: allowed ? 'no_account' : 'not_admin', username: from.username ?? null },
     });
-    await this.telegram.send(telegramId, allowed ? LOGIN_TEXT.adminNoAccount : LOGIN_TEXT.expired, { html: true });
+    // Word for word an expired link, in the same language, so nothing gives the panel away.
+    await this.telegram.send(telegramId, allowed ? ADMIN_LOGIN_TEXT.noAccount : texts.expired, { html: true });
   }
 
-  private async completeLink(request: TelegramLoginRequest, from: TelegramFrom): Promise<void> {
+  private async completeLink(
+    request: TelegramLoginRequest,
+    from: TelegramFrom,
+    owner: User | null,
+    texts: LoginTexts,
+  ): Promise<void> {
     const telegramId = BigInt(from.id);
-    const owner = await this.authRepository.findUserByTelegramId(telegramId);
     if (!request.userId || (owner && owner.id !== request.userId)) {
       await this.repository.transition(request.id, ['PENDING'], 'CANCELLED');
-      await this.telegram.send(telegramId, LOGIN_TEXT.linkConflict, { html: true });
+      await this.telegram.send(telegramId, texts.linkConflict, { html: true });
       return;
     }
 
     await this.authRepository.linkTelegram(request.userId, telegramId, from.username ?? null);
     await this.repository.update(request.id, { status: 'CONSUMED', telegramId, consumedAt: new Date() });
     await this.sessions.forgetUser(request.userId);
-    await this.telegram.send(telegramId, LOGIN_TEXT.linked, { html: true });
+    await this.telegram.send(telegramId, texts.linked, { html: true });
   }
 }

@@ -15,6 +15,7 @@ import { BalanceGuardService } from '../accounts/balance-guard.service';
 import { balanceDeltas } from '../accounts/ledger-effect';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ClockService } from '../../infra/clock/clock.service';
+import { autoNotes } from '../../common/i18n/auto-notes';
 import {
   ConflictDomainException,
   DebtOverpaymentException,
@@ -64,7 +65,8 @@ export class DebtPaymentsService {
   }
 
   async settle(userId: string, debtId: string, dto: SettleDebtInput, source: TransactionSource): Promise<CreatePaymentResult> {
-    return this.pay(userId, debtId, { ...dto, amount: null, note: dto.note ?? 'To‘liq yopildi' }, source);
+    const note = dto.note ?? (await autoNotes(this.prisma, userId)).settled;
+    return this.pay(userId, debtId, { ...dto, amount: null, note }, source);
   }
 
   /**
