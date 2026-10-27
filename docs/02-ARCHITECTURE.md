@@ -107,7 +107,9 @@ apps/web/src/
 - **Til almashganda** butun router qayta chiziladi: sana va summalar render paytida yoziladi.
 - **Umumiy jadvallar.** Oy va hafta kunlari nomlari, valyuta so'zi, qisqa birliklar, `plural()` va xato kodlarining matni (`ERROR_TEXT`) `packages/shared/src/i18n/` da. Ularni web ham, bot ham ishlatadi.
 - **Admin panel** har doim o'zbekcha.
-- **Hali o'zbekcha qolganlar.** Landing va login sahifasi B3 bosqichida, bot esa B4 bosqichida tarjima qilinadi.
+- **Landing ikki manzilda.** `/` o'zbekcha, `/ru` ruscha; ikkalasi alohida prerender qilinadi (`hreflang`, o'z tilidagi meta). Tafsiloti `docs/05` "SEO va birinchi yuklanish" da.
+- **Matn ichidagi element.** Gapning bir qismi qalin yoki havola bo'lsa, lug'atda `{bot}` kabi joy qoldiriladi va `withNodes()` (`lib/i18n/rich.tsx`) uni elementga almashtiradi.
+- **Hali o'zbekcha qolganlar.** Bot B4 bosqichida tarjima qilinadi.
 - **Tekshiruv.** Har sahifa va forma uchun ruscha smoke test bor: `test/russian.ts` dagi `latinLeftovers()` rus ekranida lotin harfli so'z qoldirmaydi, testdagi ma'lumotdan tashqari.
 
 ## Ma'lumot oqimi
@@ -160,7 +162,7 @@ ochmaydi. Bloklangan hisob guard, refresh, kod, Mini App va botda to'xtatiladi (
   301 bilan apex'ga; pochta — Cloudflare Email Routing). `*.up.railway.app` dagi sahifa so'rovlari `CLIENT_URL`
   ga 301 (API emas).
 - Web build (`apps/web` `npm run build`): Vite → landing'ning SSR build'i (`src/entry-prerender.tsx`) →
-  `scripts/prerender.mjs`. Natija: `index.html` — landing HTML'i ichida (faqat `/` uchun), `app.html` — bo'sh
-  qobiq `noindex` bilan (`/login`, `/app/*`, `/admin/*`; boshqa manzil — shu qobiq **404** bilan), har matnli
+  `scripts/prerender.mjs`. Natija: `index.html` — o'zbekcha landing HTML'i ichida (`/`), `ru.html` — ruscha (`/ru`;
+  `/ru/` → 301), `app.html` — bo'sh qobiq `noindex` bilan (`/login`, `/app/*`, `/admin/*`; boshqa manzil — shu qobiq **404** bilan), har matnli
   faylning `.br`/`.gz` nusxasi (`serve-web.ts` `preCompressed` bilan beradi, `Vary: Accept-Encoding`).
   Ilova sahifalari alohida chunk'lar (`routes.tsx` `lazy`): landing faqat o'ziga kerak kodni yuklaydi.

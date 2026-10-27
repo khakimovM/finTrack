@@ -1,6 +1,8 @@
 import type { Dict } from '../uz';
 import { accounts, transfer } from './accounts';
 import { budgets } from './budgets';
+import { landing } from './landing';
+import { login } from './login';
 import { categories, tags } from './categories';
 import { common } from './common';
 import { dashboard } from './dashboard';
@@ -35,4 +37,6 @@ export const ru: Dict = {
   settings,
   miniApp,
   pages,
+  landing,
+  login,
 };

@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Lock } from 'lucide-react';
+import type { AppLocale } from '@fintrack/shared';
 import { useSessionQuery } from '../../features/auth/hooks/useSession';
 import { LandingHeader } from '../../features/landing/LandingHeader';
 import { HeroVisual } from '../../features/landing/HeroVisual';
@@ -7,6 +9,19 @@ import { TelegramBand } from '../../features/landing/TelegramBand';
 import { CtaButtons, Faq, Features, FinalCta, LandingFooter, SecurityBand, Steps } from '../../features/landing/Sections';
 import { useEntrance } from '../../features/landing/reveal';
 import { useReducedMotion } from '../../lib/motion';
+import { t, useLocale } from '../../lib/i18n';
+import { LANDING_PATH } from '../../lib/i18n/address';
+
+/**
+ * "/" is the Uzbek landing page and "/ru" the Russian one. The chosen language decides which one
+ * a visitor stays on, so after a switch, a back button or an old link they land on their own.
+ */
+export function LandingRoute({ lang }: { lang: AppLocale }) {
+  const locale = useLocale();
+  const { search, hash } = useLocation();
+  if (locale !== lang) return <Navigate to={{ pathname: LANDING_PATH[locale], search, hash }} replace />;
+  return <LandingPage />;
+}
 
 /** The front door: what FinTrack does, how the bot works, and the way in (Telegram only). */
 export function LandingPage() {
@@ -23,6 +38,11 @@ export function LandingPage() {
       root.style.scrollBehavior = '';
     };
   }, [reduced]);
+
+  // The prerendered HTML carries the title of its language; this keeps it right after a switch.
+  useEffect(() => {
+    document.title = t('landing.meta.title');
+  }, []);
 
   // From 820px the headline also shrinks with the window's height, so the hero fits one screen.
   const title = at(
@@ -45,17 +65,15 @@ export function LandingPage() {
           <div className="mx-auto flex max-w-[1232px] flex-wrap items-center gap-12 px-4 pb-12 pt-8 [--hero-pad:clamp(24px,5vh,56px)] min-[820px]:min-h-[calc(100svh-65px)] min-[820px]:py-[var(--hero-pad)]">
             <div className="relative z-[2] flex max-w-[540px] flex-[1_1_420px] flex-col gap-6 min-[820px]:gap-[clamp(16px,3vh,24px)]">
               <h1 className={title.className} style={title.style}>
-                Pulingiz qayerga ketayotganini biling{' '}
-                <span className="text-text-muted">— saytda ham, Telegram’da ham</span>
+                {t('landing.hero.title')} <span className="text-text-muted">{t('landing.hero.titleTail')}</span>
               </h1>
               <p className={lead.className} style={lead.style}>
-                Xarajatni botga bir jumla bilan yozing yoki saytda kiriting. FinTrack har bir so‘mni kategoriyaga ajratadi,
-                byudjet va qarzlarni kuzatib boradi.
+                {t('landing.hero.lead')}
               </p>
               <CtaButtons className={ctas.className} style={ctas.style} />
               <p className={note.className} style={note.style}>
                 <Lock className="h-[15px] w-[15px]" aria-hidden />
-                Parol kerak emas · Kod Telegram’ga keladi
+                {t('landing.hero.note')}
               </p>
             </div>
             <HeroVisual />

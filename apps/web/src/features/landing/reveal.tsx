@@ -29,8 +29,11 @@ export function beat(state: RevealState, delayMs: number, base?: string, animati
  */
 const heroPlayedInHtml = typeof document !== 'undefined' && document.documentElement.hasAttribute('data-prerendered');
 
+/** Places one element of an entrance: its delay, classes merged in front, and animation. */
+export type Entrance = (delayMs: number, base?: string, animation?: string) => Beat;
+
 /** The same for things that play on page load (the hero): no observer, only reduced motion. */
-export function useEntrance(): (delayMs: number, base?: string, animation?: string) => Beat {
+export function useEntrance(): Entrance {
   const reduced = useReducedMotion();
   return (delayMs, base, animation) => beat(reduced || heroPlayedInHtml ? 'static' : 'playing', delayMs, base, animation);
 }

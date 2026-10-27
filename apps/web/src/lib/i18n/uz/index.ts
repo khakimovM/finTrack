@@ -1,5 +1,7 @@
 import { accounts, transfer } from './accounts';
 import { budgets } from './budgets';
+import { landing } from './landing';
+import { login } from './login';
 import { categories, tags } from './categories';
 import { common } from './common';
 import { dashboard } from './dashboard';
@@ -35,6 +37,8 @@ export const uz = {
   settings,
   miniApp,
   pages,
+  landing,
+  login,
 };
 
 export type Dict = typeof uz;

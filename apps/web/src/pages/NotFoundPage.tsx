@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { PublicHeader } from '../components/layout/PublicHeader';
-import { t } from '../lib/i18n';
+import { currentLocale, t } from '../lib/i18n';
+import { LANDING_PATH } from '../lib/i18n/address';
 
 export function NotFoundPage() {
   return (
@@ -17,7 +18,7 @@ export function NotFoundPage() {
             {t('pages.notFound.text')}
           </p>
           <Link
-            to="/"
+            to={LANDING_PATH[currentLocale()]}
             className="mt-3 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-[22px] text-[15px] font-medium text-primary-foreground hover:bg-primary-hover focus-ring"
           >
             <ArrowLeft className="h-[17px] w-[17px]" aria-hidden />

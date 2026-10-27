@@ -3,13 +3,15 @@ import { CircleAlert, CircleCheck, CircleX, Clock, LoaderCircle, RotateCcw, Send
 import { cn } from '../../../lib/utils';
 import { Button } from '../../../components/ui/Button';
 import { OtpInput } from './OtpInput';
+import { t } from '../../../lib/i18n';
+import { withNodes } from '../../../lib/i18n/rich';
 
 const big = 'h-14 w-full text-[16px] sm:h-14';
 
 export function StartButton({
   onStart,
   starting,
-  label = 'Telegram orqali kirish',
+  label,
 }: {
   onStart: () => void;
   starting: boolean;
@@ -19,11 +21,11 @@ export function StartButton({
     <Button className={cn(big, 'gap-2.5')} onClick={onStart} disabled={starting} aria-busy={starting || undefined}>
       {starting ? (
         <>
-          <LoaderCircle className="h-5 w-5 animate-ft-spin" aria-hidden /> Ulanmoqda…
+          <LoaderCircle className="h-5 w-5 animate-ft-spin" aria-hidden /> {t('login.connecting')}
         </>
       ) : (
         <>
-          <Send className="h-5 w-5" aria-hidden /> {label}
+          <Send className="h-5 w-5" aria-hidden /> {label ?? t('login.start')}
         </>
       )}
     </Button>
@@ -37,7 +39,7 @@ export function ErrorBanner({ message }: { message: string }) {
       <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
       <div className="flex flex-col">
         <span className="text-[14px] font-semibold leading-5">{message}</span>
-        <span className="text-[13px] leading-[18px] text-text-secondary">Birozdan so‘ng qayta urinib ko‘ring.</span>
+        <span className="text-[13px] leading-[18px] text-text-secondary">{t('login.retryLater')}</span>
       </div>
     </div>
   );
@@ -53,13 +55,9 @@ export function WaitingSteps({
   awaitingContact: boolean;
 }) {
   const steps: ReactNode[] = [
-    <>
-      Telegram’da <b className="font-semibold">@{botUsername}</b> ochiladi.
-    </>,
-    <>
-      <b className="font-semibold">Start</b> tugmasini bosing (yangi bo‘lsangiz — raqamni ulashing).
-    </>,
-    <>Bot yuborgan 6 xonali kodni shu yerga kiriting.</>,
+    withNodes(t('login.stepOpen'), { bot: <b className="font-semibold">@{botUsername}</b> }),
+    withNodes(t('login.stepStart'), { start: <b className="font-semibold">{t('login.startButton')}</b> }),
+    t('login.stepCode'),
   ];
   return (
     <div className="flex flex-col gap-5">
@@ -79,11 +77,11 @@ export function WaitingSteps({
         rel="noopener noreferrer"
         className="flex h-[52px] items-center justify-center gap-2 rounded-full border border-input text-[15px] font-medium transition-colors duration-fast hover:bg-secondary focus-ring"
       >
-        <Send className="h-[18px] w-[18px]" aria-hidden /> Telegram’ni ochish
+        <Send className="h-[18px] w-[18px]" aria-hidden /> {t('login.openTelegram')}
       </a>
       <p role="status" className="flex min-h-11 items-center gap-2.5 rounded-[14px] bg-surface px-3.5 text-[14px] text-text-secondary">
         <LoaderCircle className="h-4 w-4 animate-ft-spin" strokeWidth={2.2} aria-hidden />
-        {awaitingContact ? 'Raqamingizni ulashishingiz kutilmoqda…' : 'Telegram’dan javob kutilmoqda…'}
+        {awaitingContact ? t('login.awaitingContact') : t('login.awaitingTelegram')}
       </p>
     </div>
   );
@@ -121,15 +119,15 @@ export function CodeForm({ code, onCodeChange, onSubmit, verifying, codeError, s
     >
       {expired ? (
         <p role="status" className="flex items-center gap-2 rounded-[14px] bg-warning-soft px-3.5 py-3 text-[14px] font-medium text-warning">
-          <Clock className="h-[18px] w-[18px]" aria-hidden /> Kod muddati tugadi
+          <Clock className="h-[18px] w-[18px]" aria-hidden /> {t('login.codeExpired')}
         </p>
       ) : (
         <p role="status" className="flex items-center gap-2 text-[14px] font-medium text-success">
-          <CircleCheck className="h-[18px] w-[18px] animate-ft-check-in" aria-hidden /> Kod Telegram’ga yuborildi
+          <CircleCheck className="h-[18px] w-[18px] animate-ft-check-in" aria-hidden /> {t('login.codeSent')}
         </p>
       )}
       <div className="flex flex-col gap-2">
-        <span className="text-[13px] font-medium text-text-secondary">Tasdiqlash kodi</span>
+        <span className="text-[13px] font-medium text-text-secondary">{t('login.codeLabel')}</span>
         <OtpInput
           value={expired ? '' : code}
           onChange={onCodeChange}
@@ -146,22 +144,22 @@ export function CodeForm({ code, onCodeChange, onSubmit, verifying, codeError, s
       </div>
       {expired ? (
         <Button type="button" className="h-[52px] w-full text-[15px] sm:h-[52px]" onClick={onResend} loading={resending}>
-          <RotateCcw className="h-[18px] w-[18px]" aria-hidden /> Kodni qayta yuborish
+          <RotateCcw className="h-[18px] w-[18px]" aria-hidden /> {t('login.resend')}
         </Button>
       ) : (
         <>
           <Button type="submit" className="h-[52px] w-full text-[15px] sm:h-[52px]" disabled={code.length !== 6 || verifying}>
             {verifying ? (
               <>
-                <LoaderCircle className="h-[18px] w-[18px] animate-ft-spin" aria-hidden /> Tekshirilmoqda…
+                <LoaderCircle className="h-[18px] w-[18px] animate-ft-spin" aria-hidden /> {t('login.verifying')}
               </>
             ) : (
-              'Tasdiqlash'
+              t('login.confirm')
             )}
           </Button>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="flex items-center gap-1.5 text-[13px] text-text-muted">
-              <Clock className="h-3.5 w-3.5" aria-hidden /> Kod {mmss(secondsLeft)} amal qiladi
+              <Clock className="h-3.5 w-3.5" aria-hidden /> {t('login.validFor', { time: mmss(secondsLeft) })}
             </span>
             <button
               type="button"
@@ -172,7 +170,7 @@ export function CodeForm({ code, onCodeChange, onSubmit, verifying, codeError, s
                 cooldown > 0 ? 'text-text-muted' : 'text-text underline decoration-input underline-offset-[3px] hover:decoration-text',
               )}
             >
-              {cooldown > 0 ? `Qayta yuborish · ${mmss(cooldown)}` : 'Kodni qayta yuborish'}
+              {cooldown > 0 ? t('login.resendIn', { time: mmss(cooldown) }) : t('login.resend')}
             </button>
           </div>
         </>
@@ -196,11 +194,11 @@ export function FinishedRow({ cancelled, onRestart, restarting }: { cancelled: b
           <Icon className="h-5 w-5" aria-hidden />
         </span>
         <span className="text-[15px] font-medium leading-[22px]">
-          {cancelled ? 'So‘rov Telegram’da rad etildi.' : 'So‘rov muddati tugadi. Qaytadan boshlang.'}
+          {cancelled ? t('login.cancelled') : t('login.expired')}
         </span>
       </div>
       <Button className="h-[52px] w-full text-[15px] sm:h-[52px]" onClick={onRestart} loading={restarting}>
-        <RotateCcw className="h-[18px] w-[18px]" aria-hidden /> Qaytadan boshlash
+        <RotateCcw className="h-[18px] w-[18px]" aria-hidden /> {t('login.restart')}
       </Button>
     </div>
   );
