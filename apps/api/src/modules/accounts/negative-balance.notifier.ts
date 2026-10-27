@@ -1,5 +1,4 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { formatMoney } from '@fintrack/shared';
 import { AccountsRepository } from './accounts.repository';
 import { BalanceService } from './balance.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -41,8 +40,7 @@ export class NegativeBalanceNotifier implements OnModuleInit {
         const balance = balances.get(accountId) ?? 0n;
         await this.notifications.createSafe(userId, {
           type: 'NEGATIVE_BALANCE',
-          title: 'Hisob balansi manfiy',
-          body: `"${account.name}" hisobida balans ${formatMoney(balance)} bo‘ldi.`,
+          text: (t) => t.negativeBalance(account.name, balance),
           meta: { accountId, balance: balance.toString() },
           dedupeKey: `negative-balance:${accountId}:${today}`,
         });

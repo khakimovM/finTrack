@@ -1,6 +1,7 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Headers, Query, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiProduces } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
+import { localeFromAcceptLanguage } from '@fintrack/shared';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ExportService } from './export.service';
 import { ExportTransactionsQueryDto } from './dto/export.dto';
@@ -17,9 +18,10 @@ export class ExportController {
   async exportCsv(
     @CurrentUser('id') userId: string,
     @Query() query: ExportTransactionsQueryDto,
+    @Headers('accept-language') acceptLanguage: string | undefined,
     @Res() res: FastifyReply,
   ) {
-    const csv = await this.service.generateCsv(userId, query);
+    const csv = await this.service.generateCsv(userId, query, localeFromAcceptLanguage(acceptLanguage));
     res.header('Content-Type', 'text/csv; charset=utf-8');
     res.header('Content-Disposition', 'attachment; filename="transactions.csv"');
     res.send(csv);
@@ -31,9 +33,10 @@ export class ExportController {
   async exportXlsx(
     @CurrentUser('id') userId: string,
     @Query() query: ExportTransactionsQueryDto,
+    @Headers('accept-language') acceptLanguage: string | undefined,
     @Res() res: FastifyReply,
   ) {
-    const buffer = await this.service.generateXlsx(userId, query);
+    const buffer = await this.service.generateXlsx(userId, query, localeFromAcceptLanguage(acceptLanguage));
     res.header(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

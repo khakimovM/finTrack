@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Bot, Context } from 'grammy';
 import { User } from '@prisma/client';
+import { AppLocale } from '@fintrack/shared';
 import { BotUserService, chatErrorMessage } from '../bot-user.service';
 import { EntryService } from '../entry.service';
 import { AwaitingState, DraftStore, TransactionDraft } from '../drafts/draft.store';
-import { TEXT, draftCard, draftKeyboard, money, pickerKeyboard, signedMoney } from '../bot-ui';
+import { draftCard, draftKeyboard, money, pickerKeyboard, signedMoney } from '../bot-ui';
+import { BOT_TEXTS, userLocale } from '../i18n';
 import { escapeHtml } from '../../auth/telegram-login.messages';
 import { CreateTransactionResult } from '../../transactions/transactions.service';
 
@@ -44,8 +46,9 @@ export class EntryHandlers {
       const user = await this.users.resolve(ctx);
       if (!user) return;
       const [, id, action] = ctx.match;
+      const locale = userLocale(user);
       const draft = await this.entries.get(user, id);
-      if (!draft && action !== 'save') return this.expired(ctx);
+      if (!draft && action !== 'save') return this.expired(ctx, user);
 
       try {
         switch (action) {
@@ -53,8 +56,8 @@ export class EntryHandlers {
             return await this.save(ctx, user, id);
           case 'cancel':
             await this.entries.discard(user, id);
-            await ctx.answerCallbackQuery({ text: 'Bekor qilindi' });
-            return await ctx.editMessageText('❌ Bekor qilindi.');
+            await ctx.answerCallbackQuery({ text: BOT_TEXTS[locale].entry.cancelledToast });
+            return await ctx.editMessageText(BOT_TEXTS[locale].entry.cancelled);
           case 'flip':
             return await this.render(ctx, user, await this.entries.flip(user, draft as TransactionDraft));
           case 'cats':
@@ -65,7 +68,7 @@ export class EntryHandlers {
             return await this.render(ctx, user, draft as TransactionDraft);
         }
       } catch (err) {
-        await ctx.answerCallbackQuery({ text: chatErrorMessage(err), show_alert: true });
+        await ctx.answerCallbackQuery({ text: chatErrorMessage(err, locale), show_alert: true });
       }
     });
 
@@ -74,10 +77,10 @@ export class EntryHandlers {
       if (!user) return;
       const [, id, field, value] = ctx.match;
       const draft = await this.entries.get(user, id);
-      if (!draft) return this.expired(ctx);
+      if (!draft) return this.expired(ctx, user);
 
       const options = field === 'c' ? await this.entries.categoryOptions(user, draft.type) : await this.entries.accountOptions(user);
-      if (!options.some((o) => o.id === value)) return this.expired(ctx);
+      if (!options.some((o) => o.id === value)) return this.expired(ctx, user);
       const next = await this.entries.update(draft, field === 'c' ? { categoryId: value } : { accountId: value });
       await this.render(ctx, user, next);
     });
@@ -85,12 +88,13 @@ export class EntryHandlers {
     bot.callbackQuery(/^u:([0-9a-f-]{36})$/, async (ctx) => {
       const user = await this.users.resolve(ctx);
       if (!user) return;
+      const t = BOT_TEXTS[userLocale(user)].entry;
       try {
         await this.entries.undo(user, ctx.match[1]);
-        await ctx.answerCallbackQuery({ text: 'Bekor qilindi' });
-        await ctx.editMessageText('↩️ Yozuv bekor qilindi.');
+        await ctx.answerCallbackQuery({ text: t.cancelledToast });
+        await ctx.editMessageText(t.undone);
       } catch (err) {
-        await ctx.answerCallbackQuery({ text: chatErrorMessage(err), show_alert: true });
+        await ctx.answerCallbackQuery({ text: chatErrorMessage(err, userLocale(user)), show_alert: true });
       }
     });
   }
@@ -116,27 +120,27 @@ export class EntryHandlers {
         return;
       }
       if (this.fallback && (await this.fallback(ctx, user, text))) return;
-      await ctx.reply(TEXT.notUnderstood, { parse_mode: 'HTML' });
+      await ctx.reply(BOT_TEXTS[userLocale(user)].common.notUnderstood, { parse_mode: 'HTML' });
     });
   }
 
   /** Sends a fresh draft card (also used by the voice flow). */
   async reply(ctx: Context, user: User, draft: TransactionDraft): Promise<void> {
     const view = await this.entries.view(user, draft);
-    await ctx.reply(draftCard(view), { parse_mode: 'HTML', reply_markup: draftKeyboard(draft) });
+    await ctx.reply(draftCard(view), { parse_mode: 'HTML', reply_markup: draftKeyboard(draft, view.locale) });
   }
 
   private async render(ctx: Context, user: User, draft: TransactionDraft): Promise<void> {
     const view = await this.entries.view(user, draft);
     await ctx.answerCallbackQuery();
-    await ctx.editMessageText(draftCard(view), { parse_mode: 'HTML', reply_markup: draftKeyboard(draft) });
+    await ctx.editMessageText(draftCard(view), { parse_mode: 'HTML', reply_markup: draftKeyboard(draft, view.locale) });
   }
 
   private async showCategories(ctx: Context, user: User, draft: TransactionDraft): Promise<void> {
     const options = await this.entries.categoryOptions(user, draft.type);
     await ctx.answerCallbackQuery();
     await ctx.editMessageReplyMarkup({
-      reply_markup: pickerKeyboard(options, (id) => `d:${draft.id}:c:${id}`, `d:${draft.id}:back`),
+      reply_markup: pickerKeyboard(options, (id) => `d:${draft.id}:c:${id}`, `d:${draft.id}:back`, userLocale(user)),
     });
   }
 
@@ -144,41 +148,45 @@ export class EntryHandlers {
     const options = await this.entries.accountOptions(user);
     await ctx.answerCallbackQuery();
     await ctx.editMessageReplyMarkup({
-      reply_markup: pickerKeyboard(options, (id) => `d:${draft.id}:a:${id}`, `d:${draft.id}:back`),
+      reply_markup: pickerKeyboard(options, (id) => `d:${draft.id}:a:${id}`, `d:${draft.id}:back`, userLocale(user)),
     });
   }
 
   private async save(ctx: Context, user: User, draftId: string): Promise<void> {
+    const locale = userLocale(user);
+    const t = BOT_TEXTS[locale];
     const outcome = await this.entries.save(user, draftId);
-    if (outcome.status === 'expired') return this.expired(ctx);
+    if (outcome.status === 'expired') return this.expired(ctx, user);
     if (outcome.status === 'needs-category') {
-      await ctx.answerCallbackQuery({ text: 'Avval kategoriyani tanlang' });
+      await ctx.answerCallbackQuery({ text: t.entry.pickCategory });
       await this.showCategories(ctx, user, outcome.draft);
       return;
     }
-    await ctx.answerCallbackQuery({ text: 'Saqlandi ✅' });
-    await ctx.editMessageText(this.receipt(outcome.result), {
+    await ctx.answerCallbackQuery({ text: t.entry.savedToast });
+    await ctx.editMessageText(this.receipt(outcome.result, locale), {
       parse_mode: 'HTML',
       reply_markup: {
-        inline_keyboard: [[{ text: '↩️ Bekor qilish', callback_data: `u:${outcome.result.transaction.id}` }]],
+        inline_keyboard: [[{ text: t.buttons.undo, callback_data: `u:${outcome.result.transaction.id}` }]],
       },
     });
   }
 
-  private receipt({ transaction, accountBalance, budgetAlert }: CreateTransactionResult): string {
+  private receipt({ transaction, accountBalance, budgetAlert }: CreateTransactionResult, locale: AppLocale): string {
+    const t = BOT_TEXTS[locale].entry;
     const sign = transaction.type === 'INCOME' ? '➕' : '➖';
     const category = transaction.category ? ` — ${transaction.category.icon} ${escapeHtml(transaction.category.name)}` : '';
+    const account = `${transaction.account.icon} ${escapeHtml(transaction.account.name)}`;
     const lines = [
-      `✅ Saqlandi: ${sign} <b>${money(transaction.amount)}</b>${category}`,
-      `${transaction.account.icon} ${escapeHtml(transaction.account.name)} balansi: <b>${signedMoney(BigInt(accountBalance))}</b>`,
+      t.saved(`${sign} <b>${money(transaction.amount, locale)}</b>${category}`),
+      t.accountBalance(account, signedMoney(BigInt(accountBalance), locale)),
     ];
     if (budgetAlert) {
-      lines.push(`⚠️ Byudjet ${budgetAlert.percent}% ishlatildi (${money(budgetAlert.spent)} / ${money(budgetAlert.limit)})`);
+      lines.push(t.budgetAlert(budgetAlert.percent, money(budgetAlert.spent, locale), money(budgetAlert.limit, locale)));
     }
     return lines.join('\n');
   }
 
-  private async expired(ctx: Context): Promise<void> {
-    await ctx.answerCallbackQuery({ text: TEXT.draftExpired, show_alert: true });
+  private async expired(ctx: Context, user: User): Promise<void> {
+    await ctx.answerCallbackQuery({ text: BOT_TEXTS[userLocale(user)].common.draftExpired, show_alert: true });
   }
 }

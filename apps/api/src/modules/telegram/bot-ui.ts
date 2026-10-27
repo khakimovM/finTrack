@@ -1,19 +1,8 @@
 import type { InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup } from 'grammy/types';
-import { UZ_MONTHS, diffInDays, formatMoney } from '@fintrack/shared';
+import { AppLocale, CURRENCY_WORD, MONTHS_IN_DATE, diffInDays, formatMoney } from '@fintrack/shared';
 import { escapeHtml } from '../auth/telegram-login.messages';
 import { TransactionDraft } from './drafts/draft.store';
-
-export const MENU = {
-  expense: '➖ Chiqim',
-  income: '➕ Kirim',
-  balance: '💰 Balans',
-  recent: '📋 Oxirgi amallar',
-  report: '📊 Hisobot',
-  budgets: '🎯 Byudjet',
-  debts: '🤝 Qarzlar',
-  settings: '⚙️ Sozlamalar',
-  app: '🌐 Ilova',
-} as const;
+import { BOT_TEXTS } from './i18n';
 
 /**
  * Mini App entry point, or undefined when it cannot be opened: Telegram only opens HTTPS pages.
@@ -26,23 +15,24 @@ export function miniAppUrl(webAppUrl?: string): string | undefined {
 
 /**
  * A web_app button on this reply keyboard would open the Mini App without initData (Telegram
- * does not sign keyboard launches), so "Ilova" is a plain button answered with an inline one.
+ * does not sign keyboard launches), so the app button is a plain one answered with an inline one.
  * Not persistent: a persistent menu takes half a phone screen and Telegram gives no way to put it
  * away; without the flag the chat's input field gets a button that hides and brings it back.
  */
-export function mainMenu(webAppUrl?: string): ReplyKeyboardMarkup {
+export function mainMenu(locale: AppLocale, webAppUrl?: string): ReplyKeyboardMarkup {
+  const menu = BOT_TEXTS[locale].menu;
   const rows: ReplyKeyboardMarkup['keyboard'] = [
-    [{ text: MENU.expense }, { text: MENU.income }],
-    [{ text: MENU.balance }, { text: MENU.recent }],
-    [{ text: MENU.report }, { text: MENU.budgets }],
-    [{ text: MENU.debts }, { text: MENU.settings }],
+    [{ text: menu.expense }, { text: menu.income }],
+    [{ text: menu.balance }, { text: menu.recent }],
+    [{ text: menu.report }, { text: menu.budgets }],
+    [{ text: menu.debts }, { text: menu.settings }],
   ];
-  if (miniAppUrl(webAppUrl)) rows.push([{ text: MENU.app }]);
+  if (miniAppUrl(webAppUrl)) rows.push([{ text: menu.app }]);
   return { keyboard: rows, resize_keyboard: true };
 }
 
-export function openAppKeyboard(url: string): InlineKeyboardMarkup {
-  return { inline_keyboard: [[{ text: '🌐 FinTrack ilovasini ochish', web_app: { url } }]] };
+export function openAppKeyboard(locale: AppLocale, url: string): InlineKeyboardMarkup {
+  return { inline_keyboard: [[{ text: BOT_TEXTS[locale].common.openApp, web_app: { url } }]] };
 }
 
 /** The admin panel as a Mini App (HTTPS only, like the app); its page signs in with initData. */
@@ -56,6 +46,7 @@ export function openAdminKeyboard(url: string): InlineKeyboardMarkup {
   return { inline_keyboard: [[{ text: '🛡 Admin panelni ochish', web_app: { url } }]] };
 }
 
+/** The admin panel is Uzbek only, and so is what the bot tells its admins about it. */
 export const ADMIN_TEXT = {
   open: '🛡 <b>Admin panel</b>\n\nTugma faqat sizga ko‘rinadi. Har bir ochilish alohida kirish hisoblanadi va audit’ga yoziladi.',
   /** Local development: Telegram opens only HTTPS Mini Apps. */
@@ -71,38 +62,12 @@ export const ADMIN_COMMANDS = [
   { command: 'oylik', description: 'Oylik hisobot (sinov)' },
 ];
 
-/** The bot's profile: under its name (≤120) and on the empty chat and t.me page (≤512). */
-export const BOT_PROFILE = {
-  short: (host: string) => `FinTrack — xarajat, daromad va qarzlar hisobi. Sayt va ilova: ${host}`,
-  long: (site: string) =>
-    'Xarajat va daromadni shu yerga bir jumla bilan yozing: «50000 taksi», «+8 500 000 oylik». ' +
-    'FinTrack ularni kategoriyalarga ajratadi, byudjet va qarzlarni kuzatib boradi.\n\n' +
-    `Sayt va ilova: ${site}`,
-};
-
-export const TEXT = {
-  menuIntro:
-    'Xarajat yoki kirimni shunchaki yozing, masalan:\n' +
-    '• <code>50000 taksi</code>\n• <code>45k tushlik</code>\n• <code>+8 500 000 oylik</code>\n• <code>kecha 1,2 mln ijara</code>\n\n' +
-    'Yoki pastdagi menyudan foydalaning 👇\n' +
-    '<i>Menyuni yashirish yoki qayta ochish uchun yozish maydoni yonidagi tugmalar belgisini bosing.</i>',
-  notRegistered: 'Avval ro‘yxatdan o‘ting: /start bosing va raqamingizni ulashing.',
-  askEntry: (type: 'INCOME' | 'EXPENSE') =>
-    type === 'INCOME'
-      ? 'Kirim summasi va izohini yozing, masalan: <code>8 500 000 oylik</code>'
-      : 'Chiqim summasi va izohini yozing, masalan: <code>50000 taksi</code>',
-  notUnderstood:
-    'Tushunmadim 🤔 Summani raqam bilan yozing, masalan: <code>50000 taksi</code> yoki <code>+2 mln oylik</code>.',
-  draftExpired: 'Bu qoralama eskirgan. Qaytadan yozing.',
-  genericError: 'Xatolik yuz berdi. Birozdan so‘ng qayta urinib ko‘ring.',
-};
-
-export function money(tiyin: bigint | string): string {
-  return formatMoney(tiyin);
+export function money(tiyin: bigint | string, locale: AppLocale): string {
+  return formatMoney(tiyin, { currency: CURRENCY_WORD[locale] });
 }
 
-export function signedMoney(tiyin: bigint): string {
-  return tiyin < 0n ? `−${money(-tiyin)}` : money(tiyin);
+export function signedMoney(tiyin: bigint, locale: AppLocale): string {
+  return tiyin < 0n ? `−${money(-tiyin, locale)}` : money(tiyin, locale);
 }
 
 /** 10-cell text progress bar for budgets and category shares. */
@@ -111,60 +76,67 @@ export function bar(percent: number): string {
   return '▓'.repeat(filled) + '░'.repeat(10 - filled);
 }
 
-export function dayLabel(date: string, today: string): string {
+export function dayLabel(date: string, today: string, locale: AppLocale): string {
   const [y, m, d] = date.split('-');
   const human = `${d}.${m}.${y}`;
   const diff = diffInDays(date, today);
-  if (diff === 0) return `${human} (bugun)`;
-  if (diff === 1) return `${human} (kecha)`;
+  const { today: todayWord, yesterday } = BOT_TEXTS[locale].common;
+  if (diff === 0) return `${human} (${todayWord})`;
+  if (diff === 1) return `${human} (${yesterday})`;
   return human;
 }
 
-/** A report's dates as the app writes them: "1–22-oktabr", "28-sentabr – 4-oktabr". */
-export function periodLabel(from: string, to: string): string {
+/**
+ * A report's dates as the app writes them: "1–22-oktabr", "28-sentabr – 4-oktabr"; in Russian
+ * "1–22 октября", "28 сентября – 4 октября".
+ */
+export function periodLabel(from: string, to: string, locale: AppLocale): string {
+  const months = MONTHS_IN_DATE[locale];
   const [a, b] = [from, to].map((iso) => {
     const [y, m, d] = iso.split('-').map(Number);
-    return { y, m, d, day: `${d}-${UZ_MONTHS[m - 1]}` };
+    return { y, m, d, day: locale === 'ru' ? `${d} ${months[m - 1]}` : `${d}-${months[m - 1]}` };
   });
-  if (a.y !== b.y) return `${a.day}, ${a.y} – ${b.day}, ${b.y}`;
+  const withYear = (p: { y: number; day: string }) => (locale === 'ru' ? `${p.day} ${p.y}` : `${p.day}, ${p.y}`);
+  if (a.y !== b.y) return `${withYear(a)} – ${withYear(b)}`;
   if (a.m !== b.m) return `${a.day} – ${b.day}`;
   return a.d === b.d ? a.day : `${a.d}–${b.day}`;
 }
 
 export interface DraftView {
+  locale: AppLocale;
   draft: TransactionDraft;
   categoryLabel: string | null;
   accountLabel: string;
   today: string;
 }
 
-export function draftCard({ draft, categoryLabel, accountLabel, today }: DraftView): string {
-  const title = draft.type === 'INCOME' ? '➕ <b>Kirim</b>' : '➖ <b>Chiqim</b>';
+export function draftCard({ locale, draft, categoryLabel, accountLabel, today }: DraftView): string {
+  const t = BOT_TEXTS[locale].draft;
   return [
-    `${title} — <b>${money(draft.amount)}</b>`,
-    `📁 ${categoryLabel ? escapeHtml(categoryLabel) : '<i>kategoriya tanlanmagan</i>'}`,
+    `${draft.type === 'INCOME' ? t.income : t.expense} — <b>${money(draft.amount, locale)}</b>`,
+    `📁 ${categoryLabel ? escapeHtml(categoryLabel) : t.noCategory}`,
     `💳 ${escapeHtml(accountLabel)}`,
-    `📅 ${dayLabel(draft.date, today)}`,
+    `📅 ${dayLabel(draft.date, today, locale)}`,
     draft.note ? `📝 ${escapeHtml(draft.note)}` : null,
     '',
-    draft.source === 'voice' ? '🎙 Ovozdan tanildi — tekshirib, saqlang.' : 'To‘g‘rimi? Saqlash uchun tugmani bosing.',
+    draft.source === 'voice' ? t.fromVoice : t.check,
   ]
     .filter((line) => line !== null)
     .join('\n');
 }
 
-export function draftKeyboard(draft: TransactionDraft): InlineKeyboardMarkup {
-  const flipLabel = draft.type === 'INCOME' ? '🔁 Chiqimga' : '🔁 Kirimga';
+export function draftKeyboard(draft: TransactionDraft, locale: AppLocale): InlineKeyboardMarkup {
+  const b = BOT_TEXTS[locale].buttons;
   return {
     inline_keyboard: [
-      [{ text: '✅ Saqlash', callback_data: `d:${draft.id}:save` }],
+      [{ text: b.save, callback_data: `d:${draft.id}:save` }],
       [
-        { text: '📁 Kategoriya', callback_data: `d:${draft.id}:cats` },
-        { text: '💳 Hisob', callback_data: `d:${draft.id}:accs` },
+        { text: b.category, callback_data: `d:${draft.id}:cats` },
+        { text: b.account, callback_data: `d:${draft.id}:accs` },
       ],
       [
-        { text: flipLabel, callback_data: `d:${draft.id}:flip` },
-        { text: '❌ Bekor', callback_data: `d:${draft.id}:cancel` },
+        { text: draft.type === 'INCOME' ? b.toExpense : b.toIncome, callback_data: `d:${draft.id}:flip` },
+        { text: b.cancel, callback_data: `d:${draft.id}:cancel` },
       ],
     ],
   };
@@ -175,11 +147,12 @@ export function pickerKeyboard(
   options: Array<{ id: string; label: string }>,
   pick: (id: string) => string,
   back: string,
+  locale: AppLocale,
 ): InlineKeyboardMarkup {
   const rows: InlineKeyboardButton[][] = [];
   for (let i = 0; i < options.length; i += 2) {
     rows.push(options.slice(i, i + 2).map((o) => ({ text: o.label, callback_data: pick(o.id) })));
   }
-  rows.push([{ text: '⬅️ Orqaga', callback_data: back }]);
+  rows.push([{ text: BOT_TEXTS[locale].buttons.back, callback_data: back }]);
   return { inline_keyboard: rows };
 }

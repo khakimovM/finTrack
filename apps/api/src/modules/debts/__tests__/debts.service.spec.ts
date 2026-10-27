@@ -98,7 +98,8 @@ function setup() {
   const balanceService = { invalidate: jest.fn(), getTotalBalance: jest.fn().mockResolvedValue(0n) };
   const guard = { assertCanDebit: jest.fn(), assertDeltas: jest.fn() };
   const clock = clockStub();
-  const prisma = prismaStub();
+  // The owner's language, for the automatic notes the ledger rows get.
+  const prisma = Object.assign(prismaStub(), { user: { findUnique: jest.fn().mockResolvedValue({ locale: 'uz' }) } });
 
   const deps = [
     repository as unknown as DebtsRepository,
@@ -314,7 +315,22 @@ describe('DebtPaymentsService', () => {
 
     await t.payments.settle(USER, DEBT_ID, { accountId: ACCOUNT }, 'WEB');
 
-    expect(t.repository.createPayment.mock.calls[0][3]).toMatchObject({ amount: 750_000n });
+    expect(t.repository.createPayment.mock.calls[0][3]).toMatchObject({ amount: 750_000n, note: 'To‘liq yopildi' });
+  });
+
+  it("notes a settlement in the owner's language, unless the person wrote a note", async () => {
+    const t = setup();
+    t.repository.lock.mockResolvedValue(debt());
+    t.repository.paidAmount.mockResolvedValue(0n);
+    t.repository.createPayment.mockResolvedValue(paymentResult(1_000_000n));
+    t.repository.setStatus.mockResolvedValue(withPayments(debt({ status: 'PAID' }), [1_000_000n]));
+    t.prisma.user.findUnique.mockResolvedValue({ locale: 'ru' });
+
+    await t.payments.settle(USER, DEBT_ID, { accountId: ACCOUNT }, 'WEB');
+    await t.payments.settle(USER, DEBT_ID, { accountId: ACCOUNT, note: 'naqd' }, 'WEB');
+
+    expect(t.prisma.user.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: USER } }));
+    expect(t.repository.createPayment.mock.calls.map((call) => call[3].note)).toEqual(['Долг закрыт полностью', 'naqd']);
   });
 
   it('deleting a payment reverses its ledger row and recomputes the status', async () => {

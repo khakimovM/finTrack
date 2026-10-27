@@ -15,6 +15,12 @@ export interface NewNotification {
 export class NotificationsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** The owner's language, which a notification is written in. */
+  async localeOf(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { locale: true } });
+    return user?.locale ?? null;
+  }
+
   async findMany(
     userId: string,
     params: {

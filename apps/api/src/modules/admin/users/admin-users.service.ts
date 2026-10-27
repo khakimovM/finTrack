@@ -20,7 +20,7 @@ import {
 } from '../../../common/exceptions/domain.exception';
 import { toCsv } from '../../../common/utils/csv';
 import { SessionStateService } from '../../auth/session-state.service';
-import { LOGIN_TEXT } from '../../auth/telegram-login.messages';
+import { loginText } from '../../auth/telegram-login.messages';
 import { AdminAccessService } from '../core/admin-access.service';
 import { AdminPrincipal } from '../admin-session.service';
 import { AdminUserRecord, AdminUsersRepository } from './admin-users.repository';
@@ -124,7 +124,7 @@ export class AdminUsersService {
 
     await this.sessions.revokeSessions(families);
     await this.sessions.forgetUser(id);
-    await this.notify(record, LOGIN_TEXT.bannedNotice(reason));
+    await this.notify(record, loginText(record.locale).bannedNotice(reason));
     return this.detail(id);
   }
 
@@ -138,7 +138,7 @@ export class AdminUsersService {
     });
     if (!done) throw new ConflictDomainException('CONFLICT', 'Hisob bloklanmagan');
 
-    await this.notify(record, LOGIN_TEXT.unbanned);
+    await this.notify(record, loginText(record.locale).unbanned);
     return this.detail(id);
   }
 

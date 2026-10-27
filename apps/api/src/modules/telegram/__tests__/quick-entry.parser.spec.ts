@@ -49,3 +49,36 @@ describe('parseQuickEntry', () => {
     expect(parseQuickEntry(input)).toBeNull();
   });
 });
+
+describe('parseQuickEntry in Russian', () => {
+  it.each([
+    ['45к обед', 45_000n * SOM, 'обед', 0],
+    ['50000 такси', 50_000n * SOM, 'такси', 0],
+    ['20 тыс такси', 20_000n * SOM, 'такси', 0],
+    ['20 тыс. такси', 20_000n * SOM, 'такси', 0],
+    ['на обед 45 тысяч', 45_000n * SOM, 'на обед', 0],
+    ['3 тыщи кофе', 3_000n * SOM, 'кофе', 0],
+    ['вчера 1,2 млн аренда', 1_200_000n * SOM, 'аренда', 1],
+    ['2 миллиона машина', 2_000_000n * SOM, 'машина', 0],
+    ['позавчера 30000 обед', 30_000n * SOM, 'обед', 2],
+    ['сегодня 15000 сумов кофе', 15_000n * SOM, 'кофе', 0],
+  ] as const)('%s', (input, amount, note, daysAgo) => {
+    const parsed = parseQuickEntry(input);
+    expect(parsed?.amount).toBe(amount);
+    expect(parsed?.note).toBe(note);
+    expect(parsed?.daysAgo).toBe(daysAgo);
+  });
+
+  it('takes a lone "к" for the preposition, not for thousands', () => {
+    expect(parseQuickEntry('500 к чаю')?.amount).toBe(500n * SOM);
+    expect(parseQuickEntry('500 к чаю')?.note).toBe('к чаю');
+  });
+
+  it('tells income by Russian words and the plus sign', () => {
+    expect(parseQuickEntry('+8 500 000 зарплата')).toMatchObject({ type: 'INCOME', typeExplicit: true });
+    expect(parseQuickEntry('2 млн зарплату получил')).toMatchObject({ type: 'INCOME', amount: 2_000_000n * SOM });
+    expect(parseQuickEntry('500к премия')?.type).toBe('INCOME');
+    expect(parseQuickEntry('100000 потратил на подарок')).toMatchObject({ type: 'EXPENSE', typeExplicit: true });
+    expect(parseQuickEntry('100000 подарок')).toMatchObject({ type: 'EXPENSE', typeExplicit: false });
+  });
+});

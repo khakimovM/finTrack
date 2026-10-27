@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { localeFromAcceptLanguage } from '@fintrack/shared';
 import { AuthService, TokenMeta } from './auth.service';
 import { AuthCookiesService } from './auth-cookies.service';
 import { TelegramLoginService } from './telegram-login.service';
@@ -14,6 +15,7 @@ export function requestMeta(req: FastifyRequest): TokenMeta {
   return {
     userAgent: req.headers['user-agent'] as string | undefined,
     ipAddress: req.ip,
+    locale: localeFromAcceptLanguage(req.headers['accept-language']),
   };
 }
 

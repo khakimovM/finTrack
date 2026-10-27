@@ -1,4 +1,5 @@
 import { AccountType, CategoryType } from '@prisma/client';
+import { AppLocale, toAppLocale } from '@fintrack/shared';
 
 export interface DefaultCategory {
   name: string;
@@ -21,6 +22,20 @@ export const DEFAULT_CATEGORIES: readonly DefaultCategory[] = [
   { name: 'Qo‘shimcha daromad', type: CategoryType.INCOME, icon: '💵', color: '#14b8a6', sortOrder: 10 },
 ];
 
+/** The same categories, in the order above, for an account that starts in Russian. */
+const RU_CATEGORY_NAMES = [
+  'Продукты',
+  'Транспорт',
+  'Жильё',
+  'Коммунальные услуги',
+  'Одежда',
+  'Здоровье',
+  'Развлечения',
+  'Образование',
+  'Зарплата',
+  'Доп. доход',
+] as const;
+
 export const DEFAULT_ACCOUNT = {
   name: 'Naqd pul',
   type: AccountType.CASH,
@@ -29,3 +44,18 @@ export const DEFAULT_ACCOUNT = {
   color: '#10b981',
   sortOrder: 1,
 } as const;
+
+/**
+ * A new account's categories are named in its language once, at sign-up; after that they are the
+ * user's own names, which a language switch does not touch.
+ */
+export function defaultCategories(locale: string): readonly DefaultCategory[] {
+  if (toAppLocale(locale) === 'uz') return DEFAULT_CATEGORIES;
+  return DEFAULT_CATEGORIES.map((c, i) => ({ ...c, name: RU_CATEGORY_NAMES[i] }));
+}
+
+const ACCOUNT_NAME: Record<AppLocale, string> = { uz: DEFAULT_ACCOUNT.name, ru: 'Наличные' };
+
+export function defaultAccount(locale: string) {
+  return { ...DEFAULT_ACCOUNT, name: ACCOUNT_NAME[toAppLocale(locale)] };
+}

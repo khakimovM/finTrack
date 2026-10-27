@@ -1,24 +1,31 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Bot, BotError, GrammyError } from 'grammy';
+import { AppLocale } from '@fintrack/shared';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { AuthHandlers } from './handlers/auth.handlers';
 import { MenuHandlers } from './handlers/menu.handlers';
 import { DebtHandlers } from './handlers/debt.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
 import { VoiceHandlers } from './handlers/voice.handlers';
-import { ADMIN_COMMANDS, BOT_PROFILE, miniAppUrl } from './bot-ui';
+import { ADMIN_COMMANDS, miniAppUrl } from './bot-ui';
+import { BOT_TEXTS } from './i18n';
 import { ActivityService } from '../activity/activity.service';
 import { BotUserService } from './bot-user.service';
 import { AdminAccessService } from '../admin/core/admin-access.service';
 
 export const ALLOWED_UPDATES = ['message', 'callback_query'] as const;
 
-const COMMANDS = [
-  { command: 'start', description: 'Boshlash / kirish' },
-  { command: 'menu', description: 'Menyu' },
-  { command: 'balans', description: 'Balans' },
+function commands(locale: AppLocale) {
+  return Object.entries(BOT_TEXTS[locale].commands).map(([command, description]) => ({ command, description }));
+}
+
+/** Telegram picks the profile text by the user's app language; Uzbek is the default for the rest. */
+const PROFILE_LANGUAGES: Array<{ locale: AppLocale; languageCode?: 'ru' }> = [
+  { locale: 'uz' },
+  { locale: 'ru', languageCode: 'ru' },
 ];
+const forLanguage = (languageCode?: 'ru') => (languageCode ? { language_code: languageCode } : undefined);
 
 /**
  * Wires handlers into the bot and chooses the transport: webhook when TELEGRAM_WEBHOOK_URL is
@@ -83,19 +90,24 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     const webhookUrl = this.config.get<string>('TELEGRAM_WEBHOOK_URL');
     try {
       if (!webhookUrl && (await this.webhookOwnedElsewhere(bot))) return;
-      await bot.api.setMyCommands(COMMANDS);
+      for (const { locale, languageCode } of PROFILE_LANGUAGES) {
+        await bot.api.setMyCommands(commands(locale), forLanguage(languageCode));
+      }
       await this.showAdminCommand(bot);
       // The menu button next to the input field opens the Mini App with signed initData.
       const siteUrl = this.config.get<string>('WEB_APP_URL') ?? this.config.get<string>('CLIENT_URL');
       const appUrl = miniAppUrl(siteUrl);
       await bot.api.setChatMenuButton({
-        menu_button: appUrl ? { type: 'web_app', text: 'Ilova', web_app: { url: appUrl } } : { type: 'commands' },
+        menu_button: appUrl ? { type: 'web_app', text: BOT_TEXTS.uz.menuButton, web_app: { url: appUrl } } : { type: 'commands' },
       });
       // The bot's profile and its t.me page (which search engines index) name the website.
       if (appUrl && siteUrl) {
         const host = new URL(siteUrl).host;
-        await bot.api.setMyShortDescription(BOT_PROFILE.short(host));
-        await bot.api.setMyDescription(BOT_PROFILE.long(`https://${host}`));
+        for (const { locale, languageCode } of PROFILE_LANGUAGES) {
+          const profile = BOT_TEXTS[locale].profile;
+          await bot.api.setMyShortDescription(profile.short(host), forLanguage(languageCode));
+          await bot.api.setMyDescription(profile.long(`https://${host}`), forLanguage(languageCode));
+        }
       }
       if (webhookUrl) {
         await bot.api.setWebhook(webhookUrl, {
@@ -147,7 +159,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
   private async showAdminCommand(bot: Bot): Promise<void> {
     for (const id of this.adminAccess.telegramIds) {
       try {
-        await bot.api.setMyCommands([...COMMANDS, ...ADMIN_COMMANDS], { scope: { type: 'chat', chat_id: Number(id) } });
+        await bot.api.setMyCommands([...commands('uz'), ...ADMIN_COMMANDS], { scope: { type: 'chat', chat_id: Number(id) } });
       } catch (err: unknown) {
         this.logger.warn(`Admin command menu not set for an admin chat: ${this.describe(err)}`);
       }

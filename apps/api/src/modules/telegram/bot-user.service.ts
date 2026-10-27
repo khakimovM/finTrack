@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { Context } from 'grammy';
+import { AppLocale, errorText } from '@fintrack/shared';
 import { AuthRepository } from '../auth/auth.repository';
 import { TelegramLoginBotService } from '../auth/telegram-login-bot.service';
-import { LOGIN_TEXT } from '../auth/telegram-login.messages';
+import { loginText } from '../auth/telegram-login.messages';
 import { DomainException } from '../../common/exceptions/domain.exception';
-import { TEXT } from './bot-ui';
+import { BOT_TEXTS, botText } from './i18n';
 
 /**
  * Maps a Telegram sender to the FinTrack account. This is the bot's authentication: every
@@ -29,8 +30,9 @@ export class BotUserService {
 
     const payload = /^\/start\s+(\S+)/.exec(ctx.message?.text ?? '')?.[1];
     if (payload) await this.loginBot.cancelForBanned(payload);
-    if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: LOGIN_TEXT.banned, show_alert: true });
-    else await ctx.reply(LOGIN_TEXT.banned);
+    const banned = loginText(user.locale).banned;
+    if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: banned, show_alert: true });
+    else await ctx.reply(banned);
     return true;
   }
 
@@ -38,8 +40,10 @@ export class BotUserService {
     if (!ctx.from || ctx.from.is_bot || ctx.chat?.type !== 'private') return null;
     const user = await this.auth.findUserByTelegramId(BigInt(ctx.from.id));
     if (!user) {
-      if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: TEXT.notRegistered, show_alert: true });
-      else await ctx.reply(TEXT.notRegistered);
+      // No account yet, so no language either: Telegram's own is the best guess.
+      const text = botText(ctx.from.language_code).common.notRegistered;
+      if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text, show_alert: true });
+      else await ctx.reply(text);
       return null;
     }
     if (user.telegramBlockedAt) {
@@ -50,12 +54,17 @@ export class BotUserService {
   }
 }
 
-/** Domain errors already carry an Uzbek message suitable for the chat. */
-export function chatErrorMessage(err: unknown): string {
-  if (err instanceof DomainException) return err.message;
+/**
+ * What to tell the chat about a failed action. Domain errors carry an Uzbek message, often more
+ * specific than the code's general text, so Uzbek keeps it; Russian takes the code's text.
+ */
+export function chatErrorMessage(err: unknown, locale: AppLocale): string {
+  const fallback = BOT_TEXTS[locale].common.genericError;
+  if (err instanceof DomainException) return locale === 'uz' ? err.message : (errorText(locale, err.code) ?? fallback);
   const response = (err as { getResponse?: () => unknown }).getResponse?.();
   if (response && typeof response === 'object' && typeof (response as { message?: unknown }).message === 'string') {
-    return (response as { message: string }).message;
+    const { message, code } = response as { message: string; code?: string };
+    return locale === 'uz' ? message : (errorText(locale, code) ?? fallback);
   }
-  return TEXT.genericError;
+  return fallback;
 }

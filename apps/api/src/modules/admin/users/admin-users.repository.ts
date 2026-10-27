@@ -22,6 +22,8 @@ export interface AdminUserRecord {
   banReason: string | null;
   deletedAt: Date | null;
   telegramBlockedAt: Date | null;
+  /** What the ban and unban notices are written in. */
+  locale: string;
   entries: number;
   accounts: number;
   channels: ActivityChannel[];
@@ -96,7 +98,7 @@ export class AdminUsersRepository {
       SELECT u."id", u."name", u."telegram_username" AS "telegramUsername", u."telegram_id" AS "telegramId",
              u."phone", u."created_at" AS "createdAt", u."last_seen_at" AS "lastSeenAt",
              u."banned_at" AS "bannedAt", u."ban_reason" AS "banReason", u."deleted_at" AS "deletedAt",
-             u."telegram_blocked_at" AS "telegramBlockedAt",
+             u."telegram_blocked_at" AS "telegramBlockedAt", u."locale",
              (SELECT COUNT(*)::int FROM "transactions" t
                WHERE t."user_id" = u."id" AND ${ENTRY}) AS "entries",
              (SELECT COUNT(*)::int FROM "accounts" a WHERE a."user_id" = u."id" AND a."deleted_at" IS NULL) AS "accounts",

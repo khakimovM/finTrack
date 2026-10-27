@@ -1,6 +1,8 @@
 import { MonthlyReportData, monthlyReportScript, monthlyReportText, spokenSom } from '../outbox/monthly-report-texts';
+import { spokenSum } from '../outbox/monthly-report-texts.ru';
 
 const october = (over: Partial<MonthlyReportData> = {}): MonthlyReportData => ({
+  locale: 'uz',
   from: new Date('2026-10-01T00:00:00.000Z'),
   to: new Date('2026-10-31T00:00:00.000Z'),
   name: 'Aziz Khakimov',
@@ -123,5 +125,89 @@ describe('spokenSom', () => {
     expect(spokenSom(9_999_99n)).toBe('to‘qqiz ming to‘qqiz yuz to‘qson to‘qqiz so‘m');
     expect(spokenSom(12_499_00n)).toBe('o‘n ikki ming so‘m');
     expect(spokenSom(-12_500_00n)).toBe('o‘n uch ming so‘m');
+  });
+});
+
+describe('the monthly report in Russian', () => {
+  const ru = (over: Partial<MonthlyReportData> = {}) => october({ locale: 'ru', ...over });
+
+  it('writes the text in Russian, with the currency and plurals of Russian', () => {
+    const text = monthlyReportText(ru());
+    expect(text.split('\n').slice(0, 7)).toEqual([
+      '📅 <b>Отчёт за октябрь</b>',
+      '1–31 октября · 42 записи',
+      '',
+      '⬆️ Доход: <b>1 250 000 сум</b>',
+      '⬇️ Расход: <b>843 500 сум</b>',
+      '💵 Чистый итог: <b>406 500 сум</b>',
+      '📉 Расходы на 11% меньше, чем в сентябре',
+    ]);
+    expect(text).toContain('🍞 Oziq-ovqat — 400 000 сум (47%)\n▓▓▓▓▓░░░░░');
+    expect(text).toContain('🎯 Бюджеты: в пределах лимита 2 из 3\n🔴 🚕 Transport — 112%');
+    expect(text).toContain('🤝 Вам должны вернуть: <b>500 000 сум</b>');
+    expect(text).toContain('💰 Общий баланс: <b>3 200 000 сум</b>');
+    expect(text.endsWith('✨ В ноябре тоже записывайте каждый расход!')).toBe(true);
+    expect(text).not.toMatch(/so‘m|Kirim|Chiqim/);
+  });
+
+  it('turns over the year in Russian too', () => {
+    const text = monthlyReportText(
+      ru({ from: new Date('2026-12-01T00:00:00.000Z'), to: new Date('2026-12-31T00:00:00.000Z'), previous: { expense: 1n, changePercent: 25 } }),
+    );
+    expect(text).toContain('📅 <b>Отчёт за декабрь</b>');
+    expect(text).toContain('📈 Расходы на 25% больше, чем в ноябре');
+    expect(text).toContain('✨ В январе тоже');
+  });
+
+  it('says the script in Russian words, the entries counted in the feminine', () => {
+    expect(monthlyReportScript(ru())).toBe(
+      [
+        'Привет, Aziz! Отчёт за октябрь готов.',
+        'В этом месяце у вас сорок две записи.',
+        'Доход: один миллион двести пятьдесят тысяч сумов. Расход: восемьсот сорок четыре тысячи сумов.',
+        'За месяц осталось четыреста шесть тысяч сумов.',
+        'Расходы на одиннадцать процентов меньше, чем в сентябре.',
+        'Больше всего ушло на категорию «Oziq-ovqat»: четыреста тысяч сумов.',
+        'Дальше: Transport — двести тысяч сумов, Uy & ro‘zg‘or — сто тысяч сумов.',
+        'Превышено бюджетов: один — Transport.',
+        'Ваш общий баланс: три миллиона двести тысяч сумов.',
+        'В ноябре тоже записывайте каждый расход. Удачи!',
+      ].join(' '),
+    );
+  });
+
+  it('keeps a quiet Russian month short and says a negative balance out loud', () => {
+    expect(monthlyReportScript(ru({ ...empty, locale: 'ru' }))).toBe(
+      'Привет, Aziz! Отчёт за октябрь готов. В этом месяце записей пока нет. ' +
+        'Ваш общий баланс отрицательный: минус пятнадцать тысяч сумов. В ноябре тоже записывайте каждый расход. Удачи!',
+    );
+  });
+
+  it('says an overspent month, a month like the last one, and greets a nameless friend', () => {
+    const script = monthlyReportScript(
+      ru({
+        name: ' ',
+        entries: 21,
+        income: 10_000_000n,
+        expense: 30_000_000n,
+        previous: { expense: 30_000_000n, changePercent: 0.3 },
+        budgets: { total: 2, exceeded: [] },
+      }),
+    );
+    expect(script).toContain('Привет, друг!');
+    expect(script).toContain('В этом месяце у вас двадцать одна запись.');
+    expect(script).toContain('Расходы превысили доходы на двести тысяч сумов.');
+    expect(script).toContain('Расходы такие же, как в сентябре.');
+    expect(script).toContain('Все бюджеты остались в пределах лимита.');
+  });
+});
+
+describe('spokenSum', () => {
+  it('rounds like the Uzbek one and puts the currency in the right case', () => {
+    expect(spokenSum(1_00n)).toBe('один сум');
+    expect(spokenSum(2_00n)).toBe('два сума');
+    expect(spokenSum(950_00n)).toBe('девятьсот пятьдесят сумов');
+    expect(spokenSum(12_499_00n)).toBe('двенадцать тысяч сумов');
+    expect(spokenSum(-21_000_00n)).toBe('двадцать одна тысяча сумов');
   });
 });

@@ -109,7 +109,19 @@ apps/web/src/
 - **Admin panel** har doim o'zbekcha.
 - **Landing ikki manzilda.** `/` o'zbekcha, `/ru` ruscha; ikkalasi alohida prerender qilinadi (`hreflang`, o'z tilidagi meta). Tafsiloti `docs/05` "SEO va birinchi yuklanish" da.
 - **Matn ichidagi element.** Gapning bir qismi qalin yoki havola bo'lsa, lug'atda `{bot}` kabi joy qoldiriladi va `withNodes()` (`lib/i18n/rich.tsx`) uni elementga almashtiradi.
-- **Hali o'zbekcha qolganlar.** Bot B4 bosqichida tarjima qilinadi.
+- **Bot.** Lug'at `modules/telegram/i18n/{uz,ru}.ts` da (`BotTexts = typeof uz`, ruschasi shu tipga yoziladi). Har bir javob foydalanuvchining tilida: `BOT_TEXTS[userLocale(user)]`.
+  - Menyu tugmalari ikkala tilda ham eshitiladi (`hears(menuLabels(key))`), shuning uchun til almashgandan keyin eski klaviaturadagi tugma ham ishlaydi. Callback data tilga bog'liq emas.
+  - Til ⚙️ Sozlamalarda tanlanadi (`lang:uz|ru`). Profil yangilanadi, shu chatda menyu klaviaturasi va Mini App tugmasining nomi (`setChatMenuButton`) almashadi.
+  - Buyruqlar va bot tavsifi tilga qarab o'rnatiladi: `setMyCommands`, `setMyDescription`, `setMyShortDescription`, `language_code: 'ru'` bilan.
+  - Tez yozish ruscha yozuvlarni ham tushunadi: `45к`, `20 тыс`, `1,2 млн`, `вчера`, `сум`. Kategoriya taxmini ikkala tildagi standart nomlarni biladi.
+  - Kirish xabarlari `auth/telegram-login.messages.ts` da (`LOGIN_TEXTS`). Admin panelga kirish kodi har doim o'zbekcha.
+  - Oylik hisobotning ruscha matni va ovoz skripti `monthly-report-texts.ru.ts` da. Sonlar so'z bilan (`numberToWordsRu`), ovoz `ru-RU`.
+- **Saqlanadigan matnlar** yaratilish paytida egasining tilida yoziladi va keyin o'zgarmaydi:
+  - bildirishnoma `title`/`body`: `NotificationsService.createSafe(userId, { text: (t) => … })`, matnlar `notifications/notification-texts.ts` da;
+  - avto izohlar ("Qarz: X", "Takroriy to‘lov", "To‘liq yopildi"): `common/i18n/auto-notes.ts`;
+  - yangi hisobning standart kategoriyalari va hisobi: `auth/user-defaults.ts`.
+- **Statistikadagi "Boshqa"** (`categoryId: null`) saqlanmaydi, uni ko'rsatadigan tomon tarjima qiladi: web'da `lib/categoryName.ts`, botda `categoryName()`.
+- **Eksport** (CSV/XLSX) ustunlari so'rovning `Accept-Language` tilida.
 - **Tekshiruv.** Har sahifa va forma uchun ruscha smoke test bor: `test/russian.ts` dagi `latinLeftovers()` rus ekranida lotin harfli so'z qoldirmaydi, testdagi ma'lumotdan tashqari.
 
 ## Ma'lumot oqimi

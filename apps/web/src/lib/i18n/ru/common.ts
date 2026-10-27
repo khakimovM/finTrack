@@ -28,6 +28,7 @@ export const common: Dict['common'] = {
   debt: 'Долг',
   now: 'Сейчас',
   before: 'Раньше',
+  otherCategory: 'Другое',
   strictMode: 'Строгий режим',
   normalMode: 'Обычный режим',
 };

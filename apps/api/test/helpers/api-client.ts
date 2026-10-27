@@ -16,6 +16,8 @@ export class ApiClient {
   readonly ip = `10.${Math.floor(++ipCounter / 250)}.${ipCounter % 250}.${Math.floor(Math.random() * 250)}`;
   userId = '';
   telegramUser: FakeTgUser | null = null;
+  /** The page's language, sent as a browser would; none by default. */
+  acceptLanguage: string | null = null;
 
   constructor(private readonly ctx: TestApp) {}
 
@@ -55,6 +57,7 @@ export class ApiClient {
       .set('X-Requested-With', 'XMLHttpRequest');
     const cookieHeader = this.cookieHeader(`/api/v1${path}`);
     if (cookieHeader) req = req.set('Cookie', cookieHeader);
+    if (this.acceptLanguage) req = req.set('Accept-Language', this.acceptLanguage);
     const res = body === undefined ? await req : await req.send(body);
     this.storeCookies(res);
     return res;
@@ -79,10 +82,15 @@ export class ApiClient {
  * Signs a brand-new user up exactly like a real person would: web asks for a login link, the
  * user opens it in Telegram, shares their contact, and types the code the bot sent.
  */
-export async function newUser(ctx: TestApp, firstName = 'E2E'): Promise<ApiClient> {
-  const tgUser = ctx.telegram.newUser(firstName);
+export async function newUser(
+  ctx: TestApp,
+  firstName = 'E2E',
+  languages: { page?: string; telegram?: string } = {},
+): Promise<ApiClient> {
+  const tgUser = ctx.telegram.newUser(firstName, languages.telegram);
   const client = new ApiClient(ctx);
   client.telegramUser = tgUser;
+  client.acceptLanguage = languages.page ?? null;
 
   const start = await client.post('/auth/telegram/start');
   if (start.status !== 201) throw new Error(`start failed: ${start.status} ${JSON.stringify(start.body)}`);

@@ -11,7 +11,7 @@ import {
 import { TelegramLoginService } from '../auth/telegram-login.service';
 import { AuthRepository } from '../auth/auth.repository';
 import { TokenMeta } from '../auth/auth.service';
-import { LOGIN_TEXT, describeDevice, noticeTime } from '../auth/telegram-login.messages';
+import { ADMIN_LOGIN_TEXT, describeDevice, noticeTime } from '../auth/telegram-login.messages';
 import { validateInitData } from '../auth/telegram-init-data';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
@@ -159,7 +159,7 @@ export class AdminAuthService {
     if (user.telegramId === null) return;
     try {
       const time = noticeTime(this.clock.now(), user.timezone);
-      await this.telegram.send(user.telegramId, LOGIN_TEXT.adminLogin(describeDevice(meta.userAgent), meta.ipAddress ?? null, time), {
+      await this.telegram.send(user.telegramId, ADMIN_LOGIN_TEXT.login(describeDevice(meta.userAgent), meta.ipAddress ?? null, time), {
         html: true,
       });
     } catch (err) {

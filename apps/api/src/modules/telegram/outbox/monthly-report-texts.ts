@@ -1,28 +1,13 @@
 import { UZ_MONTHS, formatIsoDate, numberToWordsUz } from '@fintrack/shared';
 import { escapeHtml } from '../../auth/telegram-login.messages';
 import { bar, money, periodLabel, signedMoney } from '../bot-ui';
+import { MonthlyReportData, capitalize, firstWord, roundedSom } from './monthly-report-data';
+import { monthlyReportScriptRu, monthlyReportTextRu } from './monthly-report-texts.ru';
 
-export interface MonthlyReportData {
-  /** First and last day of the month. */
-  from: Date;
-  to: Date;
-  name: string;
-  income: bigint;
-  expense: bigint;
-  /** Income and expense records; transfers and debts are not counted. */
-  entries: number;
-  /** The previous month's spending; null when nothing was spent then, as there is no comparison. */
-  previous: { expense: bigint; changePercent: number } | null;
-  top: Array<{ icon: string; name: string; amount: bigint; percent: number }>;
-  budgets: { total: number; exceeded: Array<{ icon: string; name: string; percent: number }> };
-  debts: { owedToMe: bigint; iOwe: bigint };
-  totalBalance: bigint;
-}
+export type { MonthlyReportData } from './monthly-report-data';
 
-const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 const monthName = (date: Date) => UZ_MONTHS[date.getUTCMonth()];
 const nextMonthName = (date: Date) => UZ_MONTHS[(date.getUTCMonth() + 1) % 12];
-const firstWord = (name: string) => name.trim().split(/\s+/)[0] || 'do‘st';
 
 function comparison(previous: MonthlyReportData['previous'], before: string): string | null {
   if (!previous) return null;
@@ -31,15 +16,24 @@ function comparison(previous: MonthlyReportData['previous'], before: string): st
   return `Chiqim ${before}dagidan ${Math.abs(change)}% ${change > 0 ? 'ko‘p' : 'kam'}`;
 }
 
+/** The month in the account's language; the Russian one is in monthly-report-texts.ru.ts. */
 export function monthlyReportText(d: MonthlyReportData): string {
+  return d.locale === 'ru' ? monthlyReportTextRu(d) : textUz(d);
+}
+
+export function monthlyReportScript(d: MonthlyReportData): string {
+  return d.locale === 'ru' ? monthlyReportScriptRu(d) : scriptUz(d);
+}
+
+function textUz(d: MonthlyReportData): string {
   const before = UZ_MONTHS[(d.from.getUTCMonth() + 11) % 12];
   const lines = [
     `📅 <b>${capitalize(monthName(d.from))} oyi hisoboti</b>`,
-    `${periodLabel(formatIsoDate(d.from), formatIsoDate(d.to))} · ${d.entries} ta yozuv`,
+    `${periodLabel(formatIsoDate(d.from), formatIsoDate(d.to), 'uz')} · ${d.entries} ta yozuv`,
     '',
-    `⬆️ Kirim: <b>${money(d.income)}</b>`,
-    `⬇️ Chiqim: <b>${money(d.expense)}</b>`,
-    `💵 Sof: <b>${signedMoney(d.income - d.expense)}</b>`,
+    `⬆️ Kirim: <b>${money(d.income, 'uz')}</b>`,
+    `⬇️ Chiqim: <b>${money(d.expense, 'uz')}</b>`,
+    `💵 Sof: <b>${signedMoney(d.income - d.expense, 'uz')}</b>`,
   ];
   const compared = comparison(d.previous, before);
   if (compared) lines.push(`${d.previous && d.previous.changePercent > 0 ? '📈' : '📉'} ${compared}`);
@@ -47,7 +41,7 @@ export function monthlyReportText(d: MonthlyReportData): string {
   if (d.top.length > 0) {
     lines.push('', '<b>Eng ko‘p xarajat:</b>');
     for (const item of d.top) {
-      lines.push(`${item.icon} ${escapeHtml(item.name)} — ${money(item.amount)} (${item.percent}%)\n${bar(item.percent)}`);
+      lines.push(`${item.icon} ${escapeHtml(item.name)} — ${money(item.amount, 'uz')} (${item.percent}%)\n${bar(item.percent)}`);
     }
   }
 
@@ -58,9 +52,9 @@ export function monthlyReportText(d: MonthlyReportData): string {
   }
 
   lines.push('');
-  if (d.debts.owedToMe > 0n) lines.push(`🤝 Sizga qaytarilishi kerak: <b>${money(d.debts.owedToMe)}</b>`);
-  if (d.debts.iOwe > 0n) lines.push(`🤝 Siz qaytarishingiz kerak: <b>${money(d.debts.iOwe)}</b>`);
-  lines.push(`💰 Umumiy balans: <b>${signedMoney(d.totalBalance)}</b>`);
+  if (d.debts.owedToMe > 0n) lines.push(`🤝 Sizga qaytarilishi kerak: <b>${money(d.debts.owedToMe, 'uz')}</b>`);
+  if (d.debts.iOwe > 0n) lines.push(`🤝 Siz qaytarishingiz kerak: <b>${money(d.debts.iOwe, 'uz')}</b>`);
+  lines.push(`💰 Umumiy balans: <b>${signedMoney(d.totalBalance, 'uz')}</b>`);
   lines.push('', `✨ ${capitalize(nextMonthName(d.from))}da ham har bir xarajatni yozib boring!`);
   return lines.join('\n');
 }
@@ -69,12 +63,6 @@ export function monthlyReportText(d: MonthlyReportData): string {
 function countWords(n: number): string {
   const words = numberToWordsUz(n);
   return words.endsWith('bir') ? `${words.slice(0, -3)}bitta` : `${words}ta`;
-}
-
-/** Whole so‘m, to the thousand from ten thousand up: nobody listens to "… besh yuz o‘n ikki so‘m". */
-function roundedSom(tiyin: bigint): number {
-  const som = Number((tiyin < 0n ? -tiyin : tiyin) / 100n);
-  return som >= 10_000 ? Math.round(som / 1000) * 1000 : som;
 }
 
 const somWords = (som: number) => `${numberToWordsUz(Math.abs(som))} so‘m`;
@@ -87,12 +75,12 @@ export function spokenSom(tiyin: bigint): string {
  * The same report for the voice message: plain sentences, numbers in words, no emoji or markup,
  * and only what is worth hearing (the top three categories, not five).
  */
-export function monthlyReportScript(d: MonthlyReportData): string {
+function scriptUz(d: MonthlyReportData): string {
   const month = monthName(d.from);
   // From the rounded figures, so that what is heard adds up: income less spending is the rest.
   const net = roundedSom(d.income) - roundedSom(d.expense);
   const sentences = [
-    `Salom, ${firstWord(d.name)}! ${capitalize(month)} oyi hisobotingiz tayyor.`,
+    `Salom, ${firstWord(d.name, 'uz')}! ${capitalize(month)} oyi hisobotingiz tayyor.`,
     d.entries > 0 ? `Bu oy ${countWords(d.entries)} yozuv qildingiz.` : 'Bu oy hali yozuv qilmadingiz.',
   ];
   // "Kirim: nol so‘m" is not worth hearing.

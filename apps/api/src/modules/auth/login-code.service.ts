@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { TelegramLoginRequest } from '@prisma/client';
 import { createHash, createHmac, randomInt, timingSafeEqual } from 'crypto';
 import { TelegramLoginRepository } from './telegram-login.repository';
-import { LOGIN_TEXT, describeDevice } from './telegram-login.messages';
+import { ADMIN_LOGIN_TEXT, loginText, describeDevice } from './telegram-login.messages';
+import { toAppLocale } from '@fintrack/shared';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { RedisService } from '../../infra/redis/redis.service';
 
@@ -42,20 +43,28 @@ export class LoginCodeService {
   }
 
   /**
-   * Issues a fresh code for `request` to Telegram user `telegramId` (whose account is `userId`).
-   * Any previous code of the request stops working.
+   * Issues a fresh code for `request` to Telegram user `telegramId` (whose account is `user`), in
+   * the account's language. Any previous code of the request stops working.
    */
-  async issue(request: TelegramLoginRequest, telegramId: bigint, userId: string): Promise<SendCodeResult> {
+  async issue(
+    request: TelegramLoginRequest,
+    telegramId: bigint,
+    user: { id: string; locale: string },
+  ): Promise<SendCodeResult> {
+    // The admin panel is Uzbek, so is everything about signing in to it.
+    const admin = request.purpose === 'ADMIN';
+    const locale = admin ? 'uz' : toAppLocale(user.locale);
+    const texts = loginText(locale);
     const sentRecently = await this.redis.incrWithTtl(`tg:codes:${telegramId}`, CODE_WINDOW_SECONDS);
     if (sentRecently !== null && sentRecently > MAX_CODES_PER_WINDOW) {
-      await this.telegram.send(telegramId, LOGIN_TEXT.tooManyCodes, { html: true });
+      await this.telegram.send(telegramId, texts.tooManyCodes, { html: true });
       return 'RATE_LIMITED';
     }
 
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     await this.repository.update(request.id, {
       status: 'CODE_SENT',
-      userId,
+      userId: user.id,
       telegramId,
       codeHash: this.hash(request.id, code),
       codeExpiresAt: new Date(Date.now() + CODE_TTL_MS),
@@ -63,14 +72,14 @@ export class LoginCodeService {
       codesSent: request.codesSent + 1,
     });
 
-    const text = request.purpose === 'ADMIN' ? LOGIN_TEXT.adminCode : LOGIN_TEXT.code;
+    const text = admin ? ADMIN_LOGIN_TEXT.code : texts.code;
     const result = await this.telegram.send(
       telegramId,
-      text(code, describeDevice(request.userAgent), request.ipAddress),
+      text(code, describeDevice(request.userAgent, locale), request.ipAddress),
       {
         html: true,
         replyMarkup: {
-          inline_keyboard: [[{ text: LOGIN_TEXT.cancelButton, callback_data: `login_cancel:${request.id}` }]],
+          inline_keyboard: [[{ text: texts.cancelButton, callback_data: `login_cancel:${request.id}` }]],
         },
       },
     );

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import * as crypto from 'crypto';
-import { UserResponse, SessionResponse } from '@fintrack/shared';
+import { AppLocale, UserResponse, SessionResponse } from '@fintrack/shared';
 import { AuthRepository } from './auth.repository';
 import { SessionStateService } from './session-state.service';
 import { durationToMs } from '../../common/utils/duration';
@@ -15,6 +15,8 @@ const REFRESH_GRACE_MS = 30_000;
 export interface TokenMeta {
   userAgent?: string;
   ipAddress?: string;
+  /** The language the page asked in (Accept-Language). */
+  locale?: AppLocale;
 }
 
 export interface MiniAppAccess {

@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { addDays, formatIsoDate, parseIsoDate } from '@fintrack/shared';
 import { DraftStore, TransactionDraft } from './drafts/draft.store';
 import { DraftView } from './bot-ui';
+import { BOT_TEXTS, userLocale } from './i18n';
 import { parseQuickEntry } from './parsing/quick-entry.parser';
 import { guessCategory, normalizeText } from './parsing/category-guesser';
 import { CategoriesRepository } from '../categories/categories.repository';
@@ -88,10 +89,12 @@ export class EntryService {
       draft.accountId ? this.accounts.findById(user.id, draft.accountId) : Promise.resolve(null),
     ]);
     const category = categories.find((c) => c.id === draft.categoryId);
+    const locale = userLocale(user);
     return {
+      locale,
       draft,
       categoryLabel: category ? `${category.icon} ${category.name}` : null,
-      accountLabel: account ? `${account.icon} ${account.name}` : 'hisob tanlanmagan',
+      accountLabel: account ? `${account.icon} ${account.name}` : BOT_TEXTS[locale].common.noAccount,
       today: this.clock.todayIn(user.timezone),
     };
   }

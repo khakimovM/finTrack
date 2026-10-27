@@ -1,12 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RecurringRule } from '@prisma/client';
-import { addDays, formatIsoDate, formatMoney, parseIsoDate } from '@fintrack/shared';
+import { addDays, formatIsoDate, parseIsoDate } from '@fintrack/shared';
 import { RecurringRepository, OccurrenceWithRelations } from './recurring.repository';
 import { nextOccurrence } from '@fintrack/shared';
 import { BalanceService } from '../accounts/balance.service';
 import { BalanceGuardService } from '../accounts/balance-guard.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationTexts } from '../notifications/notification-texts';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { Db } from '../../infra/prisma/prisma.types';
 import { ClockService } from '../../infra/clock/clock.service';
@@ -122,7 +123,7 @@ export class RecurringRunnerService {
   /** Cache, budgets and notifications run only after the ledger rows are committed. */
   async afterCommit(result: MaterializeResult): Promise<void> {
     const { rule, created, skippedDates, deactivatedReason } = result;
-    const label = rule.note ?? 'Takroriy to‘lov';
+    const label = (t: NotificationTexts) => rule.note ?? t.recurringLabel;
 
     if (created.length > 0) {
       await this.balanceService.invalidate(rule.userId, [rule.accountId]);
@@ -137,11 +138,7 @@ export class RecurringRunnerService {
       const last = formatIsoDate(created[created.length - 1].date);
       await this.notifications.createSafe(rule.userId, {
         type: 'RECURRING_CREATED',
-        title: 'Takroriy to‘lov yozildi',
-        body:
-          created.length === 1
-            ? `"${label}": ${formatMoney(rule.amount)} (${last}) yozildi.`
-            : `"${label}": ${created.length} ta to‘lov yozildi, oxirgisi ${last}.`,
+        text: (t) => t.recurringCreated(label(t), rule.amount, created.length, last),
         meta: { recurringRuleId: rule.id, count: created.length, lastDate: last },
         dedupeKey: `recurring-created:${rule.id}:${last}`,
       });
@@ -150,8 +147,7 @@ export class RecurringRunnerService {
     for (const date of skippedDates) {
       await this.notifications.createSafe(rule.userId, {
         type: 'RECURRING_SKIPPED',
-        title: 'Takroriy to‘lov bajarilmadi',
-        body: `"${label}" (${formatMoney(rule.amount)}, ${date}) hisobda mablag‘ yetarli bo‘lmagani uchun yozilmadi.`,
+        text: (t) => t.recurringSkipped(label(t), rule.amount, date),
         meta: { recurringRuleId: rule.id, date, reason: 'INSUFFICIENT_BALANCE' },
         dedupeKey: `recurring-skipped:${rule.id}:${date}`,
       });
@@ -160,8 +156,7 @@ export class RecurringRunnerService {
     if (deactivatedReason) {
       await this.notifications.createSafe(rule.userId, {
         type: 'RECURRING_SKIPPED',
-        title: 'Takroriy to‘lov to‘xtatildi',
-        body: `"${label}" hisobi arxivlangani yoki o‘chirilgani uchun to‘xtatildi.`,
+        text: (t) => t.recurringStopped(label(t)),
         meta: { recurringRuleId: rule.id, reason: deactivatedReason },
         dedupeKey: `recurring-deactivated:${rule.id}:${formatIsoDate(rule.nextRunAt)}`,
       });

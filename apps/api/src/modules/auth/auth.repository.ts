@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, RefreshToken, User } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
-import { DEFAULT_ACCOUNT, DEFAULT_CATEGORIES } from './user-defaults';
+import { defaultAccount, defaultCategories } from './user-defaults';
 
 export interface NewTelegramUser {
   name: string;
@@ -33,10 +33,10 @@ export class AuthRepository {
       const user = await tx.user.create({ data });
 
       await tx.category.createMany({
-        data: DEFAULT_CATEGORIES.map((c) => ({ ...c, userId: user.id, isSystem: true })),
+        data: defaultCategories(data.locale).map((c) => ({ ...c, userId: user.id, isSystem: true })),
       });
       await tx.account.create({
-        data: { ...DEFAULT_ACCOUNT, userId: user.id, isDefault: true, openingBalance: 0n },
+        data: { ...defaultAccount(data.locale), userId: user.id, isDefault: true, openingBalance: 0n },
       });
       return user;
     });

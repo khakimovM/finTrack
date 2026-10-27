@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, RecurringRule, RecurrenceFrequency, Transaction, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { Db } from '../../infra/prisma/prisma.types';
+import { autoNotes } from '../../common/i18n/auto-notes';
 
 const relationsInclude = {
   account: { select: { id: true, name: true, icon: true } },
@@ -138,7 +139,7 @@ export class RecurringRepository {
         type: rule.type,
         amount: rule.amount,
         date,
-        note: rule.note ?? 'Takroriy to‘lov',
+        note: rule.note ?? (await autoNotes(db, rule.userId)).recurring,
         recurringRuleId: rule.id,
         source: 'RECURRING',
       },

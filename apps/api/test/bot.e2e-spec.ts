@@ -1,8 +1,10 @@
 import { createTestApp, TestApp } from './helpers/app';
 import { ApiClient, categoryId, firstAccountId, newUser, today } from './helpers/api-client';
-import { callbackUpdate, FakeTgUser, textUpdate } from './helpers/fake-telegram';
+import { callbackUpdate, contactUpdate, FakeTgUser, textUpdate } from './helpers/fake-telegram';
 import { DailyDigestService } from '../src/modules/telegram/outbox/daily-digest.service';
 import { UsersRepository } from '../src/modules/users/users.repository';
+import { BOT_TEXTS } from '../src/modules/telegram/i18n';
+import { LOGIN_TEXTS } from '../src/modules/auth/telegram-login.messages';
 
 interface TxRow {
   id: string;
@@ -383,6 +385,108 @@ describe('Managing money from the Telegram bot (e2e)', () => {
       const digest = ctx.telegram.messagesTo(tg(user).id).find((m) => m.includes('🌙 Kunlik xulosa')) ?? '';
       expect(digest).toContain('Umumiy balans');
       expect(digest).not.toContain('hech narsa yozilmadi');
+    });
+  });
+  describe('in Russian', () => {
+    const ru = BOT_TEXTS.ru;
+    const names = (rows: Array<{ name: string }>) => rows.map((row) => row.name);
+    const locale = async (client: ApiClient) => (await client.get('/auth/me')).body.data.user.locale as string;
+
+    /** Labels of the newest reply keyboard (the menu under the input field) sent to the chat. */
+    function menuLabels(client: ApiClient): string[] {
+      const markup = ctx.telegram.calls
+        .filter((c) => c.method === 'sendMessage' && Number(c.payload.chat_id) === tg(client).id)
+        .map((c) => c.payload.reply_markup as { keyboard?: Array<Array<string | { text: string }>> } | undefined)
+        .filter((m) => m?.keyboard)
+        .at(-1);
+      return (markup?.keyboard ?? []).flat().map((b) => (typeof b === 'string' ? b : b.text));
+    }
+
+    it('signs up from the Russian page in Russian, whatever the Telegram language', async () => {
+      const user = await newUser(ctx, 'Иван', { page: 'ru', telegram: 'uz' });
+
+      expect(await locale(user)).toBe('ru');
+      const messages = ctx.telegram.messagesTo(tg(user).id);
+      expect(messages).toEqual(expect.arrayContaining([LOGIN_TEXTS.ru.askContact, LOGIN_TEXTS.ru.registered]));
+      expect(messages.some((m) => m.includes('Код для входа'))).toBe(true);
+
+      const categories = names((await user.get('/categories')).body.data);
+      expect(categories).toEqual(expect.arrayContaining(['Продукты', 'Транспорт', 'Жильё', 'Зарплата']));
+      expect(categories).not.toContain('Oziq-ovqat');
+      expect(names((await user.get('/accounts')).body.data)).toEqual(['Наличные']);
+    });
+
+    it('signs up someone who comes to the bot alone in the language of their Telegram', async () => {
+      const tgUser = ctx.telegram.newUser('Пётр', 'ru');
+      await ctx.deliver(textUpdate(tgUser, '/start'));
+      await ctx.deliver(contactUpdate(tgUser, tgUser.id, `99890${String(tgUser.id).slice(-7)}`));
+
+      expect(ctx.telegram.messagesTo(tgUser.id)).toEqual(
+        expect.arrayContaining([LOGIN_TEXTS.ru.welcomeNew, LOGIN_TEXTS.ru.registeredPlain, ru.common.menuIntro]),
+      );
+      const stored = await ctx.prisma.user.findUnique({ where: { telegramId: BigInt(tgUser.id) }, include: { accounts: true } });
+      expect(stored?.locale).toBe('ru');
+      expect(names(stored?.accounts ?? [])).toEqual(['Наличные']);
+    });
+
+    it('takes Russian quick entries and answers in Russian', async () => {
+      const user = await newUser(ctx, 'Иван', { page: 'ru' });
+
+      await say(user, '45к такси');
+      const card = lastText(user);
+      expect(card).toContain('Расход');
+      expect(card).toContain('45 000 сум');
+      expect(card).toContain('Транспорт');
+      await tap(user, button(user, /^d:[\w-]{8}:save$/));
+      const [tx] = await transactions(user);
+      expect(tx).toMatchObject({ type: 'EXPENSE', amount: '4500000', note: 'такси', category: { name: 'Транспорт' } });
+      expect(lastText(user)).toContain('✅ Сохранено');
+      expect(lastText(user)).not.toContain('so‘m');
+
+      expect(await quickAdd(user, '+2 млн зарплата')).toMatchObject({ type: 'INCOME', amount: '200000000', category: { name: 'Зарплата' } });
+
+      await say(user, ru.menu.balance);
+      expect(lastText(user)).toContain(ru.reports.balanceTitle);
+      expect(lastText(user)).toContain('Итого: <b>1 955 000 сум</b>');
+    });
+
+    it('switches the language in the settings, the menu with it, and hears the buttons of both', async () => {
+      const user = await newUser(ctx);
+      await say(user, BOT_TEXTS.uz.menu.settings);
+      await tap(user, button(user, /^lang:ru$/));
+
+      expect(await locale(user)).toBe('ru');
+      expect(lastAnswer()).toBe(ru.settings.savedToast);
+      const outputs = ctx.telegram.outputs(tg(user).id);
+      expect(outputs.filter((o) => o.method === 'editMessageText').at(-1)?.text).toBe(ru.settings.text);
+      expect(outputs.at(-1)?.text).toBe(ru.settings.languageChanged);
+      expect(menuLabels(user)).toEqual(expect.arrayContaining([ru.menu.expense, ru.menu.settings]));
+      expect(menuLabels(user)).not.toContain(BOT_TEXTS.uz.menu.settings);
+
+      // A keyboard still showing Uzbek buttons keeps working, now answering in Russian.
+      await say(user, BOT_TEXTS.uz.menu.balance);
+      expect(lastText(user)).toContain(ru.reports.balanceTitle);
+
+      await say(user, ru.menu.settings);
+      await tap(user, 'lang:uz');
+      expect(await locale(user)).toBe('uz');
+      expect(menuLabels(user)).toContain(BOT_TEXTS.uz.menu.settings);
+    });
+
+    it("writes notifications in the owner's language", async () => {
+      const user = await newUser(ctx, 'Иван', { page: 'ru' });
+      await quickAdd(user, '+1 млн зарплата');
+      await user.post('/budgets', {
+        categoryId: await categoryId(user, 'Транспорт'),
+        month: today().slice(0, 7),
+        limitAmount: '10000000',
+      });
+      await quickAdd(user, '85 тыс такси');
+
+      const warnings = (await user.get('/notifications')).body.data.filter((n: { type: string }) => n.type === 'BUDGET_WARNING');
+      expect(warnings).toEqual([
+        expect.objectContaining({ title: 'Бюджет почти исчерпан', body: 'Бюджет «Транспорт» израсходован на 85%.' }),
+      ]);
     });
   });
 });

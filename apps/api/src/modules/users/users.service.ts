@@ -7,6 +7,7 @@ import { SessionStateService } from '../auth/session-state.service';
 import { BalanceService } from '../accounts/balance.service';
 import { TelegramBotService } from '../../infra/telegram/telegram-bot.service';
 import { NotFoundDomainException } from '../../common/exceptions/domain.exception';
+import { loginText } from '../auth/telegram-login.messages';
 import { ActivityService } from '../activity/activity.service';
 import { ACCOUNT_DELETED_METRIC, DailyMetricsService } from '../activity/daily-metrics.service';
 
@@ -48,7 +49,7 @@ export class UsersService {
 
     if (user.telegramId !== null) {
       await this.telegram
-        .send(user.telegramId, 'Hisobingiz va barcha maʼlumotlaringiz o‘chirildi. Xayr! 👋')
+        .send(user.telegramId, loginText(user.locale).accountDeleted)
         .catch(() => undefined);
     }
     this.logger.log(`Account ${userId} deleted by its owner`);

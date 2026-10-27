@@ -2,11 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Bot, Context } from 'grammy';
 import { TelegramFrom, TelegramLoginBotService } from '../../auth/telegram-login-bot.service';
-import { LOGIN_TEXT } from '../../auth/telegram-login.messages';
+import { loginText } from '../../auth/telegram-login.messages';
 import { AdminAccessService } from '../../admin/core/admin-access.service';
 import { ADMIN_TEXT, adminPanelUrl, openAdminKeyboard } from '../bot-ui';
 import { MenuHandlers } from './menu.handlers';
 import { BotUserService } from '../bot-user.service';
+import { userLocale } from '../i18n';
 import { MonthlyReportService } from '../outbox/monthly-report.service';
 
 export function toFrom(ctx: Context): TelegramFrom | null {
@@ -48,14 +49,14 @@ export class AuthHandlers {
       if (payload && (await this.loginBot.handleStartPayload(payload, from))) return;
 
       const user = await this.loginBot.handlePlainStart(from);
-      if (user) await this.menu.sendMenu(ctx, LOGIN_TEXT.welcomeBack(user.name));
+      if (user) await this.menu.sendMenu(ctx, userLocale(user), loginText(user.locale).welcomeBack(user.name));
     });
 
     // Anyone's own Telegram id, e.g. to put it in ADMIN_TELEGRAM_IDS. Not in the command menu.
     pm.command('id', async (ctx) => {
       const from = toFrom(ctx);
       if (!from) return;
-      await ctx.reply(LOGIN_TEXT.yourId(from.id), { parse_mode: 'HTML' });
+      await ctx.reply(loginText(from.languageCode).yourId(from.id), { parse_mode: 'HTML' });
     });
 
     // The owner's way into the admin panel. Anyone else gets what any unknown command gets:
@@ -90,7 +91,7 @@ export class AuthHandlers {
         userId: ctx.message.contact.user_id,
         phoneNumber: ctx.message.contact.phone_number,
       });
-      if (user) await this.menu.sendMenu(ctx);
+      if (user) await this.menu.sendMenu(ctx, userLocale(user));
     });
 
     bot.callbackQuery(/^login_cancel:([0-9a-f-]{36})$/, async (ctx) => {

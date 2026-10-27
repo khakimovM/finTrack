@@ -126,6 +126,9 @@ Email/parol bilan ro'yxatdan o'tish va kirish **yo'q**: hisob faqat Telegram orq
 `GET /notifications` · `PATCH /notifications/:id/read` · `POST /notifications/read-all` ·
 `DELETE /notifications/:id`
 
+`title` va `body` yaratilgan paytda egasining tilida (`user.locale`) yoziladi va keyin o'zgarmaydi:
+til almashtirilsa eski bildirishnomalar avvalgi tilda qoladi.
+
 ### Export (2)
 `GET /export/transactions.csv` · `GET /export/transactions.xlsx`
 
@@ -190,6 +193,8 @@ Tana yo'q. `201`:
   "botUsername": "fintrack_bot", "expiresAt": "2026-09-28T09:22:44.208Z" } }
 ```
 So'rov 5 daqiqa amal qiladi. Bot sozlanmagan bo'lsa `503 TELEGRAM_UNAVAILABLE`.
+So'rovning `Accept-Language` i (`uz` | `ru`) yoziladi: shu orqali ro'yxatdan o'tgan yangi hisob, botdagi
+kirish xabarlari, standart kategoriyalar va hisob nomi sahifa tilida bo'ladi.
 
 ### `GET /auth/telegram/status/:requestId`
 ```json
@@ -197,7 +202,7 @@ So'rov 5 daqiqa amal qiladi. Bot sozlanmagan bo'lsa `503 TELEGRAM_UNAVAILABLE`.
 ```
 `status`: `PENDING` → (`AWAITING_CONTACT`) → `CODE_SENT` → `CONSUMED` | `CANCELLED` | `EXPIRED`.
 Yangi foydalanuvchi botda o'z raqamini ulashadi (`AWAITING_CONTACT`), shundan keyin hisob
-(10 ta standart kategoriya + "Naqd pul" hisobi) yaratiladi va kod yuboriladi.
+(10 ta standart kategoriya + "Naqd pul" hisobi, ruschada "Наличные") yaratiladi va kod yuboriladi.
 
 ### `POST /auth/telegram/verify`
 ```json
@@ -567,3 +572,4 @@ subkategoriya byudjeti qayta qo'shilmaydi (u ota limiti ichida, xarajati ikki ma
 ## Eksport
 `GET /export/transactions.csv` va `.xlsx` — `GET /transactions` filtrlari bilan. Formula injection'ga
 qarshi hujayralar tozalanadi; juda katta natija — `422 EXPORT_TOO_LARGE` (oraliqni qisqartirish kerak).
+Ustun nomlari, tur yozuvlari va varaq nomi `Accept-Language` tilida (`ru` bo'lsa ruscha, aks holda o'zbekcha).
