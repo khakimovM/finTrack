@@ -21,5 +21,6 @@ export const SOURCES: Array<{ key: SourceKey; label: string; color: string }> = 
   { key: 'bot', label: 'Bot (matn)', color: 'var(--chart-1)' },
   { key: 'voice', label: 'Ovozli xabar', color: 'var(--chart-4)' },
   { key: 'recurring', label: 'Takroriy to‘lov', color: 'var(--chart-3)' },
+  { key: 'card', label: 'Kartadan import', color: 'var(--chart-6)' },
   { key: 'unknown', label: 'Noma’lum (eski)', color: 'var(--chart-9)' },
 ];

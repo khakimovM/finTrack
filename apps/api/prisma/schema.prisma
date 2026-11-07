@@ -118,6 +118,10 @@ model User {
   telegramLoginRequests TelegramLoginRequest[]
   adminSessions         AdminSession[]
   activityDays          UserActivityDay[]
+  paymentCards          PaymentCard[]
+  cardImports           CardImport[]
+  cardOperations        CardOperation[]
+  merchantCategories    MerchantCategory[]
 
   @@index([email])
   @@index([createdAt])
@@ -354,6 +358,7 @@ model Account {
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions   Transaction[]
   recurringRules RecurringRule[]
+  paymentCards   PaymentCard[]
 
   @@unique([userId, name])
   @@index([userId, deletedAt])
@@ -378,12 +383,13 @@ model Category {
   updatedAt DateTime     @updatedAt @map("updated_at")
   deletedAt DateTime?    @map("deleted_at")
 
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent         Category?       @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children       Category[]      @relation("CategoryTree")
-  transactions   Transaction[]
-  budgets        Budget[]
-  recurringRules RecurringRule[]
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent             Category?          @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children           Category[]         @relation("CategoryTree")
+  transactions       Transaction[]
+  budgets            Budget[]
+  recurringRules     RecurringRule[]
+  merchantCategories MerchantCategory[]
 
   @@unique([userId, name, type, parentId])
   @@index([userId, type, deletedAt])
@@ -468,6 +474,164 @@ enum TransactionSource {
   BOT
   VOICE
   RECURRING
+  /// Imported from a card notification forwarded to the bot (0014_card_import).
+  CARD
+}
+
+// ============================================================
+// CARD IMPORT: operations forwarded from the card networks' official bots
+// ============================================================
+
+enum CardNetwork {
+  UZCARD
+  HUMO
+}
+
+enum CardOperationDirection {
+  DEBIT // money left the card
+  CREDIT // money came in
+}
+
+enum CardOperationStatus {
+  /// Waiting for the import's summary or for the person's decision.
+  PENDING
+  /// Written to the ledger (a refund: its purchase was taken out of the ledger).
+  SAVED
+  /// Already typed in by hand: `transactionId` is that row, nothing new is written.
+  LINKED
+  /// Not recorded: the person said so, or it cancels out with its refund in the same import.
+  SKIPPED
+}
+
+/// What an operation is: proposed by the import's planner, confirmed or changed by the person.
+enum CardResolution {
+  EXPENSE
+  INCOME
+  /// Between the person's own accounts: the other leg is `pairedId`'s card or `counterAccountId`.
+  TRANSFER
+  /// A new debt with `debtPerson`: LOAN_GIVEN for a debit, LOAN_TAKEN for a credit.
+  DEBT
+  /// The same money was already entered by hand.
+  DUPLICATE
+  /// A refund together with the purchase it cancels (`pairedId`).
+  CANCELLED
+  SKIP
+}
+
+/// Where an operation's category came from. Choices of the person and of the AI are remembered.
+enum CardCategorySource {
+  MEMORY
+  KNOWN
+  GUESS
+  AI
+  USER
+}
+
+/// A card the person forwarded operations of, and the account it books to. The bots show only the
+/// last four digits, so those and the network are all there is to tell cards apart.
+model PaymentCard {
+  id        String      @id @default(uuid())
+  userId    String      @map("user_id")
+  network   CardNetwork
+  last4     String      @db.VarChar(4)
+  /// Null until the person says which account the card is.
+  accountId String?     @map("account_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account    Account?        @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  operations CardOperation[]
+
+  @@unique([userId, network, last4])
+  @@index([accountId])
+  @@map("payment_cards")
+}
+
+/// One burst of forwarded messages, summed up in one bot message that the person saves or cancels.
+model CardImport {
+  /// Short random id: it travels in the callback data of the summary's buttons.
+  id        String    @id @db.VarChar(12)
+  userId    String    @map("user_id")
+  /// Messages of the burst that were not operations: refused payments, balance summaries…
+  ignored   Int       @default(0)
+  /// Operations that had been imported before.
+  repeated  Int       @default(0)
+  /// When every card had an account and the operations got their proposed resolutions.
+  plannedAt DateTime? @map("planned_at")
+  savedAt   DateTime? @map("saved_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  operations CardOperation[]
+
+  @@index([userId, createdAt])
+  @@map("card_imports")
+}
+
+/// One card operation as the bank's bot reported it, and what became of it. Kept after saving:
+/// its fingerprint stops the same message from being imported twice.
+model CardOperation {
+  id               String                 @id @default(uuid())
+  userId           String                 @map("user_id")
+  cardId           String                 @map("card_id")
+  importId         String?                @map("import_id") @db.VarChar(12)
+  /// 1-based position in its import: the operation's handle in buttons.
+  seq              Int?
+  /// SHA-256 of card, time, direction, amount and balance after: a forwarded copy hashes the same.
+  fingerprint      String                 @db.VarChar(64)
+  direction        CardOperationDirection
+  /// Tiyin, always positive.
+  amount           BigInt
+  merchant         String                 @db.VarChar(200)
+  label            String                 @db.VarChar(100)
+  occurredAt       DateTime               @map("occurred_at")
+  /// The bank's (Tashkent) date of the operation: the date of its ledger row.
+  date             DateTime               @db.Date
+  balanceAfter     BigInt?                @map("balance_after")
+  reversal         Boolean                @default(false)
+  status           CardOperationStatus    @default(PENDING)
+  resolution       CardResolution?
+  categoryId       String?                @map("category_id")
+  categorySource   CardCategorySource?    @map("category_source")
+  /// TRANSFER without a paired operation: the person's other account.
+  counterAccountId String?                @map("counter_account_id")
+  /// TRANSFER: the other card's leg. CANCELLED: the refund's purchase, or the purchase's refund.
+  pairedId         String?                @map("paired_id")
+  debtPerson       String?                @map("debt_person") @db.VarChar(100)
+  /// The row written (income, expense, a transfer's fee), the hand-typed row this duplicates, or
+  /// the purchase row a refund took out of the ledger.
+  transactionId    String?                @map("transaction_id")
+  transferGroupId  String?                @map("transfer_group_id")
+  debtId           String?                @map("debt_id")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card       PaymentCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  cardImport CardImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, fingerprint])
+  @@unique([importId, seq])
+  @@index([userId, status])
+  @@index([cardId, occurredAt])
+  @@map("card_operations")
+}
+
+/// The category a shop gets next time: the person's own choice, or the AI's once it was saved.
+model MerchantCategory {
+  userId      String   @map("user_id")
+  /// merchantKey() of the terminal's name, or FEE_MERCHANT_KEY for transfer fees.
+  merchantKey String   @map("merchant_key") @db.VarChar(200)
+  categoryId  String   @map("category_id")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, merchantKey])
+  @@index([categoryId])
+  @@map("merchant_categories")
 }
 
 // ============================================================

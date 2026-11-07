@@ -154,6 +154,22 @@ export function textUpdate(from: FakeTgUser, text: string) {
   };
 }
 
+/** A message forwarded from another chat; `origin` is the sender as Telegram records it. */
+export function forwardUpdate(from: FakeTgUser, text: string, origin: { id: number; isBot: boolean; username?: string }) {
+  return {
+    update_id: updateSeq++,
+    message: {
+      ...base(from),
+      text,
+      forward_origin: {
+        type: 'user',
+        date: Math.floor(Date.now() / 1000) - 60,
+        sender_user: { id: origin.id, is_bot: origin.isBot, first_name: 'Sender', ...(origin.username ? { username: origin.username } : {}) },
+      },
+    },
+  };
+}
+
 export function contactUpdate(from: FakeTgUser, contactUserId: number, phone: string) {
   return {
     update_id: updateSeq++,

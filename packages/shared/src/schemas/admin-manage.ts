@@ -90,6 +90,7 @@ export const AdminUserDetailSchema = z.object({
     bot: count,
     voice: count,
     recurring: count,
+    card: count,
     unknown: count,
   }),
   /** Days of the last 90 with any activity, oldest first. */

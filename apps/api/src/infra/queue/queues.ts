@@ -9,6 +9,7 @@ export const QUEUES = {
   BROADCAST: 'broadcast',
   DAILY_REMINDERS: 'daily-reminders',
   MONTHLY_REPORT: 'monthly-report',
+  CARD_IMPORT: 'card-import',
 } as const;
 
 export const JOBS = {
@@ -20,6 +21,7 @@ export const JOBS = {
   SEND_MORNING_REMINDERS: 'send-morning-reminders',
   SEND_EVENING_REMINDERS: 'send-evening-reminders',
   SEND_MONTHLY_REPORT: 'send-monthly-report',
+  FLUSH_CARD_IMPORT: 'flush-card-import',
 } as const;
 
 export const DEFAULT_JOB_OPTIONS: DefaultJobOptions = {

@@ -8,6 +8,7 @@ import { MenuHandlers } from './handlers/menu.handlers';
 import { DebtHandlers } from './handlers/debt.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
 import { VoiceHandlers } from './handlers/voice.handlers';
+import { CardHandlers } from './handlers/card.handlers';
 import { ADMIN_COMMANDS, miniAppUrl } from './bot-ui';
 import { BOT_TEXTS } from './i18n';
 import { ActivityService } from '../activity/activity.service';
@@ -46,6 +47,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     private readonly debtHandlers: DebtHandlers,
     private readonly entryHandlers: EntryHandlers,
     private readonly voiceHandlers: VoiceHandlers,
+    private readonly cardHandlers: CardHandlers,
     private readonly activity: ActivityService,
     private readonly botUsers: BotUserService,
     private readonly adminAccess: AdminAccessService,
@@ -74,6 +76,7 @@ export class TelegramLifecycleService implements OnApplicationBootstrap, OnAppli
     this.debtHandlers.register(bot);
     this.entryHandlers.register(bot);
     this.voiceHandlers.register(bot);
+    this.cardHandlers.register(bot);
     this.entryHandlers.registerTextFallback(bot);
     bot.catch((err: BotError) => this.logError(err));
 

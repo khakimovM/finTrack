@@ -98,12 +98,17 @@ describe('Admin: people, bans, the system and the audit log (e2e)', () => {
   it('shows one person: counts, where the entries came from and 90 days of activity', async () => {
     const user = await newUser(ctx, 'Tafsilot');
     await addExpense(user);
+    // One more as a saved card import writes it (the import itself is covered in cards.e2e-spec).
+    const account = await ctx.prisma.account.findFirstOrThrow({ where: { userId: user.userId } });
+    await ctx.prisma.transaction.create({
+      data: { userId: user.userId, accountId: account.id, type: 'EXPENSE', amount: 1_845_000n, date: new Date(`${today()}T00:00:00Z`), source: 'CARD' },
+    });
 
     const res = await admin.get(`/admin/users/${user.userId}`);
     expect(res.status).toBe(200);
     expect(res.body.data.user).toMatchObject({ id: user.userId, status: 'active', isAdmin: false, bannedAt: null });
-    expect(res.body.data.counts).toMatchObject({ entries: 1, accounts: 1, debts: 0, activeSessions: 1 });
-    expect(res.body.data.entriesBySource).toEqual({ web: 1, miniApp: 0, bot: 0, voice: 0, recurring: 0, unknown: 0 });
+    expect(res.body.data.counts).toMatchObject({ entries: 2, accounts: 1, debts: 0, activeSessions: 1 });
+    expect(res.body.data.entriesBySource).toEqual({ web: 1, miniApp: 0, bot: 0, voice: 0, recurring: 0, card: 1, unknown: 0 });
     expect(res.body.data.activity).toEqual([{ day: today(), channels: ['BOT', 'WEB'] }]);
     expect((await admin.get('/admin/users/00000000-0000-4000-8000-000000000000')).status).toBe(404);
   });
@@ -216,7 +221,7 @@ describe('Admin: people, bans, the system and the audit log (e2e)', () => {
     expect(system.database.sizeBytes).toBeGreaterThan(0);
     expect(system.database.lastMigration).toMatch(/^\d{4}_/);
     expect(system.redis.status).toBe('ok');
-    expect(system.queues.map((q: { name: string }) => q.name)).toEqual(['recurring', 'debt-reminders', 'telegram-outbox', 'daily-digest', 'broadcast', 'daily-reminders', 'monthly-report']);
+    expect(system.queues.map((q: { name: string }) => q.name)).toEqual(['recurring', 'debt-reminders', 'telegram-outbox', 'daily-digest', 'broadcast', 'daily-reminders', 'monthly-report', 'card-import']);
     // No voice keys in tests: the monthly report goes as text only.
     expect(system.speech).toEqual([]);
     for (const queue of system.queues) expect(queue.counts).not.toBeNull();

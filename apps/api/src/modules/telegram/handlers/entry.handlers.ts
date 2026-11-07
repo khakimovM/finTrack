@@ -10,6 +10,14 @@ import { BOT_TEXTS, userLocale } from '../i18n';
 import { escapeHtml } from '../../auth/telegram-login.messages';
 import { CreateTransactionResult } from '../../transactions/transactions.service';
 
+/** Answers the card import's question of who money was lent to or borrowed from. */
+export type CardDebtPersonHandler = (
+  ctx: Context,
+  user: User,
+  text: string,
+  state: Extract<AwaitingState, { kind: 'card-debt-person' }>,
+) => Promise<void>;
+
 /** Handles a text message; returns true when it consumed the message. */
 export type TextInterceptor = (ctx: Context, user: User, text: string) => Promise<boolean>;
 
@@ -24,6 +32,7 @@ export type AwaitingHandler = (
 @Injectable()
 export class EntryHandlers {
   private debtAmountHandler: AwaitingHandler | null = null;
+  private cardDebtPersonHandler: CardDebtPersonHandler | null = null;
   private fallback: TextInterceptor | null = null;
 
   constructor(
@@ -34,6 +43,10 @@ export class EntryHandlers {
 
   onDebtPaymentAmount(handler: AwaitingHandler): void {
     this.debtAmountHandler = handler;
+  }
+
+  onCardDebtPerson(handler: CardDebtPersonHandler): void {
+    this.cardDebtPersonHandler = handler;
   }
 
   /** Called when the deterministic parser gives up (the AI extractor in production). */
@@ -111,6 +124,10 @@ export class EntryHandlers {
       const awaiting = await this.drafts.takeAwaiting(ctx.from.id);
       if (awaiting?.kind === 'debt-payment-amount' && this.debtAmountHandler) {
         await this.debtAmountHandler(ctx, user, text, awaiting);
+        return;
+      }
+      if (awaiting?.kind === 'card-debt-person' && this.cardDebtPersonHandler) {
+        await this.cardDebtPersonHandler(ctx, user, text, awaiting);
         return;
       }
       const forcedType = awaiting?.kind === 'entry' ? awaiting.type : undefined;

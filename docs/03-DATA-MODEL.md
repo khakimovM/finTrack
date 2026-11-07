@@ -132,8 +132,8 @@ kirish xabarlari shu tilda bo'ladi.
 ## Faollik va manba (admin statistikasi uchun, 0006)
 
 - `Transaction.source` — yozuv qayerdan kiritilgan: `WEB` (sayt, cookie), `MINIAPP` (Bearer token),
-  `BOT` (matn), `VOICE` (ovozli xabar qoralamasi), `RECURRING` (takroriy qoida). Servis metodlari uni
-  majburiy parametr sifatida oladi; 0006 dan oldingi qatorlarda `null`.
+  `BOT` (matn), `VOICE` (ovozli xabar qoralamasi), `RECURRING` (takroriy qoida), `CARD` (kartadan import,
+  0014). Servis metodlari uni majburiy parametr sifatida oladi; 0006 dan oldingi qatorlarda `null`.
 - `UserActivityDay` — `(userId, day, channel)` kaliti: foydalanuvchi o'sha kuni (Asia/Tashkent) shu
   kanaldan foydalangan. `ActivityService` JWT guard'dan (`WEB`/`MINIAPP`) va bot middleware'idan (`BOT`)
   chaqiriladi; Redis `SET NX` kaliti tufayli bazaga kuniga bir marta yoziladi. `UNKNOWN` — 0006
@@ -145,6 +145,37 @@ kirish xabarlari shu tilda bo'ladi.
   bo'lardi; tekshiruv har kirish nuqtasida alohida.
 - AI yordamchi hisoblagichlari bazada emas, Redis'da: `metrics:<kun>:ai.<voice|text>.<ok|limit|unavailable>`
   va `metrics:<kun>:ai.provider.<nom>.<ok|fail.<sabab>>`, 120 kun saqlanadi.
+
+## Kartadan import — `PaymentCard`, `CardImport`, `CardOperation`, `MerchantCategory` (0014)
+
+Migratsiya faqat qo'shadi: 5 ta enum, 4 ta jadval, `TransactionSource += CARD`. Karta raqami saqlanmaydi,
+faqat oxirgi 4 raqami.
+
+- `PaymentCard` — `(userId, network, last4)` unique; `network`: `UZCARD` | `HUMO`. `accountId` — qaysi
+  FinTrack hisobiga yoziladi (hisob o'chsa `SET NULL`, keyingi importda qayta so'raladi). Bir nechta karta
+  bitta hisobga bog'lanishi mumkin.
+- `CardImport` — bitta forward to'plami. `id` — 8 belgili `base64url` (callback data'ga sig'adi).
+  `ignored` (operatsiya bo'lmagan xabarlar), `repeated` (avval kelganlar), `plannedAt`, `savedAt`.
+- `CardOperation` — bank xabaridan bitta operatsiya:
+  - `fingerprint` (SHA-256, `(userId, fingerprint)` unique) — bir xabar ikki marta kirmaydi;
+  - `direction` (`DEBIT` | `CREDIT`), `amount BigInt` (tiyin), `merchant`, `label`, `occurredAt`
+    (Toshkent vaqti), `date`, `balanceAfter` (bank aytgan qoldiq), `reversal` (qaytarish);
+  - `importId` + `seq` (`(importId, seq)` unique) — ro'yxatdagi raqami; import o'chsa `SET NULL`;
+  - `status`: `PENDING` → `SAVED` (yozildi) | `LINKED` (qo'lda kiritilgan yozuvga bog'landi) | `SKIPPED`;
+  - `resolution`: `EXPENSE` | `INCOME` | `TRANSFER` | `DEBT` | `DUPLICATE` | `CANCELLED` | `SKIP`, yoki
+    `null` (❓ ko'rib chiqish); `categoryId`, `categorySource` (`MEMORY` | `KNOWN` | `GUESS` | `AI` | `USER`);
+  - `pairedId` — o'tkazmaning ikkinchi yarmi yoki qaytarilgan xarid; `counterAccountId` — o'tkazmaning
+    boshqa hisobi; `debtPerson` — qarz kimga/kimdan;
+  - natija havolalari: `transactionId`, `transferGroupId`, `debtId`.
+- `MerchantCategory` — `(userId, merchantKey)` PK: do'kon nomi (normallashtirilgan) → kategoriya.
+  Foydalanuvchi tanlagani va AI taklifi yozish paytida eslab qolinadi. `__FEE__` kaliti — o'tkazma
+  komissiyasining kategoriyasi.
+
+Yozish natijalari: `EXPENSE`/`INCOME` — bitta qator; `TRANSFER` — `TRANSFER_OUT` + `TRANSFER_IN`
+(komissiya bo'lsa, farqi alohida `EXPENSE`); `DEBT` — `Debt` + `LOAN_GIVEN`/`LOAN_TAKEN`;
+`CANCELLED` — shu importdagi juftlik yozilmaydi, oldin yozilgan xarid esa soft-delete qilinadi.
+Importni bekor qilish shu importning hamma yozuvlarini soft-delete qiladi, bekor qilingan xaridlarni
+tiklaydi va operatsiyalarni o'chiradi, shundan keyin xabarlarni qayta forward qilsa bo'ladi.
 
 ## Admin panel — `AdminSession`, `AdminAuditLog`
 

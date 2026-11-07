@@ -41,6 +41,7 @@ import { BroadcastProcessor } from './broadcasts/broadcast.processor';
       { name: QUEUES.BROADCAST },
       { name: QUEUES.DAILY_REMINDERS },
       { name: QUEUES.MONTHLY_REPORT },
+      { name: QUEUES.CARD_IMPORT },
     ),
     TtsModule,
   ],

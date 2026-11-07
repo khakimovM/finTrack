@@ -180,6 +180,7 @@ export class AdminStatsService {
           bot: source('BOT'),
           voice: source('VOICE'),
           recurring: source('RECURRING'),
+          card: source('CARD'),
           unknown: source(null),
         },
         features,
