@@ -69,7 +69,7 @@ ichida Mini App bo'lib ochiladi (kod kiritilmaydi):
 - `AdminAuditLog`: id, adminUserId, action, targetUserId?, meta (JSON), ipAddress, createdAt.
 - `User` += `lastSeenAt`, `bannedAt`, `banReason`.
 - `UserActivityDay`: (userId, day DATE, channel WEB|MINIAPP|BOT|UNKNOWN) unique — DAU/WAU/MAU va kogortalar uchun.
-- `Transaction` += `source` (WEB | MINIAPP | BOT | VOICE | RECURRING), nullable — eski yozuvlar "noma'lum".
+- `Transaction` += `source` (WEB | MINIAPP | BOT | VOICE | RECURRING | CARD — 0014), nullable — eski yozuvlar "noma'lum".
 - `Broadcast`: id, adminUserId, text, segment, total, sent, failed, blocked, status, createdAt, finishedAt.
 - Ovozli yordamchi so'rovlari: Redis kunlik hisoblagichlar (provayder × ok/xato), 120 kun TTL.
 

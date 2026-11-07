@@ -303,7 +303,7 @@ uzun oraliq → `400 VALIDATION_ERROR`.
   n-haftada faol bo'lganlar; hali boshlanmagan haftalar `null`.
 - `GET /admin/stats/usage?from&to` (standart oxirgi 30 kun, eng uzuni 400) — `AdminUsageResponse`:
   `activeUsers { total, web, miniApp, bot, unknown }` (bir odam bir nechta kanalda bo'lishi mumkin),
-  `entries { total, web, miniApp, bot, voice, recurring, unknown }` (`unknown` — manba yozilmagan
+  `entries { total, web, miniApp, bot, voice, recurring, card, unknown }` (`unknown` — manba yozilmagan
   eski yozuvlar), `features` (hozirgi foydalanuvchilardan nechtasida qarz, byudjet, takroriy to'lov,
   teg, 2+ hisob, o'z kategoriyasi, qat'iy rejim, kunlik xulosa, Telegram bildirishnomalari bor),
   `assistant { voice, text: { ok, limit, unavailable }, providers: [{ name, ok, failed, failures }] }`.
@@ -325,7 +325,7 @@ balans, izoh **yo'q**; telefon faqat oxirgi ikki raqami bilan: `+998 •• •�
   ishlatilgan kanallar (`WEB`, `MINIAPP`, `BOT`, `UNKNOWN`), `status`: `active` · `banned` · `deleted`.
 - `GET /admin/users/:id` — `{ user: AdminUserRow + { bannedAt, banReason, deletedAt, isAdmin }, counts: { entries,
   accounts, categories, debts, budgets, recurring, tags, activeSessions }, entriesBySource: { web, miniApp, bot,
-  voice, recurring, unknown }, activity: [{ day, channels }] }` (faollik — oxirgi 90 kun). Yo'q → `404`.
+  voice, recurring, card, unknown }, activity: [{ day, channels }] }` (faollik — oxirgi 90 kun). Yo'q → `404`.
 - `POST /admin/users/:id/ban` `{ reason }` (3–300 belgi) → `200 AdminUserDetail`. Bir tranzaksiyada: `bannedAt`,
   barcha refresh tokenlar bekor, audit `BAN` (`{ reason, sessions }`); keyin ochiq access tokenlar ham darhol
   to'xtaydi va botga sabab bilan xabar boradi. Admin ro'yxatidagi hisob → `422 CANNOT_BAN_ADMIN`;

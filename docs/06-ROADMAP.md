@@ -208,6 +208,30 @@ To'liq reja, qarorlar va qabul mezonlari: **`docs/09-ADMIN-PANEL.md`** (J1–J7)
 
 ---
 
+## Bosqich C0 — Kartadan import (botga forward)
+
+Uzcard/Humo rasmiy botlarining xabarlarini foydalanuvchi bizning botga forward qiladi; bot ro'yxat
+ko'rsatadi va ✅ bosilgandan keyin yozadi (PRD 14-band). Qarorlar (2026-11-07): ro'yxat → ✅; P2P
+o'tkazmalar ❓ ga; noma'lum do'konlar uchun AI, faqat nomlar bilan. Userbot (foydalanuvchi chatlarini
+o'qish) rad etilgan. Bank/protsessing bilan rasmiy shartnoma keyinroq.
+
+**Qabul mezonlari**
+- [x] Faqat karta botining forwardi qabul qilinadi; odamning forwardi va ko'chirilgan matn — eslatma
+- [x] Bir nechta forward 3 s jimlikdan keyin bitta ro'yxat; qayta forward dublikat yaratmaydi
+- [x] Yangi karta bir marta hisobga bog'lanadi (mavjud yoki yangi hisob, boshlang'ich qoldiq bankdan)
+- [x] Do'kon kategoriyasi: xotira → ma'lum ro'yxat → kalit so'z → AI; tanlov eslab qolinadi
+- [x] O'z kartalari orasidagi o'tkazma juftlanadi, komissiya chiqimga; kategoriyasi bir marta so'raladi
+- [x] Qaytarilgan xarid bekor qilinadi (shu importda yoki oldingi importda yozilgani)
+- [x] Qo'lda kiritilgan yozuv bilan dublikat bog'lanadi, qarz `Debt` sifatida yoziladi
+- [x] Yozish va bekor qilish atomar; qayta bosish ikki marta yozmaydi; qat'iy rejim kartani bloklamaydi
+- [x] Bank qoldig'i bilan solishtirish va so'rov bilan to'g'rilash
+- [x] Har so'rov `userId` bilan; o'zbek va rus tilida
+- [x] Unit (parser, reja, ekranlar) va e2e (`test/cards.e2e-spec.ts`)
+- [ ] Haqiqiy forward bilan sinov, Humo bot eksporti, boshqa tillardagi namunalar — foydalanuvchi bilan
+- [ ] Kartadan qarz qaytarilishi (`LOAN_REPAY_*` mavjud qarzga) — keyingi qadam
+
+---
+
 ## Ixtiyoriy — Bosqich 13: ko'p valyuta
 `Account.currency`, `ExchangeRate`, `amountBase`, kurs qotirish, statistikani bazaviy
 valyutada hisoblash. Faqat 12-bosqich tugagach boshlanadi.

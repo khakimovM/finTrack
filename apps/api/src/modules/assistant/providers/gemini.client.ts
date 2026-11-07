@@ -24,7 +24,27 @@ const COOLDOWN_SECONDS = {
   max: 3600,
 };
 
-type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+export type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+
+/** One structured request: the answer must match `schema`, and `parse` returns null when it does not. */
+export interface GeminiTask<T> {
+  instructions: string;
+  parts: GeminiPart[];
+  schema: object;
+  parse: (value: unknown) => T | null;
+}
+
+function extraction(parts: GeminiPart[]): GeminiTask<Extraction> {
+  return {
+    instructions: EXTRACTION_INSTRUCTIONS,
+    parts,
+    schema: GEMINI_EXTRACTION_SCHEMA,
+    parse: (value) => {
+      const parsed = ExtractionSchema.safeParse(value);
+      return parsed.success ? parsed.data : null;
+    },
+  };
+}
 
 interface GeminiResponse {
   candidates?: Array<{
@@ -62,28 +82,38 @@ export class GeminiClient {
   }
 
   extractFromAudio(audio: Buffer, mimeType: string, ctx: ExtractionContext): Promise<Extraction> {
-    return this.generate([
-      { inlineData: { mimeType, data: audio.toString('base64') } },
-      { text: voicePrompt(ctx) },
-    ]);
+    return this.generate(
+      extraction([
+        { inlineData: { mimeType, data: audio.toString('base64') } },
+        { text: voicePrompt(ctx) },
+      ]),
+    );
   }
 
   extractFromText(text: string, ctx: ExtractionContext): Promise<Extraction> {
-    return this.generate([{ text: textPrompt(ctx, text) }]);
+    return this.generate(extraction([{ text: textPrompt(ctx, text) }]));
+  }
+
+  /**
+   * Any other structured request (e.g. sorting card merchants into categories), on the same
+   * models, quotas and cooldowns.
+   */
+  generate<T>(task: GeminiTask<T>): Promise<T> {
+    return this.firstAvailable(task);
   }
 
   /**
    * The final error never carries retryAfterSeconds: cooldowns are tracked per model here, and a
    * provider-wide cooldown would also block models that are still available.
    */
-  private async generate(parts: GeminiPart[]): Promise<Extraction> {
+  private async firstAvailable<T>(task: GeminiTask<T>): Promise<T> {
     if (!this.apiKey) throw new AssistantProviderError('gemini', 'unavailable');
 
     let lastReason: AssistantProviderError['reason'] = 'rate_limited';
     for (const model of this.models) {
       if ((await this.redis.get(this.cooldownKey(model))) !== null) continue;
       try {
-        return await this.call(model, parts);
+        return await this.call(model, task);
       } catch (err) {
         if (!(err instanceof AssistantProviderError)) throw err;
         lastReason = err.reason;
@@ -93,18 +123,18 @@ export class GeminiClient {
     throw new AssistantProviderError('gemini', lastReason);
   }
 
-  private async call(model: string, parts: GeminiPart[]): Promise<Extraction> {
+  private async call<T>(model: string, task: GeminiTask<T>): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${API_ROOT}/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': this.apiKey ?? '' },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: EXTRACTION_INSTRUCTIONS }] },
-          contents: [{ role: 'user', parts }],
+          systemInstruction: { parts: [{ text: task.instructions }] },
+          contents: [{ role: 'user', parts: task.parts }],
           generationConfig: {
             responseMimeType: 'application/json',
-            responseSchema: GEMINI_EXTRACTION_SCHEMA,
+            responseSchema: task.schema,
             maxOutputTokens: 8192,
           },
         }),
@@ -141,9 +171,9 @@ export class GeminiClient {
       .filter((p) => !p.thought && typeof p.text === 'string')
       .map((p) => p.text)
       .join('');
-    const parsed = ExtractionSchema.safeParse(parseJson(text));
-    if (!parsed.success) throw new AssistantProviderError('gemini', 'bad_output');
-    return parsed.data;
+    const parsed = task.parse(parseJson(text));
+    if (parsed === null) throw new AssistantProviderError('gemini', 'bad_output');
+    return parsed;
   }
 
   private async coolDown(model: string, err: AssistantProviderError): Promise<void> {

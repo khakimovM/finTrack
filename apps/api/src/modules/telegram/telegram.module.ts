@@ -7,6 +7,14 @@ import { MenuHandlers } from './handlers/menu.handlers';
 import { EntryHandlers } from './handlers/entry.handlers';
 import { DebtHandlers } from './handlers/debt.handlers';
 import { VoiceHandlers } from './handlers/voice.handlers';
+import { CardHandlers } from './handlers/card.handlers';
+import { CardImportRepository } from './cards/card-import.repository';
+import { CardImportService } from './cards/card-import.service';
+import { CardIntakeService } from './cards/card-intake.service';
+import { CardDecisionsService } from './cards/card-decisions.service';
+import { CardLedgerService } from './cards/card-ledger.service';
+import { CardScreensService } from './cards/card-screens.service';
+import { CardImportProcessor } from './cards/card-import.processor';
 import { BotUserService } from './bot-user.service';
 import { BotReportsService } from './bot-reports.service';
 import { EntryService } from './entry.service';
@@ -22,6 +30,7 @@ import { AuthModule } from '../auth/auth.module';
 import { AccountsModule } from '../accounts/accounts.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { TransfersModule } from '../transfers/transfers.module';
 import { StatsModule } from '../stats/stats.module';
 import { BudgetsModule } from '../budgets/budgets.module';
 import { DebtsModule } from '../debts/debts.module';
@@ -39,11 +48,13 @@ import { TtsModule } from '../../infra/tts/tts.module';
       { name: QUEUES.DAILY_DIGEST },
       { name: QUEUES.DAILY_REMINDERS },
       { name: QUEUES.MONTHLY_REPORT },
+      { name: QUEUES.CARD_IMPORT },
     ),
     AuthModule,
     AccountsModule,
     CategoriesModule,
     TransactionsModule,
+    TransfersModule,
     StatsModule,
     BudgetsModule,
     DebtsModule,
@@ -61,6 +72,14 @@ import { TtsModule } from '../../infra/tts/tts.module';
     EntryHandlers,
     DebtHandlers,
     VoiceHandlers,
+    CardHandlers,
+    CardImportRepository,
+    CardImportService,
+    CardIntakeService,
+    CardDecisionsService,
+    CardLedgerService,
+    CardScreensService,
+    CardImportProcessor,
     BotUserService,
     BotReportsService,
     EntryService,

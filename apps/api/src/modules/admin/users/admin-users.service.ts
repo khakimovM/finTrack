@@ -101,6 +101,7 @@ export class AdminUsersService {
         bot: sources.get('BOT') ?? 0,
         voice: sources.get('VOICE') ?? 0,
         recurring: sources.get('RECURRING') ?? 0,
+        card: sources.get('CARD') ?? 0,
         unknown: sources.get(null) ?? 0,
       },
       activity: [...activity].map(([day, channels]) => ({ day, channels })),

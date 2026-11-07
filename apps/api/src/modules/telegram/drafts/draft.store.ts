@@ -33,7 +33,9 @@ type NewDraft = Omit<TransactionDraft, 'id'> | Omit<DebtPaymentDraft, 'id'>;
 /** What the next plain text message from this user answers. */
 export type AwaitingState =
   | { kind: 'debt-payment-amount'; debtId: string }
-  | { kind: 'entry'; type: 'INCOME' | 'EXPENSE' };
+  | { kind: 'entry'; type: 'INCOME' | 'EXPENSE' }
+  /** Who a card operation lent to or borrowed from; `messageId` is the card screen to update after. */
+  | { kind: 'card-debt-person'; importId: string; seq: number; mode: 'r' | 'e'; messageId?: number };
 
 const DRAFT_TTL_SECONDS = 30 * 60;
 const AWAIT_TTL_SECONDS = 10 * 60;

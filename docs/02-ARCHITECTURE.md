@@ -32,7 +32,8 @@ Yon xizmatlar:
 - `StatsRepository` — `$queryRaw` agregatsiyalari
 - `NotificationService` — byudjet/qarz hodisalari
 - BullMQ workerlar — takrorlanuvchi tranzaksiyalar, muddati o'tgan qarz tekshiruvi, kunlik xulosa va
-  eslatmalar, oylik hisobot (oyning oxirgi kuni 21:00, cron `0 21 L * *`)
+  eslatmalar, oylik hisobot (oyning oxirgi kuni 21:00, cron `0 21 L * *`), kartadan import (`card-import`,
+  forward'lar to'xtagandan 3 s keyin bitta ro'yxat)
 - `TtsService` (`infra/tts/`) — oylik hisobotning ovozi, egasi tanlagan tartibda (2026-10-26):
   Gemini `gemini-3.8-flash-tts` → `gemini-3.8-flash-lite-tts` (ikkalasi bepul kalit, Kore ovozi, "Toshkentlik
   o'zbekdek, chet el aksentisiz o'qi" ko'rsatmasi bilan; har modelning o'z kunlik limiti) → Azure F0
@@ -40,6 +41,43 @@ Yon xizmatlar:
   Redis'da sanaladi (bepul limitning 95% i), rad etgani bir muddat chetga qo'yiladi (Gemini'ning kuni
   tugagani — 24 soat). Gemini WAV/PCM qaytaradi — `opusenc` (Docker image'dagi `opus-tools`, ~1 MB)
   OGG/Opus'ga o'tkazadi. Hech biri ishlamasa hisobot faqat matn bo'lib ketadi.
+- `MerchantClassifier` (`assistant/`) — kartadan importda noma'lum do'kon nomlarini foydalanuvchining
+  kategoriyalaridan biriga moslaydi (`GeminiClient.generate`). Faqat nomlar yuboriladi, summa va karta
+  yuborilmaydi; bir so'rovda 40 tagacha nom, foydalanuvchiga kuniga 30 so'rov (Redis). Xato bo'lsa
+  javobsiz qoladi, import to'xtamaydi.
+
+## Kartadan import (C0, `modules/telegram/cards/`)
+
+```
+forward ──► CardHandlers ──► CardIntakeService.ingest ──► CardOperation (PENDING, fingerprint unique)
+                │                      │
+                │                      └─► BullMQ `card-import` (delay 3 s, deduplication extend+replace)
+                │                                   │  oxirgi forward'dan 3 s jimlik
+                │                                   ▼
+                │                         flush → CardImport (seq) → birinchi ekran
+                ▼
+        tugmalar (cm:/ci:) ──► CardImportService (kartani hisobga bog'lash, reja)
+                              CardDecisionsService (bitta operatsiya bo'yicha qaror)
+                              CardLedgerService (yozish / bekor qilish / bank qoldig'i)
+```
+
+- **Manba ishonchi.** `cardNetworkOf(forward_origin, text)`: faqat `type: 'user'` va `sender_user.is_bot`
+  bo'lgan forward. Tarmoq bot id'si (`CARD_BOTS`), username yoki matndan aniqlanadi. Odamning forwardi va
+  ko'chirilgan matn — eslatma, yozuv emas.
+- **Parser** (`card-message.parser.ts`) — emoji/tuzilma bo'yicha, 4 tilda; Toshkent vaqti (UTC+5) bilan
+  `occurredAt`. Fingerprint: tarmoq, karta, sana, vaqt, yo'nalish, summa, keyingi qoldiq (SHA-256).
+- **Reja** (`card-planner.ts`, sof funksiya, shu tartibda): qaytarilgan xaridlar (shu importda yoki oldin
+  yozilgan xarid, 45 kun ichida) → o'z kartalari orasidagi o'tkazma (15 daqiqa, komissiya ≤ 3%) →
+  qo'lda kiritilgan dublikat (shu kun, shu summa) → do'kon kategoriyasi (xotira → ma'lum ro'yxat →
+  `guessCategory`) → AI → qolgani ❓.
+- **Yozish** bitta `prisma.$transaction` ichida. Har operatsiya `status: PENDING` sharti bilan
+  `updateMany` qilinadi (count 1 bo'lmasa — qayta bosilgan, hammasi qaytariladi). Commit'dan keyin balans
+  keshi tozalanadi, byudjetlar tekshiriladi, kategoriya tanlovlari eslab qolinadi.
+- **Callback data** ≤ 64 bayt: `cm:<id8>:<U|H><last4>:<new|uuid>`, `ci:<id8>:<amal>`,
+  `ci:<id8>:<r|e><seq>:<amal>[:<uuid>]`. Import id — 6 bayt `base64url`. Har so'rov `userId` bilan
+  cheklangan: boshqaning import id'si "ro'yxat endi yo'q" deb javob oladi.
+- Matnlar `cards/card-texts.{uz,ru}.ts` da (`CardTexts = typeof uz`), ekranlar `card-ui.ts` da
+  (sof funksiyalar, 3 900 belgidan oshsa guruh qatorlari qisqaradi).
 
 ## Backend papka strukturasi
 
@@ -65,7 +103,8 @@ apps/api/src/
     ├── auth/  users/  accounts/  categories/  tags/
     ├── transactions/  transfers/  debts/  budgets/
     ├── recurring/  stats/  notifications/  export/  health/  jobs/
-    ├── telegram/            bot handlerlari, qoralamalar, outbox, kunlik xulosa, eslatmalar (7:00 / 22:00), oylik hisobot, webhook
+    ├── telegram/            bot handlerlari, qoralamalar, outbox, kunlik xulosa, eslatmalar (7:00 / 22:00), oylik hisobot, webhook,
+    │                        cards/ (kartadan import: forward → ro'yxat → yozish)
     ├── assistant/           ovoz/matn → yozuvlar (Gemini, Groq, Claude adapterlari)
     ├── activity/            faollik kunlari (guard + bot), kunlik hisoblagichlar (Redis)
     └── admin/               ega paneli: kirish, stats/, users/, system/, broadcasts/ (docs/09)

@@ -18,6 +18,7 @@ const QUEUE_LABELS: Record<string, string> = {
   'daily-digest': 'Kunlik xulosa',
   'daily-reminders': 'Eslatmalar (7:00 / 22:00)',
   'monthly-report': 'Oylik hisobot',
+  'card-import': 'Karta importi',
   broadcast: 'Ommaviy xabarlar',
 };
 

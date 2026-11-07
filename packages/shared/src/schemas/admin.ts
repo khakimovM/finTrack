@@ -151,6 +151,7 @@ export const AdminUsageResponseSchema = z.object({
     bot: count,
     voice: count,
     recurring: count,
+    card: count,
     unknown: count,
   }),
   /** Current users (not deleted) using each feature now. */

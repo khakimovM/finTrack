@@ -35,7 +35,7 @@ export const usage: AdminUsageResponse = {
   from: '2026-09-09',
   to: '2026-10-08',
   activeUsers: { total: 260, web: 120, miniApp: 90, bot: 150, unknown: 0 },
-  entries: { total: 4200, web: 1500, miniApp: 900, bot: 1300, voice: 300, recurring: 200, unknown: 0 },
+  entries: { total: 4200, web: 1500, miniApp: 900, bot: 1300, voice: 300, recurring: 200, card: 0, unknown: 0 },
   features: {
     users: 1230,
     withDebt: 310,
@@ -81,7 +81,7 @@ export function userDetail(over: Partial<AdminUserDetail['user']> = {}): AdminUs
   return {
     user: { ...userRow(), bannedAt: null, banReason: null, deletedAt: null, isAdmin: false, ...over },
     counts: { entries: 42, accounts: 2, categories: 3, debts: 1, budgets: 0, recurring: 1, tags: 2, activeSessions: 2 },
-    entriesBySource: { web: 30, miniApp: 0, bot: 10, voice: 2, recurring: 0, unknown: 0 },
+    entriesBySource: { web: 30, miniApp: 0, bot: 10, voice: 2, recurring: 0, card: 0, unknown: 0 },
     activity: [
       { day: '2026-10-07', channels: ['WEB'] },
       { day: '2026-10-08', channels: ['BOT', 'WEB'] },

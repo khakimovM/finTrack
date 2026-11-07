@@ -58,6 +58,11 @@ The check lives in exactly one place: `BalanceGuardService.assertSufficient()`. 
 outgoing operation (expense, transfer out, loan given, loan repay out) calls it. Do not
 copy the condition into individual services.
 
+**The one exception: card imports** (`source: 'CARD'`). A forwarded bank notification records
+money that has *already* left the card, so refusing it would only make the ledger lie. Card
+imports skip the guard and `assertNotFuture`. This is decided in `CardLedgerService` and nowhere
+else; a manual entry on the same account is still guarded.
+
 ## 6. Budgets
 - A `Budget` caps one category for one month: `(userId, categoryId, month)` is unique.
 - `spent` = sum of `EXPENSE` in that category and month. Usage crossing 80% and 100%
@@ -70,7 +75,25 @@ copy the condition into individual services.
 - Generation must be **idempotent**: a unique `(recurringRuleId, date)` prevents duplicates
   when the worker retries.
 
-## 8. Multi-currency (Phase 8 — do not build earlier)
+## 8. Card imports (C0)
+Forwarded Uzcard/Humo notifications become ledger rows only after the person taps ✅.
+- Amounts come from the bank text as tiyin `BigInt` (`parseBankAmount`); nothing goes through `Number`.
+- **A transfer between own cards is not spending.** A debit and a credit on different accounts within
+  15 minutes, with at most 3% missing, become `TRANSFER_OUT` + `TRANSFER_IN` of the credited amount;
+  the missing part is a separate `EXPENSE` (the fee). Card-to-card payments to other people are never
+  decided automatically: the person says expense, income, transfer or debt.
+- **A debt from a card is a `Debt`**, written through `DebtsService.createDebt` inside the same
+  transaction, so it stays out of expense statistics.
+- **A refund cancels its purchase** (same card, merchant and amount, within 45 days, not after the
+  refund): both stay out of the ledger, or the earlier saved purchase is soft-deleted.
+- Saving an import is one `prisma.$transaction`; each operation is claimed with
+  `updateMany({ status: 'PENDING' })` and a count other than 1 rolls everything back (double tap).
+  Undo soft-deletes every row, transfer group and debt the import wrote, and restores what its
+  refunds had cancelled — atomically.
+- **Matching the bank balance** never writes an `ADJUSTMENT` row: on request, `account.openingBalance`
+  is moved by (bank − ledger), so the history keeps its meaning and the balance is still derived.
+
+## 9. Multi-currency (Phase 8 — do not build earlier)
 Each `Account` has a `currency`. A transaction stores `amount` in the account currency and
 `amountBase` in the user's base currency, converted with the `ExchangeRate` of that date and
 frozen. Historical rows are never retro-converted. Stats always use `amountBase`.

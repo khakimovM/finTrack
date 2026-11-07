@@ -7,6 +7,7 @@ import { DebtHandlers } from '../handlers/debt.handlers';
 import { EntryHandlers } from '../handlers/entry.handlers';
 import { MenuHandlers } from '../handlers/menu.handlers';
 import { VoiceHandlers } from '../handlers/voice.handlers';
+import { CardHandlers } from '../handlers/card.handlers';
 import { TelegramLifecycleService } from '../telegram-lifecycle.service';
 import { ActivityService } from '../../activity/activity.service';
 import { BotUserService } from '../bot-user.service';
@@ -46,6 +47,7 @@ function setup(env: Record<string, string | undefined>, existingWebhook: string)
     handlers as unknown as DebtHandlers,
     handlers as unknown as EntryHandlers,
     handlers as unknown as VoiceHandlers,
+    handlers as unknown as CardHandlers,
     { touchTelegram: jest.fn() } as unknown as ActivityService,
     { refuseBanned: jest.fn(async () => false) } as unknown as BotUserService,
     new AdminAccessService(config),

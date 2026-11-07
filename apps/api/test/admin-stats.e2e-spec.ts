@@ -100,7 +100,7 @@ describe('Admin statistics (e2e)', () => {
     it('splits usage by channel and source, and follows sign-ups through the funnel', async () => {
       const usage = await get('/admin/stats/usage?from=2025-03-09&to=2025-03-10');
       expect(usage.activeUsers).toEqual({ total: 2, web: 2, miniApp: 0, bot: 1, unknown: 0 });
-      expect(usage.entries).toEqual({ total: 2, web: 1, miniApp: 0, bot: 1, voice: 0, recurring: 0, unknown: 0 });
+      expect(usage.entries).toEqual({ total: 2, web: 1, miniApp: 0, bot: 1, voice: 0, recurring: 0, card: 0, unknown: 0 });
 
       // b comes back in its second week and makes five entries.
       await active(b.id, '2025-03-18');

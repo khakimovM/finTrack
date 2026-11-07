@@ -80,6 +80,26 @@ Tranzaksiyalarni CSV va XLSX ko'rinishida yuklab olish (filtrlar bilan).
 Ism, avatar, parol, til (uz/ru/en), mavzu (yorug'/qorong'i), qat'iy rejim, bazaviy valyuta,
 akkauntni o'chirish.
 
+### 14. Kartadan import (C0, botga forward)
+Foydalanuvchi Uzcard/Humo rasmiy botlaridan kelgan xabarlarni (masalan, kun oxirida hammasini belgilab)
+bizning botga **forward** qiladi. Bot ularni bitta ro'yxatga yig'adi va har biri uchun aniqlaydi:
+kirim yoki chiqim, qaysi karta, qaysi kun va soat, qaysi kategoriya.
+- Faqat Telegram "bot yuborgan" deb belgilagan forward qabul qilinadi. Odam forward qilgani yoki
+  ko'chirib qo'yilgan matn yozuvga aylanmaydi: bot asl xabarni forward qilishni so'raydi.
+- Karta botlari 4 tilda yozadi (o'zbek lotin, o'zbek kirill, rus, ingliz). Tahlil emoji va tuzilmaga
+  tayanadi, tilga emas. Rad etilgan to'lov, balans so'rovi va reklama o'tkazib yuboriladi va sanaladi.
+- Har bir yangi karta bir marta FinTrack hisobiga bog'lanadi (mavjud hisob yoki yangi "Uzcard •1234").
+- Ro'yxat guruhlarga bo'linadi: ✅ yozishga tayyor, 🔁 o'z kartalari orasidagi o'tkazma (komissiya
+  chiqimga), 🤝 qarz, ♻️ qo'lda kiritilgani bor, ↩️ qaytarilgan xarid, ❓ ko'rib chiqish.
+  Kartadan kartaga to'lov (P2P), to'lov ilovalari va kirimlar har doim ❓ ga tushadi.
+- Do'kon kategoriyasi tartibi: foydalanuvchining oldingi tanlovi → ma'lum tarmoqlar ro'yxati →
+  nomdagi kalit so'z → AI (Gemini, faqat do'kon nomlari yuboriladi). Tanlov eslab qolinadi.
+- Hech narsa so'roqsiz yozilmaydi: foydalanuvchi ✅ "Yozish" ni bosadi. Bitta tugma bilan butun
+  importni bekor qilish mumkin, shundan keyin xabarlarni qayta forward qilsa bo'ladi.
+- Xabardagi bank qoldig'i FinTrack balansi bilan solishtiriladi; farq bo'lsa, so'rov bilan
+  hisobning boshlang'ich qoldig'i to'g'rilanadi.
+- Bir xabarni ikki marta yuborish dublikat yaratmaydi.
+
 ## Funksional bo'lmagan talablar
 
 | Talab | Qiymat |
@@ -94,5 +114,6 @@ akkauntni o'chirish.
 
 ## Doirasidan tashqarida (hozircha)
 
-Bank/plastik integratsiyasi, SMS/push, jamoaviy (oilaviy) hisoblar,
+Bank/plastik API integratsiyasi (kartani to'g'ridan-to'g'ri ulash; hozircha faqat 14-banddagi
+forward orqali import), SMS/push, jamoaviy (oilaviy) hisoblar,
 investitsiya portfeli, kredit kalkulyatori, OCR chek skaneri.
